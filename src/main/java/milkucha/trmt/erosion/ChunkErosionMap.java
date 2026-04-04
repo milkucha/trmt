@@ -25,18 +25,20 @@ public class ChunkErosionMap {
      * @param block           The block currently at that position.
      * @param currentGameTime Current world game time (ticks).
      */
-    public void recordStep(BlockPos pos, Block block, long currentGameTime) {
+    public void recordStep(BlockPos pos, Block block, float amount, long currentGameTime) {
         BlockPos key = pos.toImmutable();
         ErosionEntry existing = entries.get(key);
         if (existing != null && existing.getTrackedBlock() != block) {
             // Block type changed since we last saw this position — reset progress.
             entries.remove(key);
+            existing = null;
         }
-        ErosionEntry entry = entries.computeIfAbsent(
-                key,
-                k -> new ErosionEntry(block, 0, currentGameTime)
-        );
-        entry.recordStep(currentGameTime);
+        if (existing == null) {
+            // First time this position is tracked: draw its random threshold.
+            float threshold = BlockThresholds.randomThreshold(block);
+            entries.put(key, new ErosionEntry(block, threshold, 0f, currentGameTime));
+        }
+        entries.get(key).recordStep(amount, currentGameTime);
     }
 
     /**

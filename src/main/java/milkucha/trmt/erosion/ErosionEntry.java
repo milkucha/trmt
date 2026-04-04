@@ -10,11 +10,14 @@ import net.minecraft.block.Block;
 public class ErosionEntry {
 
     private final Block trackedBlock;
-    private int walkedOnCount;
+    /** Randomly-determined erosion threshold for this specific position. Set once at creation. */
+    private final float threshold;
+    private float walkedOnCount;
     private long lastTouchedGameTime;
 
-    public ErosionEntry(Block trackedBlock, int walkedOnCount, long lastTouchedGameTime) {
+    public ErosionEntry(Block trackedBlock, float threshold, float walkedOnCount, long lastTouchedGameTime) {
         this.trackedBlock = trackedBlock;
+        this.threshold = threshold;
         this.walkedOnCount = walkedOnCount;
         this.lastTouchedGameTime = lastTouchedGameTime;
     }
@@ -23,7 +26,11 @@ public class ErosionEntry {
         return trackedBlock;
     }
 
-    public int getWalkedOnCount() {
+    public float getThreshold() {
+        return threshold;
+    }
+
+    public float getWalkedOnCount() {
         return walkedOnCount;
     }
 
@@ -31,9 +38,9 @@ public class ErosionEntry {
         return lastTouchedGameTime;
     }
 
-    /** Increments the step count and records the current game time. */
-    public void recordStep(long currentGameTime) {
-        this.walkedOnCount++;
+    /** Adds {@code amount} to the erosion count and records the current game time. */
+    public void recordStep(float amount, long currentGameTime) {
+        this.walkedOnCount += amount;
         this.lastTouchedGameTime = currentGameTime;
     }
 

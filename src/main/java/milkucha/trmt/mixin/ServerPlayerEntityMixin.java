@@ -18,7 +18,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ServerPlayerEntity.class)
 public class ServerPlayerEntityMixin {
 
-    private static final int STEP_THRESHOLD = 2;
 
     /** Last block position this player was standing on. Null while airborne. */
     @Unique
@@ -63,10 +62,34 @@ public class ServerPlayerEntityMixin {
         }
 
         ErosionMapManager manager = ErosionMapManager.getInstance();
-        manager.onStep(groundPos, block, world.getTime());
+        long gameTime = world.getTime();
 
-        ErosionEntry entry = manager.getChunkMap(new ChunkPos(groundPos)).getEntry(groundPos);
-        if (entry == null || entry.getWalkedOnCount() < STEP_THRESHOLD) {
+        manager.onStep(groundPos, block, 1.0f, gameTime);
+        trmt$tryTransform(world, manager, groundPos);
+
+        // Add 0.5 to each tracked adjacent block (N/S/E/W, same Y) and check for transformation.
+        for (BlockPos adjPos : new BlockPos[]{
+                groundPos.north(), groundPos.south(),
+                groundPos.east(),  groundPos.west()}) {
+            BlockState adjState = world.getBlockState(adjPos);
+            if (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(Blocks.DIRT)
+                    || adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(Blocks.ROOTED_DIRT)) {
+                manager.onStep(adjPos, adjState.getBlock(), 0.5f, gameTime);
+                trmt$tryTransform(world, manager, adjPos);
+            }
+        }
+    }
+
+    /**
+     * Checks whether the block at {@code pos} has accumulated enough erosion to transform,
+     * and if so, advances it to the next stage in the chain and clears its entry.
+     */
+    @Unique
+    private static void trmt$tryTransform(World world, ErosionMapManager manager, BlockPos pos) {
+        BlockState state = world.getBlockState(pos);
+
+        ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
+        if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) {
             return;
         }
 
@@ -81,7 +104,7 @@ public class ServerPlayerEntityMixin {
             nextState = Blocks.DIRT_PATH.getDefaultState();
         }
 
-        world.setBlockState(groundPos, nextState, Block.NOTIFY_ALL);
-        manager.removeEntry(groundPos);
+        world.setBlockState(pos, nextState, Block.NOTIFY_ALL);
+        manager.removeEntry(pos);
     }
 }

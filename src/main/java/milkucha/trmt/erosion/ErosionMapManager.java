@@ -41,10 +41,10 @@ public class ErosionMapManager {
      * @param block           The block currently at that position.
      * @param currentGameTime Current world game time in ticks.
      */
-    public void onStep(BlockPos worldPos, Block block, long currentGameTime) {
+    public void onStep(BlockPos worldPos, Block block, float amount, long currentGameTime) {
         ChunkPos chunkPos = new ChunkPos(worldPos);
         ChunkErosionMap map = chunkMaps.computeIfAbsent(chunkPos, k -> new ChunkErosionMap());
-        map.recordStep(worldPos, block, currentGameTime);
+        map.recordStep(worldPos, block, amount, currentGameTime);
     }
 
     /**
