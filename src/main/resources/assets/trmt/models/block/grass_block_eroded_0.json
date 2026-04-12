@@ -1,0 +1,32 @@
+{
+  "ambientocclusion": false,
+  "elements": [
+    {
+      "comment": "Base cube — dirt texture on all faces, no tint",
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down":  { "texture": "#dirt", "cullface": "down" },
+        "up":    { "texture": "#dirt", "cullface": "up" },
+        "north": { "texture": "#side", "cullface": "north" },
+        "south": { "texture": "#side", "cullface": "south" },
+        "west":  { "texture": "#side", "cullface": "west" },
+        "east":  { "texture": "#side", "cullface": "east" }
+      }
+    },
+    {
+      "comment": "Eroded overlay — 0.1 unit above base to prevent z-fighting, biome-tinted",
+      "from": [0, 15.9, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "up": { "texture": "#eroded_top", "tintindex": 0, "cullface": "up" }
+      }
+    }
+  ],
+  "textures": {
+    "dirt":       "minecraft:block/dirt",
+    "side":       "minecraft:block/grass_block_side",
+    "eroded_top": "trmt:block/grass_block_top_eroded_0",
+    "particle":   "minecraft:block/dirt"
+  }
+}

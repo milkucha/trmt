@@ -1,0 +1,30 @@
+{
+  "ambientocclusion": false,
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down":  { "texture": "#dirt", "cullface": "down" },
+        "up":    { "texture": "#dirt", "cullface": "up" },
+        "north": { "texture": "#side", "cullface": "north" },
+        "south": { "texture": "#side", "cullface": "south" },
+        "west":  { "texture": "#side", "cullface": "west" },
+        "east":  { "texture": "#side", "cullface": "east" }
+      }
+    },
+    {
+      "from": [0, 15.9, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "up": { "texture": "#eroded_top", "tintindex": 0, "cullface": "up" }
+      }
+    }
+  ],
+  "textures": {
+    "dirt":       "minecraft:block/dirt",
+    "side":       "minecraft:block/grass_block_side",
+    "eroded_top": "trmt:block/grass_block_top_eroded_4",
+    "particle":   "minecraft:block/dirt"
+  }
+}

@@ -1,5 +1,6 @@
 package milkucha.trmt.mixin;
 
+import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
@@ -8,6 +9,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -67,16 +69,27 @@ public class ServerPlayerEntityMixin {
         manager.onStep(groundPos, block, 1.0f, gameTime);
         trmt$tryTransform(world, manager, groundPos);
 
-        // Add 0.5 to each tracked adjacent block (N/S/E/W, same Y) and check for transformation.
-        for (BlockPos adjPos : new BlockPos[]{
-                groundPos.north(), groundPos.south(),
-                groundPos.east(),  groundPos.west()}) {
-            BlockState adjState = world.getBlockState(adjPos);
-            if (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(Blocks.DIRT)
-                    || adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(Blocks.ROOTED_DIRT)) {
-                manager.onStep(adjPos, adjState.getBlock(), 0.5f, gameTime);
-                trmt$tryTransform(world, manager, adjPos);
-            }
+        // Spread erosion to adjacent blocks based on the player's facing direction.
+        // Front (the direction the player faces): +0.2
+        // Left and right: +0.5 each
+        // Back: nothing
+        Direction facing = player.getHorizontalFacing();
+        Direction left  = facing.rotateYCounterclockwise();
+        Direction right = facing.rotateYClockwise();
+
+        trmt$stepAdjacent(world, manager, groundPos.offset(facing), 0.2f, gameTime);
+        trmt$stepAdjacent(world, manager, groundPos.offset(left),   0.5f, gameTime);
+        trmt$stepAdjacent(world, manager, groundPos.offset(right),  0.5f, gameTime);
+    }
+
+    @Unique
+    private static void trmt$stepAdjacent(World world, ErosionMapManager manager,
+                                           BlockPos pos, float amount, long gameTime) {
+        BlockState adjState = world.getBlockState(pos);
+        if (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(Blocks.DIRT)
+                || adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(Blocks.ROOTED_DIRT)) {
+            manager.onStep(pos, adjState.getBlock(), amount, gameTime);
+            trmt$tryTransform(world, manager, pos);
         }
     }
 
@@ -93,9 +106,22 @@ public class ServerPlayerEntityMixin {
             return;
         }
 
-        // Threshold reached — determine next block in the chain.
+        // Threshold reached — advance visual stage or transform the block.
+        if (state.isOf(Blocks.GRASS_BLOCK)) {
+            if (entry.getErosionStage() < 5) {
+                // Advance to the next visual erosion stage (0-4); stay as grass_block.
+                entry.advanceGrassStage(BlockThresholds.randomThreshold(state.getBlock()));
+                manager.markForRerender(pos);
+                return;
+            }
+            // Stage 5 reached — convert to coarse_dirt.
+            world.setBlockState(pos, Blocks.COARSE_DIRT.getDefaultState(), Block.NOTIFY_ALL);
+            manager.removeEntry(pos);
+            return;
+        }
+
         BlockState nextState;
-        if (state.isOf(Blocks.GRASS_BLOCK) || state.isOf(Blocks.DIRT)) {
+        if (state.isOf(Blocks.DIRT)) {
             nextState = Blocks.COARSE_DIRT.getDefaultState();
         } else if (state.isOf(Blocks.COARSE_DIRT)) {
             nextState = Blocks.ROOTED_DIRT.getDefaultState();

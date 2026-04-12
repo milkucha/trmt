@@ -7,6 +7,9 @@ import net.minecraft.util.math.ChunkPos;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Consumer;
 
 /**
  * Server-side singleton that holds all per-chunk erosion maps for the current world session.
@@ -18,6 +21,12 @@ public class ErosionMapManager {
 
     // Key: ChunkPos. Only chunks with at least one stepped-on block have an entry.
     private final Map<ChunkPos, ChunkErosionMap> chunkMaps = new HashMap<>();
+
+    /**
+     * Positions whose erosion stage just advanced. Drained each client tick to schedule
+     * chunk section re-renders. Thread-safe: written on server tick, read on client tick.
+     */
+    private final Queue<BlockPos> pendingRerenders = new ConcurrentLinkedQueue<>();
 
     private ErosionMapManager() {}
 
@@ -73,5 +82,21 @@ public class ErosionMapManager {
      */
     public Map<ChunkPos, ChunkErosionMap> getAllChunkMaps() {
         return Collections.unmodifiableMap(chunkMaps);
+    }
+
+    /** Enqueues a position for chunk-section re-render. Called on the server tick thread. */
+    public void markForRerender(BlockPos pos) {
+        pendingRerenders.add(pos.toImmutable());
+    }
+
+    /**
+     * Drains all queued re-render positions and passes each to {@code action}.
+     * Called on the client tick thread; thread-safe via ConcurrentLinkedQueue.
+     */
+    public void drainRerenders(Consumer<BlockPos> action) {
+        BlockPos pos;
+        while ((pos = pendingRerenders.poll()) != null) {
+            action.accept(pos);
+        }
     }
 }
