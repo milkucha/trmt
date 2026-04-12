@@ -19,11 +19,22 @@
       "faces": {
         "up": { "texture": "#eroded_top", "tintindex": 0, "cullface": "up" }
       }
+    },
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "north": { "texture": "#overlay", "tintindex": 0, "cullface": "north" },
+        "south": { "texture": "#overlay", "tintindex": 0, "cullface": "south" },
+        "west":  { "texture": "#overlay", "tintindex": 0, "cullface": "west" },
+        "east":  { "texture": "#overlay", "tintindex": 0, "cullface": "east" }
+      }
     }
   ],
   "textures": {
     "dirt":       "minecraft:block/dirt",
     "side":       "minecraft:block/grass_block_side",
+    "overlay":    "minecraft:block/grass_block_side_overlay",
     "eroded_top": "trmt:block/grass_block_top_eroded_2",
     "particle":   "minecraft:block/dirt"
   }

@@ -30,7 +30,9 @@ public final class BlockThresholds {
      * Call this once per block position when it first becomes tracked.
      */
     public static float randomThreshold(Block block) {
-        float[] range = RANGES.getOrDefault(block, new float[]{DEFAULT_MIN, DEFAULT_MAX});
+        // Eroded coarse dirt uses the same threshold range as regular coarse dirt.
+        Block lookup = (block == milkucha.trmt.TRMTBlocks.ERODED_COARSE_DIRT) ? Blocks.COARSE_DIRT : block;
+        float[] range = RANGES.getOrDefault(lookup, new float[]{DEFAULT_MIN, DEFAULT_MAX});
         return range[0] + ThreadLocalRandom.current().nextFloat() * (range[1] - range[0]);
     }
 }

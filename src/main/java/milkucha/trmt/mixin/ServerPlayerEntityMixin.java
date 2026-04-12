@@ -1,5 +1,6 @@
 package milkucha.trmt.mixin;
 
+import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
@@ -57,6 +58,7 @@ public class ServerPlayerEntityMixin {
         boolean tracked = state.isOf(Blocks.GRASS_BLOCK)
                 || state.isOf(Blocks.DIRT)
                 || state.isOf(Blocks.COARSE_DIRT)
+                || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)
                 || state.isOf(Blocks.ROOTED_DIRT);
 
         if (!tracked) {
@@ -87,7 +89,8 @@ public class ServerPlayerEntityMixin {
                                            BlockPos pos, float amount, long gameTime) {
         BlockState adjState = world.getBlockState(pos);
         if (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(Blocks.DIRT)
-                || adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(Blocks.ROOTED_DIRT)) {
+                || adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)
+                || adjState.isOf(Blocks.ROOTED_DIRT)) {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
             trmt$tryTransform(world, manager, pos);
         }
@@ -114,8 +117,8 @@ public class ServerPlayerEntityMixin {
                 manager.markForRerender(pos);
                 return;
             }
-            // Stage 5 reached — convert to coarse_dirt.
-            world.setBlockState(pos, Blocks.COARSE_DIRT.getDefaultState(), Block.NOTIFY_ALL);
+            // Stage 5 reached — convert to eroded coarse dirt (visually shorter than normal coarse dirt).
+            world.setBlockState(pos, TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState(), Block.NOTIFY_ALL);
             manager.removeEntry(pos);
             return;
         }
@@ -123,7 +126,7 @@ public class ServerPlayerEntityMixin {
         BlockState nextState;
         if (state.isOf(Blocks.DIRT)) {
             nextState = Blocks.COARSE_DIRT.getDefaultState();
-        } else if (state.isOf(Blocks.COARSE_DIRT)) {
+        } else if (state.isOf(Blocks.COARSE_DIRT) || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
             nextState = Blocks.ROOTED_DIRT.getDefaultState();
         } else {
             // ROOTED_DIRT

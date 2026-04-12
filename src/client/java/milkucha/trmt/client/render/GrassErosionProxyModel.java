@@ -65,9 +65,14 @@ public class GrassErosionProxyModel implements BakedModel, FabricBakedModel {
         int rotation = uvRotationFor(pos); // 0=0°, 1=90°, 2=180°, 3=270°
         RenderMaterial cutout = cutoutMaterial();
         context.pushTransform(quad -> {
-            if (quad.nominalFace() == Direction.UP) {
+            Direction face = quad.nominalFace();
+            // Apply CUTOUT to UP and all side faces so transparent pixels in the eroded
+            // top overlay and the grass_block_side_overlay are discarded correctly.
+            if (face != null && face != Direction.DOWN) {
                 quad.material(cutout);
-                if (rotation != 0) rotateUvs(quad, rotation);
+            }
+            if (face == Direction.UP && rotation != 0) {
+                rotateUvs(quad, rotation);
             }
             return true;
         });
