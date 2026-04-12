@@ -23,6 +23,17 @@ public final class TRMTBlocks {
             new ErodedCoarseDirtBlock(AbstractBlock.Settings.copy(Blocks.COARSE_DIRT).nonOpaque())
     );
 
+    /**
+     * Rooted dirt produced by erosion. One pixel shorter than a normal block,
+     * visually identical to vanilla rooted dirt. The terminal state of the erosion chain.
+     * Never obtainable as an item.
+     */
+    public static final Block ERODED_ROOTED_DIRT = Registry.register(
+            Registries.BLOCK,
+            new Identifier("trmt", "eroded_rooted_dirt"),
+            new ErodedCoarseDirtBlock(AbstractBlock.Settings.copy(Blocks.ROOTED_DIRT).nonOpaque())
+    );
+
     private TRMTBlocks() {}
 
     /** Called from TRMT.onInitialize() to force static initialisation. */

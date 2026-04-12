@@ -1,38 +1,49 @@
 package milkucha.trmt.erosion;
 
+import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.TRMTConfig;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 
-import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Per-block-type threshold ranges for the erosion transformation chain.
- * Each entry is {min, max}. A random value within the range is drawn once
- * when a block position first becomes tracked and stored in its ErosionEntry.
+ * Ranges are read from {@link TRMTConfig} so they can be tuned via
+ * {@code config/trmt.json} without recompiling.
  */
 public final class BlockThresholds {
-
-    private static final Map<Block, float[]> RANGES = Map.of(
-            Blocks.GRASS_BLOCK, new float[]{2.0f, 3.0f},
-            Blocks.DIRT,        new float[]{2.0f, 3.0f},
-            Blocks.COARSE_DIRT, new float[]{4.0f, 6.0f},
-            Blocks.ROOTED_DIRT, new float[]{8.0f, 10.0f}
-    );
-
-    private static final float DEFAULT_MIN = 2.0f;
-    private static final float DEFAULT_MAX = 3.0f;
 
     private BlockThresholds() {}
 
     /**
-     * Returns a random threshold for the given block type, drawn uniformly from its range.
-     * Call this once per block position when it first becomes tracked.
+     * Returns a random threshold for the given block type, drawn uniformly from its
+     * configured range.  Call this once per block position when it first becomes tracked.
      */
     public static float randomThreshold(Block block) {
-        // Eroded coarse dirt uses the same threshold range as regular coarse dirt.
-        Block lookup = (block == milkucha.trmt.TRMTBlocks.ERODED_COARSE_DIRT) ? Blocks.COARSE_DIRT : block;
-        float[] range = RANGES.getOrDefault(lookup, new float[]{DEFAULT_MIN, DEFAULT_MAX});
-        return range[0] + ThreadLocalRandom.current().nextFloat() * (range[1] - range[0]);
+        // Eroded variants use the same range as their vanilla counterpart.
+        if (block == TRMTBlocks.ERODED_COARSE_DIRT || block == TRMTBlocks.ERODED_ROOTED_DIRT) {
+            block = Blocks.COARSE_DIRT;
+        }
+
+        TRMTConfig cfg = TRMTConfig.get();
+        float min, max;
+
+        if (block == Blocks.GRASS_BLOCK) {
+            min = cfg.grassBlockMin;
+            max = cfg.grassBlockMax;
+        } else if (block == Blocks.DIRT) {
+            min = cfg.dirtMin;
+            max = cfg.dirtMax;
+        } else if (block == Blocks.COARSE_DIRT) {
+            min = cfg.coarseDirtMin;
+            max = cfg.coarseDirtMax;
+        } else {
+            min = cfg.grassBlockMin;
+            max = cfg.grassBlockMax;
+        }
+
+        if (max <= min) return min;
+        return min + ThreadLocalRandom.current().nextFloat() * (max - min);
     }
 }

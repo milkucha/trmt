@@ -1,12 +1,14 @@
 package milkucha.trmt.mixin;
 
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.entity.Entity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -30,17 +32,22 @@ public class ServerPlayerEntityMixin {
     private void trmt$onTick(CallbackInfo ci) {
         ServerPlayerEntity player = (ServerPlayerEntity) (Object) this;
 
-        if (!player.isOnGround()) {
-            // Player is airborne — clear last ground position so the next landing registers.
+        // Determine whether the player is mounted and, if so, delegate ground detection to the vehicle.
+        Entity vehicle = player.getVehicle();
+        boolean mounted = vehicle != null;
+        boolean onGround = mounted ? vehicle.isOnGround() : player.isOnGround();
+
+        if (!onGround) {
+            // Airborne (or vehicle airborne) — clear last ground position so the next landing registers.
             trmt$lastGroundPos = null;
             return;
         }
 
-        // getBlockPos() returns the block at the player's Y coordinate, which is the air block
-        // the player occupies. The block they are *standing on* is one below.
-        BlockPos groundPos = player.getBlockPos().down();
+        // getBlockPos() returns the block at the entity's Y coordinate (feet level).
+        // The block they are *standing on* is one below.
+        BlockPos groundPos = (mounted ? vehicle.getBlockPos() : player.getBlockPos()).down();
 
-        // Only process when the player moves onto a new block, not while standing still.
+        // Only process when the player (or vehicle) moves onto a new block, not while standing still.
         if (groundPos.equals(trmt$lastGroundPos)) {
             return;
         }
@@ -51,24 +58,26 @@ public class ServerPlayerEntityMixin {
         BlockState state = world.getBlockState(groundPos);
         Block block = state.getBlock();
 
-        // Transformation chain (each stage erodes at STEP_THRESHOLD steps):
-        //   grass_block  ─┐
-        //                 ├─► coarse_dirt ──► rooted_dirt ──► dirt_path
-        //   dirt         ─┘
+        // Transformation chain:
+        //   grass_block (6 visual stages) ──► eroded_coarse_dirt ──┐
+        //   dirt ────────────────────────────► eroded_coarse_dirt ──┼──► eroded_rooted_dirt  (final)
+        //   coarse_dirt ─────────────────────────────────────────────┘
         boolean tracked = state.isOf(Blocks.GRASS_BLOCK)
                 || state.isOf(Blocks.DIRT)
                 || state.isOf(Blocks.COARSE_DIRT)
-                || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)
-                || state.isOf(Blocks.ROOTED_DIRT);
+                || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT);
 
         if (!tracked) {
             return;
         }
 
+        // Mounted players erode terrain faster — apply a configurable multiplier.
+        float mult = mounted ? TRMTConfig.get().mountedErosionMultiplier : 1.0f;
+
         ErosionMapManager manager = ErosionMapManager.getInstance();
         long gameTime = world.getTime();
 
-        manager.onStep(groundPos, block, 1.0f, gameTime);
+        manager.onStep(groundPos, block, 1.0f * mult, gameTime);
         trmt$tryTransform(world, manager, groundPos);
 
         // Spread erosion to adjacent blocks based on the player's facing direction.
@@ -79,9 +88,9 @@ public class ServerPlayerEntityMixin {
         Direction left  = facing.rotateYCounterclockwise();
         Direction right = facing.rotateYClockwise();
 
-        trmt$stepAdjacent(world, manager, groundPos.offset(facing), 0.2f, gameTime);
-        trmt$stepAdjacent(world, manager, groundPos.offset(left),   0.5f, gameTime);
-        trmt$stepAdjacent(world, manager, groundPos.offset(right),  0.5f, gameTime);
+        trmt$stepAdjacent(world, manager, groundPos.offset(facing), 0.2f * mult, gameTime);
+        trmt$stepAdjacent(world, manager, groundPos.offset(left),   0.5f * mult, gameTime);
+        trmt$stepAdjacent(world, manager, groundPos.offset(right),  0.5f * mult, gameTime);
     }
 
     @Unique
@@ -89,8 +98,7 @@ public class ServerPlayerEntityMixin {
                                            BlockPos pos, float amount, long gameTime) {
         BlockState adjState = world.getBlockState(pos);
         if (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(Blocks.DIRT)
-                || adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)
-                || adjState.isOf(Blocks.ROOTED_DIRT)) {
+                || adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
             trmt$tryTransform(world, manager, pos);
         }
@@ -125,12 +133,10 @@ public class ServerPlayerEntityMixin {
 
         BlockState nextState;
         if (state.isOf(Blocks.DIRT)) {
-            nextState = Blocks.COARSE_DIRT.getDefaultState();
-        } else if (state.isOf(Blocks.COARSE_DIRT) || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
-            nextState = Blocks.ROOTED_DIRT.getDefaultState();
+            nextState = TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState();
         } else {
-            // ROOTED_DIRT
-            nextState = Blocks.DIRT_PATH.getDefaultState();
+            // COARSE_DIRT or ERODED_COARSE_DIRT → terminal state
+            nextState = TRMTBlocks.ERODED_ROOTED_DIRT.getDefaultState();
         }
 
         world.setBlockState(pos, nextState, Block.NOTIFY_ALL);
