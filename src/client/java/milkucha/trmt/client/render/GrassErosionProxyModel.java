@@ -3,6 +3,10 @@ package milkucha.trmt.client.render;
 import milkucha.trmt.erosion.ChunkErosionMap;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
+import net.fabricmc.fabric.api.renderer.v1.RendererAccess;
+import net.fabricmc.fabric.api.renderer.v1.material.BlendMode;
+import net.fabricmc.fabric.api.renderer.v1.material.RenderMaterial;
+import net.fabricmc.fabric.api.renderer.v1.mesh.MutableQuadView;
 import net.fabricmc.fabric.api.renderer.v1.model.FabricBakedModel;
 import net.fabricmc.fabric.api.renderer.v1.render.RenderContext;
 import net.minecraft.block.BlockState;
@@ -28,6 +32,19 @@ public class GrassErosionProxyModel implements BakedModel, FabricBakedModel {
 
     private final BakedModel vanilla;
 
+    /** Lazily initialised; Renderer may not be present at class-load time. */
+    private static RenderMaterial cutoutMaterial;
+
+    private static RenderMaterial cutoutMaterial() {
+        if (cutoutMaterial == null) {
+            cutoutMaterial = RendererAccess.INSTANCE.getRenderer()
+                    .materialFinder()
+                    .blendMode(BlendMode.CUTOUT)
+                    .find();
+        }
+        return cutoutMaterial;
+    }
+
     public GrassErosionProxyModel(BakedModel vanilla) {
         this.vanilla = vanilla;
     }
@@ -44,7 +61,41 @@ public class GrassErosionProxyModel implements BakedModel, FabricBakedModel {
                                Supplier<net.minecraft.util.math.random.Random> randomSupplier,
                                RenderContext context) {
         BakedModel target = resolveModel(pos);
+        if (target == vanilla) {
+            ((FabricBakedModel) target).emitBlockQuads(world, state, pos, randomSupplier, context);
+            return;
+        }
+        int rotation = uvRotationFor(pos); // 0=0°, 1=90°, 2=180°, 3=270°
+        RenderMaterial cutout = cutoutMaterial();
+        context.pushTransform(quad -> {
+            if (quad.nominalFace() == Direction.UP) {
+                quad.material(cutout);
+                if (rotation != 0) rotateUvs(quad, rotation);
+            }
+            return true;
+        });
         ((FabricBakedModel) target).emitBlockQuads(world, state, pos, randomSupplier, context);
+        context.popTransform();
+    }
+
+    /** Permutes the UV coordinates of all 4 vertices by {@code steps} positions (each step = 90° CW). */
+    private static void rotateUvs(MutableQuadView quad, int steps) {
+        float[] us = new float[4];
+        float[] vs = new float[4];
+        for (int i = 0; i < 4; i++) {
+            us[i] = quad.u(i);
+            vs[i] = quad.v(i);
+        }
+        for (int i = 0; i < 4; i++) {
+            int src = (i + steps) & 3;
+            quad.uv(i, us[src], vs[src]);
+        }
+    }
+
+    /** Deterministic 0–3 from block position — never flickers across frames. */
+    private static int uvRotationFor(BlockPos pos) {
+        int h = (pos.getX() * 1619) ^ (pos.getZ() * 31337);
+        return ((h >>> 4) ^ (h >>> 8)) & 3;
     }
 
     @Override
