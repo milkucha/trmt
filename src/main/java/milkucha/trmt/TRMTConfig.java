@@ -40,6 +40,9 @@ public final class TRMTConfig {
     /** Multiplier applied to all erosion amounts when the player is riding a vehicle (e.g. a horse). */
     public float mountedErosionMultiplier = 1.5f;
 
+    /** Show the erosion debug HUD overlay. Disabled by default; set to true for development. */
+    public boolean debugHud = false;
+
     // ── singleton ──────────────────────────────────────────────────────────
     private static TRMTConfig instance = new TRMTConfig();
 

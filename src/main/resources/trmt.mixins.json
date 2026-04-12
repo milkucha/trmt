@@ -3,7 +3,6 @@
 	"package": "milkucha.trmt.mixin",
 	"compatibilityLevel": "JAVA_17",
 	"mixins": [
-		"ExampleMixin",
 		"ServerPlayerEntityMixin",
 		"ShovelItemMixin"
 	],

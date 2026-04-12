@@ -1,6 +1,7 @@
 package milkucha.trmt.client.debug;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.client.render.ErodedGrassModels;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
@@ -43,6 +44,7 @@ public class ErosionDebugHud {
     }
 
     private static void render(DrawContext context, float tickDelta) {
+        if (!TRMTConfig.get().debugHud) return;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) return;
 
