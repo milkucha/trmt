@@ -29,6 +29,15 @@ public class ErosionEntry {
         this.erosionStage = 0;
     }
 
+    /** Deserialization constructor — restores all fields including erosion stage. */
+    ErosionEntry(Block trackedBlock, float threshold, float walkedOnCount, long lastTouchedGameTime, int erosionStage) {
+        this.trackedBlock = trackedBlock;
+        this.threshold = threshold;
+        this.walkedOnCount = walkedOnCount;
+        this.lastTouchedGameTime = lastTouchedGameTime;
+        this.erosionStage = erosionStage;
+    }
+
     public Block getTrackedBlock() {
         return trackedBlock;
     }

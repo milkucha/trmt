@@ -15,8 +15,7 @@
       }
     },
     {
-      "comment": "Eroded overlay — 0.1 unit above base to prevent z-fighting, biome-tinted",
-      "from": [0, 15.9, 0],
+      "from": [0, 0, 0],
       "to": [16, 16, 16],
       "faces": {
         "up": { "texture": "#eroded_top", "tintindex": 0, "cullface": "up" }

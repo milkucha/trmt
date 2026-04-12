@@ -56,6 +56,11 @@ public class ChunkErosionMap {
         return Collections.unmodifiableMap(entries);
     }
 
+    /** Deserialization only — inserts an entry directly, bypassing recordStep logic. */
+    void putEntry(BlockPos pos, ErosionEntry entry) {
+        entries.put(pos.toImmutable(), entry);
+    }
+
     /** Removes the entry for the given position (e.g. after a block transformation). */
     public void removeEntry(BlockPos pos) {
         entries.remove(pos);

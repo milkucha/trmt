@@ -1,11 +1,11 @@
 package milkucha.trmt.erosion;
 
 import net.minecraft.block.Block;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -13,14 +13,15 @@ import java.util.function.Consumer;
 
 /**
  * Server-side singleton that holds all per-chunk erosion maps for the current world session.
- * Reset when the server stops so data does not bleed between sessions.
+ * Delegates storage to {@link ErosionPersistentState} so data survives across sessions.
+ * Reset when the server stops so state does not bleed between sessions.
  */
 public class ErosionMapManager {
 
     private static ErosionMapManager INSTANCE;
 
-    // Key: ChunkPos. Only chunks with at least one stepped-on block have an entry.
-    private final Map<ChunkPos, ChunkErosionMap> chunkMaps = new HashMap<>();
+    /** Loaded on SERVER_STARTED; null until then. */
+    private ErosionPersistentState state;
 
     /**
      * Positions whose erosion stage just advanced. Drained each client tick to schedule
@@ -37,6 +38,11 @@ public class ErosionMapManager {
         return INSTANCE;
     }
 
+    /** Called on SERVER_STARTED to load (or create) the persistent erosion state. */
+    public void loadState(MinecraftServer server) {
+        this.state = ErosionPersistentState.getOrCreate(server);
+    }
+
     /** Called on server stop to release all in-memory state. */
     public static void reset() {
         INSTANCE = null;
@@ -51,9 +57,11 @@ public class ErosionMapManager {
      * @param currentGameTime Current world game time in ticks.
      */
     public void onStep(BlockPos worldPos, Block block, float amount, long currentGameTime) {
+        if (state == null) return;
         ChunkPos chunkPos = new ChunkPos(worldPos);
-        ChunkErosionMap map = chunkMaps.computeIfAbsent(chunkPos, k -> new ChunkErosionMap());
+        ChunkErosionMap map = state.computeChunkMap(chunkPos);
         map.recordStep(worldPos, block, amount, currentGameTime);
+        state.markDirty();
     }
 
     /**
@@ -61,27 +69,29 @@ public class ErosionMapManager {
      * Drops the ChunkErosionMap entirely if it becomes empty.
      */
     public void removeEntry(BlockPos worldPos) {
+        if (state == null) return;
         ChunkPos chunkPos = new ChunkPos(worldPos);
-        ChunkErosionMap map = chunkMaps.get(chunkPos);
+        ChunkErosionMap map = state.getChunkMap(chunkPos);
         if (map == null) return;
         map.removeEntry(worldPos);
-        if (map.isEmpty()) {
-            chunkMaps.remove(chunkPos);
-        }
+        state.removeChunkMapIfEmpty(chunkPos);
+        state.markDirty();
     }
 
     /**
      * Returns the ChunkErosionMap for the given chunk, or null if no block there has been walked on.
      */
     public ChunkErosionMap getChunkMap(ChunkPos chunkPos) {
-        return chunkMaps.get(chunkPos);
+        if (state == null) return null;
+        return state.getChunkMap(chunkPos);
     }
 
     /**
      * Returns an unmodifiable view of all chunk maps. Used by the debug HUD.
      */
     public Map<ChunkPos, ChunkErosionMap> getAllChunkMaps() {
-        return Collections.unmodifiableMap(chunkMaps);
+        if (state == null) return Collections.emptyMap();
+        return state.getAllChunkMaps();
     }
 
     /** Enqueues a position for chunk-section re-render. Called on the server tick thread. */

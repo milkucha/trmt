@@ -14,7 +14,7 @@
       }
     },
     {
-      "from": [0, 15.9, 0],
+      "from": [0, 0, 0],
       "to": [16, 16, 16],
       "faces": {
         "up": { "texture": "#eroded_top", "tintindex": 0, "cullface": "up" }
