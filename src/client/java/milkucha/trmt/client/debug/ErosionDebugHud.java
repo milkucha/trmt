@@ -1,10 +1,8 @@
 package milkucha.trmt.client.debug;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.client.render.ErodedGrassModels;
-import milkucha.trmt.erosion.ChunkErosionMap;
-import milkucha.trmt.erosion.ErosionEntry;
-import milkucha.trmt.erosion.ErosionMapManager;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
@@ -15,7 +13,6 @@ import net.minecraft.client.render.model.BakedQuad;
 import net.minecraft.client.texture.Sprite;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.random.Random;
 
@@ -75,11 +72,11 @@ public class ErosionDebugHud {
         BlockState state = world.getBlockState(pos);
 
         // For eroded grass, use the eroded model; otherwise use the vanilla block model.
-        ErosionEntry cellEntry = getEntry(pos);
+        ClientErosionCache.Entry cellEntry = getEntry(pos);
         BakedModel model;
         if (state.isOf(net.minecraft.block.Blocks.GRASS_BLOCK)
-                && cellEntry != null && cellEntry.getErosionStage() > 0) {
-            model = ErodedGrassModels.getModel(cellEntry.getErosionStage());
+                && cellEntry != null && cellEntry.stage > 0) {
+            model = ErodedGrassModels.getModel(cellEntry.stage);
             if (model == null) model = client.getBlockRenderManager().getModel(state);
         } else {
             model = client.getBlockRenderManager().getModel(state);
@@ -96,7 +93,7 @@ public class ErosionDebugHud {
 
         // Overlay walkedOnCount/threshold at half scale so it fits within the cell.
         String label = cellEntry != null
-                ? String.format("%.1f/%.1f", cellEntry.getWalkedOnCount(), cellEntry.getThreshold())
+                ? String.format("%.1f/%.1f", cellEntry.walkedOnCount, cellEntry.threshold)
                 : "0.0/-";
         context.getMatrices().push();
         context.getMatrices().translate(0, 0, 200);
@@ -123,9 +120,7 @@ public class ErosionDebugHud {
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
     }
 
-    private static ErosionEntry getEntry(BlockPos pos) {
-        ChunkErosionMap map = ErosionMapManager.getInstance().getChunkMap(new ChunkPos(pos));
-        if (map == null) return null;
-        return map.getEntry(pos);
+    private static ClientErosionCache.Entry getEntry(BlockPos pos) {
+        return ClientErosionCache.getInstance().getEntry(pos);
     }
 }

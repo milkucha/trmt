@@ -1,20 +1,22 @@
 package milkucha.trmt.erosion;
 
+import milkucha.trmt.network.TRMTPackets;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.Block;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.function.Consumer;
 
 /**
  * Server-side singleton that holds all per-chunk erosion maps for the current world session.
  * Delegates storage to {@link ErosionPersistentState} so data survives across sessions.
- * Reset when the server stops so state does not bleed between sessions.
+ * Broadcasts stage changes to all connected clients via Fabric networking.
  */
 public class ErosionMapManager {
 
@@ -22,12 +24,7 @@ public class ErosionMapManager {
 
     /** Loaded on SERVER_STARTED; null until then. */
     private ErosionPersistentState state;
-
-    /**
-     * Positions whose erosion stage just advanced. Drained each client tick to schedule
-     * chunk section re-renders. Thread-safe: written on server tick, read on client tick.
-     */
-    private final Queue<BlockPos> pendingRerenders = new ConcurrentLinkedQueue<>();
+    private MinecraftServer server;
 
     private ErosionMapManager() {}
 
@@ -40,7 +37,8 @@ public class ErosionMapManager {
 
     /** Called on SERVER_STARTED to load (or create) the persistent erosion state. */
     public void loadState(MinecraftServer server) {
-        this.state = ErosionPersistentState.getOrCreate(server);
+        this.server = server;
+        this.state  = ErosionPersistentState.getOrCreate(server);
     }
 
     /** Called on server stop to release all in-memory state. */
@@ -48,13 +46,11 @@ public class ErosionMapManager {
         INSTANCE = null;
     }
 
+    // --- Erosion logic ---
+
     /**
      * Records one step at worldPos for the given block type.
      * Creates a ChunkErosionMap for the chunk if needed.
-     *
-     * @param worldPos        World-space block position that was stepped on.
-     * @param block           The block currently at that position.
-     * @param currentGameTime Current world game time in ticks.
      */
     public void onStep(BlockPos worldPos, Block block, float amount, long currentGameTime) {
         if (state == null) return;
@@ -65,8 +61,9 @@ public class ErosionMapManager {
     }
 
     /**
-     * Removes the erosion entry for worldPos (called after a block transformation resets progress).
+     * Removes the erosion entry for worldPos (called after a block transformation).
      * Drops the ChunkErosionMap entirely if it becomes empty.
+     * Broadcasts stage = 0 so clients clear the entry.
      */
     public void removeEntry(BlockPos worldPos) {
         if (state == null) return;
@@ -76,6 +73,20 @@ public class ErosionMapManager {
         map.removeEntry(worldPos);
         state.removeChunkMapIfEmpty(chunkPos);
         state.markDirty();
+        broadcastStageUpdate(worldPos, 0, 0f, 0f);
+    }
+
+    /**
+     * Called when a grass erosion stage advances. Broadcasts the new stage to all clients
+     * so they can update their local cache and trigger a chunk re-render.
+     */
+    public void markForRerender(BlockPos pos) {
+        if (state == null) return;
+        ChunkErosionMap map = state.getChunkMap(new ChunkPos(pos));
+        if (map == null) return;
+        ErosionEntry entry = map.getEntry(pos);
+        if (entry == null) return;
+        broadcastStageUpdate(pos, entry.getErosionStage(), entry.getWalkedOnCount(), entry.getThreshold());
     }
 
     /**
@@ -86,27 +97,49 @@ public class ErosionMapManager {
         return state.getChunkMap(chunkPos);
     }
 
-    /**
-     * Returns an unmodifiable view of all chunk maps. Used by the debug HUD.
-     */
+    /** Returns an unmodifiable view of all chunk maps. Used by the debug HUD and join sync. */
     public Map<ChunkPos, ChunkErosionMap> getAllChunkMaps() {
         if (state == null) return Collections.emptyMap();
         return state.getAllChunkMaps();
     }
 
-    /** Enqueues a position for chunk-section re-render. Called on the server tick thread. */
-    public void markForRerender(BlockPos pos) {
-        pendingRerenders.add(pos.toImmutable());
-    }
+    // --- Networking ---
 
     /**
-     * Drains all queued re-render positions and passes each to {@code action}.
-     * Called on the client tick thread; thread-safe via ConcurrentLinkedQueue.
+     * Sends the full erosion data for every known chunk to a newly-joined player.
+     * One SYNC_CHUNK packet per non-empty chunk.
      */
-    public void drainRerenders(Consumer<BlockPos> action) {
-        BlockPos pos;
-        while ((pos = pendingRerenders.poll()) != null) {
-            action.accept(pos);
+    public void sendFullSyncToPlayer(ServerPlayerEntity player) {
+        if (state == null) return;
+        for (Map.Entry<ChunkPos, ChunkErosionMap> chunkEntry : state.getAllChunkMaps().entrySet()) {
+            ChunkPos chunkPos = chunkEntry.getKey();
+            Map<BlockPos, ErosionEntry> entries = chunkEntry.getValue().getEntries();
+            if (entries.isEmpty()) continue;
+
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeInt(chunkPos.x);
+            buf.writeInt(chunkPos.z);
+            buf.writeInt(entries.size());
+            for (Map.Entry<BlockPos, ErosionEntry> e : entries.entrySet()) {
+                buf.writeBlockPos(e.getKey());
+                buf.writeInt(e.getValue().getErosionStage());
+                buf.writeFloat(e.getValue().getWalkedOnCount());
+                buf.writeFloat(e.getValue().getThreshold());
+            }
+            ServerPlayNetworking.send(player, TRMTPackets.SYNC_CHUNK, buf);
+        }
+    }
+
+    /** Broadcasts a single-block stage update to every connected player. */
+    private void broadcastStageUpdate(BlockPos pos, int stage, float walkedOnCount, float threshold) {
+        if (server == null) return;
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeBlockPos(pos);
+            buf.writeInt(stage);
+            buf.writeFloat(walkedOnCount);
+            buf.writeFloat(threshold);
+            ServerPlayNetworking.send(player, TRMTPackets.UPDATE_STAGE, buf);
         }
     }
 }

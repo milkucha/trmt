@@ -1,8 +1,6 @@
 package milkucha.trmt.client.render;
 
-import milkucha.trmt.erosion.ChunkErosionMap;
-import milkucha.trmt.erosion.ErosionEntry;
-import milkucha.trmt.erosion.ErosionMapManager;
+import milkucha.trmt.client.network.ClientErosionCache;
 import net.fabricmc.fabric.api.renderer.v1.RendererAccess;
 import net.fabricmc.fabric.api.renderer.v1.material.BlendMode;
 import net.fabricmc.fabric.api.renderer.v1.material.RenderMaterial;
@@ -16,7 +14,6 @@ import net.minecraft.client.render.model.json.ModelTransformation;
 import net.minecraft.client.texture.Sprite;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.BlockRenderView;
 
@@ -122,13 +119,10 @@ public class GrassErosionProxyModel implements BakedModel, FabricBakedModel {
     // --- Helpers ---
 
     private BakedModel resolveModel(BlockPos pos) {
-        ChunkErosionMap map = ErosionMapManager.getInstance().getChunkMap(new ChunkPos(pos));
-        if (map != null) {
-            ErosionEntry entry = map.getEntry(pos);
-            if (entry != null && entry.getErosionStage() > 0) {
-                BakedModel eroded = ErodedGrassModels.getModel(entry.getErosionStage());
-                if (eroded != null) return eroded;
-            }
+        int stage = ClientErosionCache.getInstance().getStage(pos);
+        if (stage > 0) {
+            BakedModel eroded = ErodedGrassModels.getModel(stage);
+            if (eroded != null) return eroded;
         }
         return vanilla;
     }
