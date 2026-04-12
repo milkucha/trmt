@@ -5,6 +5,7 @@ import milkucha.trmt.TRMTConfig;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -14,7 +15,21 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public final class BlockThresholds {
 
+    /** All vegetation blocks that are subject to erosion trampling. */
+    public static final Set<Block> VEGETATION = Set.of(
+            Blocks.GRASS, Blocks.TALL_GRASS,
+            Blocks.DANDELION, Blocks.POPPY, Blocks.BLUE_ORCHID, Blocks.ALLIUM,
+            Blocks.AZURE_BLUET, Blocks.RED_TULIP, Blocks.ORANGE_TULIP,
+            Blocks.WHITE_TULIP, Blocks.PINK_TULIP, Blocks.OXEYE_DAISY,
+            Blocks.CORNFLOWER, Blocks.LILY_OF_THE_VALLEY, Blocks.WITHER_ROSE,
+            Blocks.SUNFLOWER, Blocks.LILAC, Blocks.ROSE_BUSH, Blocks.PEONY
+    );
+
     private BlockThresholds() {}
+
+    public static boolean isVegetation(Block block) {
+        return VEGETATION.contains(block);
+    }
 
     /**
      * Returns a random threshold for the given block type, drawn uniformly from its
@@ -38,6 +53,9 @@ public final class BlockThresholds {
         } else if (block == Blocks.COARSE_DIRT) {
             min = cfg.coarseDirtMin;
             max = cfg.coarseDirtMax;
+        } else if (VEGETATION.contains(block)) {
+            min = cfg.vegetationMin;
+            max = cfg.vegetationMax;
         } else {
             min = cfg.grassBlockMin;
             max = cfg.grassBlockMax;

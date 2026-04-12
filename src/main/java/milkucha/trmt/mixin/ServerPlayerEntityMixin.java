@@ -8,7 +8,10 @@ import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.TallPlantBlock;
+import net.minecraft.block.enums.DoubleBlockHalf;
 import net.minecraft.entity.Entity;
+import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -91,6 +94,15 @@ public class ServerPlayerEntityMixin {
         trmt$stepAdjacent(world, manager, groundPos.offset(facing), 0.2f * mult, gameTime);
         trmt$stepAdjacent(world, manager, groundPos.offset(left),   0.5f * mult, gameTime);
         trmt$stepAdjacent(world, manager, groundPos.offset(right),  0.5f * mult, gameTime);
+
+        // Check for vegetation at the player's feet level (one block above the ground).
+        // Vegetation has no collision so the player passes through it — track and break it.
+        BlockPos vegPos = groundPos.up();
+        BlockState vegState = world.getBlockState(vegPos);
+        if (BlockThresholds.isVegetation(vegState.getBlock())) {
+            manager.onStep(vegPos, vegState.getBlock(), 1.0f * mult, gameTime);
+            trmt$tryBreakVegetation(world, manager, vegPos, vegState);
+        }
     }
 
     @Unique
@@ -102,6 +114,27 @@ public class ServerPlayerEntityMixin {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
             trmt$tryTransform(world, manager, pos);
         }
+    }
+
+    @Unique
+    private static void trmt$tryBreakVegetation(World world, ErosionMapManager manager,
+                                                 BlockPos pos, BlockState state) {
+        ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
+        if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
+
+        // For double-height plants, remove the upper half first (no drops from upper half).
+        if (state.getBlock() instanceof TallPlantBlock
+                && state.get(TallPlantBlock.HALF) == DoubleBlockHalf.LOWER) {
+            BlockPos upper = pos.up();
+            if (world.getBlockState(upper).isOf(state.getBlock())) {
+                world.removeBlock(upper, false);
+            }
+        }
+
+        float dropChance = TRMTConfig.get().vegetationDropChance;
+        boolean drops = dropChance >= 1.0f || (dropChance > 0.0f && ThreadLocalRandom.current().nextFloat() < dropChance);
+        world.breakBlock(pos, drops);
+        manager.removeEntry(pos);
     }
 
     /**

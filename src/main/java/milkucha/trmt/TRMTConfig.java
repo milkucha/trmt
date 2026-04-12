@@ -24,13 +24,18 @@ public final class TRMTConfig {
 
     // ── defaults (match the hardcoded values that existed before) ──────────
     public float grassBlockMin  = 2.0f;
-    public float grassBlockMax  = 3.0f;
+    public float grassBlockMax  = 4.0f;
 
     public float dirtMin        = 2.0f;
-    public float dirtMax        = 3.0f;
+    public float dirtMax        = 4.0f;
 
-    public float coarseDirtMin  = 4.0f;
-    public float coarseDirtMax  = 10.0f;
+    public float coarseDirtMin  = 8.0f;
+    public float coarseDirtMax  = 12.0f;
+
+    public float vegetationMin        = 0.5f;
+    public float vegetationMax        = 1.5f;
+    /** 0.0 = never drops, 1.0 = always drops. Applied per-break as a random roll. */
+    public float vegetationDropChance = 0.2f;
 
     /** Multiplier applied to all erosion amounts when the player is riding a vehicle (e.g. a horse). */
     public float mountedErosionMultiplier = 1.5f;
@@ -57,6 +62,9 @@ public final class TRMTConfig {
                 TRMTConfig loaded = GSON.fromJson(reader, TRMTConfig.class);
                 if (loaded != null) {
                     instance = loaded;
+                    // Save back immediately so any fields added since the last run
+                    // are written to disk with their default values.
+                    save();
                     TRMT.LOGGER.info("[TRMT] Config loaded from {}", path);
                     return;
                 }
