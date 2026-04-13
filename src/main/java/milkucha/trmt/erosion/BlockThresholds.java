@@ -4,6 +4,7 @@ import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
+import net.minecraft.util.math.BlockPos;
 
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
@@ -32,12 +33,24 @@ public final class BlockThresholds {
     }
 
     /**
+     * Deterministic rotation index (0–3) derived from block position, matching the UV
+     * rotation applied to eroded grass top textures in {@code GrassErosionProxyModel}.
+     * 0 = 0°, 1 = 90° CW, 2 = 180°, 3 = 270° CW.
+     */
+    public static int posRotation(BlockPos pos) {
+        int h = (pos.getX() * 1619) ^ (pos.getZ() * 31337);
+        return ((h >>> 4) ^ (h >>> 8)) & 3;
+    }
+
+    /**
      * Returns a random threshold for the given block type, drawn uniformly from its
      * configured range.  Call this once per block position when it first becomes tracked.
      */
     public static float randomThreshold(Block block) {
         // Eroded variants use the same range as their vanilla counterpart.
-        if (block == TRMTBlocks.ERODED_COARSE_DIRT || block == TRMTBlocks.ERODED_ROOTED_DIRT) {
+        if (block == TRMTBlocks.ERODED_DIRT) {
+            block = Blocks.DIRT;
+        } else if (block == TRMTBlocks.ERODED_COARSE_DIRT || block == TRMTBlocks.ERODED_ROOTED_DIRT) {
             block = Blocks.COARSE_DIRT;
         }
 

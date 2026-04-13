@@ -2,6 +2,7 @@ package milkucha.trmt.mixin;
 
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
+import milkucha.trmt.block.ErodedDirtBlock;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
@@ -62,26 +63,29 @@ public class ServerPlayerEntityMixin {
         Block block = state.getBlock();
 
         // Transformation chain:
-        //   grass_block (6 visual stages) ──► eroded_coarse_dirt ──┐
-        //   dirt ────────────────────────────► eroded_coarse_dirt ──┼──► eroded_rooted_dirt  (final)
-        //   coarse_dirt ─────────────────────────────────────────────┘
+        //   grass_block (6 visual stages) ──► eroded_dirt ──► eroded_coarse_dirt ──┐
+        //   dirt ──────────────────────────────────────────► eroded_coarse_dirt ──┼──► eroded_rooted_dirt (final)
+        //   coarse_dirt ────────────────────────────────────────────────────────────┘
         boolean tracked = state.isOf(Blocks.GRASS_BLOCK)
                 || state.isOf(Blocks.DIRT)
                 || state.isOf(Blocks.COARSE_DIRT)
+                || state.isOf(TRMTBlocks.ERODED_DIRT)
                 || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT);
 
         if (!tracked) {
             return;
         }
 
-        // Mounted players erode terrain faster — apply a configurable multiplier.
-        float mult = mounted ? TRMTConfig.get().mountedErosionMultiplier : 1.0f;
+        // Apply player erosion multiplier; mounted players get an additional configurable boost.
+        float mult = TRMTConfig.get().playerErosionMultiplier
+                * (mounted ? TRMTConfig.get().mountedErosionMultiplier : 1.0f);
 
         ErosionMapManager manager = ErosionMapManager.getInstance();
         long gameTime = world.getTime();
 
         manager.onStep(groundPos, block, 1.0f * mult, gameTime);
         trmt$tryTransform(world, manager, groundPos);
+        manager.broadcastEntryUpdate(groundPos, block);
 
         // Spread erosion to adjacent blocks based on the player's facing direction.
         // Front (the direction the player faces): +0.2
@@ -110,7 +114,8 @@ public class ServerPlayerEntityMixin {
                                            BlockPos pos, float amount, long gameTime) {
         BlockState adjState = world.getBlockState(pos);
         if (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(Blocks.DIRT)
-                || adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
+                || adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(TRMTBlocks.ERODED_DIRT)
+                || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
             trmt$tryTransform(world, manager, pos);
         }
@@ -158,8 +163,21 @@ public class ServerPlayerEntityMixin {
                 manager.markForRerender(pos);
                 return;
             }
-            // Stage 5 reached — convert to eroded coarse dirt (visually shorter than normal coarse dirt).
-            world.setBlockState(pos, TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState(), Block.NOTIFY_ALL);
+            // Stage 5 reached — convert to eroded_dirt, preserving the same rotation used for the eroded grass overlay.
+            Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
+            world.setBlockState(pos,
+                    TRMTBlocks.ERODED_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, erodedFacing),
+                    Block.NOTIFY_ALL);
+            manager.removeEntry(pos);
+            return;
+        }
+
+        if (state.isOf(TRMTBlocks.ERODED_DIRT)) {
+            // Carry the rotation forward to eroded_coarse_dirt.
+            Direction facing = state.get(ErodedDirtBlock.FACING);
+            world.setBlockState(pos,
+                    TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
+                    Block.NOTIFY_ALL);
             manager.removeEntry(pos);
             return;
         }
@@ -167,12 +185,31 @@ public class ServerPlayerEntityMixin {
         BlockState nextState;
         if (state.isOf(Blocks.DIRT)) {
             nextState = TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState();
+        } else if (state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
+            // Carry the rotation forward to eroded_rooted_dirt.
+            Direction facing = state.get(ErodedDirtBlock.FACING);
+            nextState = TRMTBlocks.ERODED_ROOTED_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing);
         } else {
-            // COARSE_DIRT or ERODED_COARSE_DIRT → terminal state
+            // COARSE_DIRT → terminal state (no rotation to preserve)
             nextState = TRMTBlocks.ERODED_ROOTED_DIRT.getDefaultState();
         }
 
         world.setBlockState(pos, nextState, Block.NOTIFY_ALL);
         manager.removeEntry(pos);
+    }
+
+    /**
+     * Maps a position rotation index (0–3, matching {@link BlockThresholds#posRotation})
+     * to the corresponding {@link Direction} for the FACING block-state property.
+     * 0 = SOUTH (0°), 1 = WEST (90° CW), 2 = NORTH (180°), 3 = EAST (270° CW).
+     */
+    @Unique
+    private static Direction trmt$rotationToFacing(int rotation) {
+        return switch (rotation) {
+            case 1  -> Direction.WEST;
+            case 2  -> Direction.NORTH;
+            case 3  -> Direction.EAST;
+            default -> Direction.SOUTH;
+        };
     }
 }

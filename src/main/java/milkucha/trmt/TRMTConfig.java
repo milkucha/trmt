@@ -26,16 +26,19 @@ public final class TRMTConfig {
     public float grassBlockMin  = 2.0f;
     public float grassBlockMax  = 4.0f;
 
-    public float dirtMin        = 2.0f;
-    public float dirtMax        = 4.0f;
+    public float dirtMin        = 4.0f;
+    public float dirtMax        = 8.0f;
 
     public float coarseDirtMin  = 8.0f;
     public float coarseDirtMax  = 12.0f;
 
-    public float vegetationMin        = 0.5f;
-    public float vegetationMax        = 1.5f;
+    public float vegetationMin        = 2.0f;
+    public float vegetationMax        = 3.0f;
     /** 0.0 = never drops, 1.0 = always drops. Applied per-break as a random roll. */
     public float vegetationDropChance = 0.2f;
+
+    /** Multiplier applied to all erosion amounts for every player step. Default 1.0 = vanilla behaviour. */
+    public float playerErosionMultiplier = 0.5f;
 
     /** Multiplier applied to all erosion amounts when the player is riding a vehicle (e.g. a horse). */
     public float mountedErosionMultiplier = 1.5f;

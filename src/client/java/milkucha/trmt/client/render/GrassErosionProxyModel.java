@@ -1,6 +1,7 @@
 package milkucha.trmt.client.render;
 
 import milkucha.trmt.client.network.ClientErosionCache;
+import milkucha.trmt.erosion.BlockThresholds;
 import net.fabricmc.fabric.api.renderer.v1.RendererAccess;
 import net.fabricmc.fabric.api.renderer.v1.material.BlendMode;
 import net.fabricmc.fabric.api.renderer.v1.material.RenderMaterial;
@@ -62,7 +63,7 @@ public class GrassErosionProxyModel implements BakedModel, FabricBakedModel {
             ((FabricBakedModel) target).emitBlockQuads(world, state, pos, randomSupplier, context);
             return;
         }
-        int rotation = uvRotationFor(pos); // 0=0°, 1=90°, 2=180°, 3=270°
+        int rotation = BlockThresholds.posRotation(pos); // 0=0°, 1=90°, 2=180°, 3=270°
         RenderMaterial cutout = cutoutMaterial();
         context.pushTransform(quad -> {
             Direction face = quad.nominalFace();
@@ -92,12 +93,6 @@ public class GrassErosionProxyModel implements BakedModel, FabricBakedModel {
             int src = (i + steps) & 3;
             quad.uv(i, us[src], vs[src]);
         }
-    }
-
-    /** Deterministic 0–3 from block position — never flickers across frames. */
-    private static int uvRotationFor(BlockPos pos) {
-        int h = (pos.getX() * 1619) ^ (pos.getZ() * 31337);
-        return ((h >>> 4) ^ (h >>> 8)) & 3;
     }
 
     @Override

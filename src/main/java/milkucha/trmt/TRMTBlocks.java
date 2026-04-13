@@ -1,6 +1,6 @@
 package milkucha.trmt;
 
-import milkucha.trmt.block.ErodedCoarseDirtBlock;
+import milkucha.trmt.block.ErodedDirtBlock;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
@@ -14,13 +14,23 @@ import net.minecraft.util.Identifier;
 public final class TRMTBlocks {
 
     /**
+     * Dirt produced by the final grass erosion stage. One pixel shorter than a normal block,
+     * stores the rotation of the preceding grass stage. Never obtainable as an item.
+     */
+    public static final Block ERODED_DIRT = Registry.register(
+            Registries.BLOCK,
+            new Identifier("trmt", "eroded_dirt"),
+            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.DIRT).nonOpaque())
+    );
+
+    /**
      * Coarse dirt produced by erosion. One pixel shorter than a normal block,
      * visually identical to vanilla coarse dirt. Never obtainable as an item.
      */
     public static final Block ERODED_COARSE_DIRT = Registry.register(
             Registries.BLOCK,
             new Identifier("trmt", "eroded_coarse_dirt"),
-            new ErodedCoarseDirtBlock(AbstractBlock.Settings.copy(Blocks.COARSE_DIRT).nonOpaque())
+            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.COARSE_DIRT).nonOpaque())
     );
 
     /**
@@ -31,7 +41,7 @@ public final class TRMTBlocks {
     public static final Block ERODED_ROOTED_DIRT = Registry.register(
             Registries.BLOCK,
             new Identifier("trmt", "eroded_rooted_dirt"),
-            new ErodedCoarseDirtBlock(AbstractBlock.Settings.copy(Blocks.ROOTED_DIRT).nonOpaque())
+            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.ROOTED_DIRT).nonOpaque())
     );
 
     private TRMTBlocks() {}

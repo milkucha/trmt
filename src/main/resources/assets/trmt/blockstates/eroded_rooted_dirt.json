@@ -1,5 +1,8 @@
 {
   "variants": {
-    "": { "model": "trmt:block/eroded_rooted_dirt" }
+    "facing=south": { "model": "trmt:block/eroded_rooted_dirt" },
+    "facing=west":  { "model": "trmt:block/eroded_rooted_dirt", "y": 90 },
+    "facing=north": { "model": "trmt:block/eroded_rooted_dirt", "y": 180 },
+    "facing=east":  { "model": "trmt:block/eroded_rooted_dirt", "y": 270 }
   }
 }

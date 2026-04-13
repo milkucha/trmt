@@ -4,6 +4,7 @@ import milkucha.trmt.network.TRMTPackets;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.Block;
+import net.minecraft.block.Blocks;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -58,6 +59,26 @@ public class ErosionMapManager {
         ChunkErosionMap map = state.computeChunkMap(chunkPos);
         map.recordStep(worldPos, block, amount, currentGameTime);
         state.markDirty();
+    }
+
+    /**
+     * Broadcasts the current erosion progress for {@code pos} to all clients (HUD sync).
+     * Call this once per step, after {@link #onStep} and any transformation check.
+     * <p>
+     * For grass blocks at erosionStage=0 (pristine, never advanced) no packet is sent so
+     * the client never shows an eroded model prematurely. For all other tracked blocks,
+     * stage 1 is used as a sentinel so the client stores the entry and can display the HUD.
+     */
+    public void broadcastEntryUpdate(BlockPos pos, Block block) {
+        if (state == null) return;
+        ChunkErosionMap map = state.getChunkMap(new ChunkPos(pos));
+        if (map == null) return;
+        ErosionEntry entry = map.getEntry(pos);
+        if (entry == null) return;
+        int stage = entry.getErosionStage();
+        if (stage == 0 && block == Blocks.GRASS_BLOCK) return; // pristine grass — no HUD entry yet
+        if (stage == 0) stage = 1; // sentinel for non-grass tracked blocks
+        broadcastStageUpdate(pos, stage, entry.getWalkedOnCount(), entry.getThreshold());
     }
 
     /**
