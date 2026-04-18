@@ -15,7 +15,7 @@
     }
   ],
   "textures": {
-    "all": "minecraft:block/dirt",
-    "particle": "minecraft:block/dirt"
+    "all": "trmt:block/eroded_dirt_2",
+    "particle": "trmt:block/eroded_dirt_2"
   }
 }
