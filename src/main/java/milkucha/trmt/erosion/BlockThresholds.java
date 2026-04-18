@@ -84,19 +84,19 @@ public final class BlockThresholds {
     public static long getGrassDeErosionTimeout(int stage) {
         TRMTConfig cfg = TRMTConfig.get();
         return switch (stage) {
-            case 1  -> cfg.deErosionTimeoutDays_grassStage1 * TICKS_PER_DAY;
-            case 2  -> cfg.deErosionTimeoutDays_grassStage2 * TICKS_PER_DAY;
-            case 3  -> cfg.deErosionTimeoutDays_grassStage3 * TICKS_PER_DAY;
-            case 4  -> cfg.deErosionTimeoutDays_grassStage4 * TICKS_PER_DAY;
-            default -> cfg.deErosionTimeoutDays_grassStage5 * TICKS_PER_DAY;
+            case 1  -> (long)(cfg.deErosionTimeoutDays_grassStage1 * TICKS_PER_DAY);
+            case 2  -> (long)(cfg.deErosionTimeoutDays_grassStage2 * TICKS_PER_DAY);
+            case 3  -> (long)(cfg.deErosionTimeoutDays_grassStage3 * TICKS_PER_DAY);
+            case 4  -> (long)(cfg.deErosionTimeoutDays_grassStage4 * TICKS_PER_DAY);
+            default -> (long)(cfg.deErosionTimeoutDays_grassStage5 * TICKS_PER_DAY);
         };
     }
 
     /** Returns the de-erosion inactivity timeout (ticks) for the given eroded dirt block type. */
     public static long getDirtDeErosionTimeout(Block block) {
         TRMTConfig cfg = TRMTConfig.get();
-        if (block == TRMTBlocks.ERODED_DIRT)        return cfg.deErosionTimeoutDays_erodedDirt       * TICKS_PER_DAY;
-        if (block == TRMTBlocks.ERODED_COARSE_DIRT) return cfg.deErosionTimeoutDays_erodedCoarseDirt  * TICKS_PER_DAY;
-        return cfg.deErosionTimeoutDays_erodedRootedDirt * TICKS_PER_DAY;
+        if (block == TRMTBlocks.ERODED_DIRT)        return (long)(cfg.deErosionTimeoutDays_erodedDirt       * TICKS_PER_DAY);
+        if (block == TRMTBlocks.ERODED_COARSE_DIRT) return (long)(cfg.deErosionTimeoutDays_erodedCoarseDirt  * TICKS_PER_DAY);
+        return (long)(cfg.deErosionTimeoutDays_erodedRootedDirt * TICKS_PER_DAY);
     }
 }

@@ -56,15 +56,15 @@ public final class TRMTConfig {
     // Minecraft days of inactivity before a block reverts one step toward un-eroded state.
     // 1 Minecraft day = 24000 ticks (~20 minutes real time).
 
-    public long deErosionTimeoutDays_grassStage1 = 5L;
-    public long deErosionTimeoutDays_grassStage2 = 8L;
-    public long deErosionTimeoutDays_grassStage3 = 13L;
-    public long deErosionTimeoutDays_grassStage4 = 21L;
-    public long deErosionTimeoutDays_grassStage5 = 34L;
+    public float deErosionTimeoutDays_grassStage1 = 5f;
+    public float deErosionTimeoutDays_grassStage2 = 8f;
+    public float deErosionTimeoutDays_grassStage3 = 13f;
+    public float deErosionTimeoutDays_grassStage4 = 21f;
+    public float deErosionTimeoutDays_grassStage5 = 34f;
 
-    public long deErosionTimeoutDays_erodedDirt       = 55L;
-    public long deErosionTimeoutDays_erodedCoarseDirt = 89L;
-    public long deErosionTimeoutDays_erodedRootedDirt = 144L;
+    public float deErosionTimeoutDays_erodedDirt       = 55f;
+    public float deErosionTimeoutDays_erodedCoarseDirt = 89f;
+    public float deErosionTimeoutDays_erodedRootedDirt = 144f;
 
     // ── singleton ──────────────────────────────────────────────────────────
     private static TRMTConfig instance = new TRMTConfig();
