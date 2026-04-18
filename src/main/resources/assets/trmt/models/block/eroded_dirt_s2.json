@@ -1,0 +1,21 @@
+{
+  "ambientocclusion": false,
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down":  { "texture": "#all", "cullface": "down" },
+        "up":    { "texture": "#all" },
+        "north": { "texture": "#all", "cullface": "north" },
+        "south": { "texture": "#all", "cullface": "south" },
+        "west":  { "texture": "#all", "cullface": "west" },
+        "east":  { "texture": "#all", "cullface": "east" }
+      }
+    }
+  ],
+  "textures": {
+    "all": "trmt:block/eroded_dirt_1",
+    "particle": "trmt:block/eroded_dirt_1"
+  }
+}

@@ -63,9 +63,9 @@ public class ServerPlayerEntityMixin {
         Block block = state.getBlock();
 
         // Transformation chain:
-        //   grass_block (6 visual stages) ──► eroded_dirt ──► eroded_coarse_dirt ──┐
-        //   dirt ──────────────────────────────────────────► eroded_coarse_dirt ──┼──► eroded_rooted_dirt (final)
-        //   coarse_dirt ────────────────────────────────────────────────────────────┘
+        //   grass_block (6 visual stages) ──► eroded_dirt (s0→s1→s2→s3) ──► eroded_coarse_dirt ──┐
+        //   dirt ───────────────────────────► eroded_dirt (s1→s2→s3)     ──► eroded_coarse_dirt ──┼──► eroded_rooted_dirt (final)
+        //   coarse_dirt ──────────────────────────────────────────────────────────────────────────┘
         boolean rootedEnabled = TRMTConfig.get().erodedRootedDirtEnabled;
         boolean tracked = state.isOf(Blocks.GRASS_BLOCK)
                 || state.isOf(Blocks.DIRT)
@@ -176,8 +176,17 @@ public class ServerPlayerEntityMixin {
         }
 
         if (state.isOf(TRMTBlocks.ERODED_DIRT)) {
-            // Carry the rotation forward to eroded_coarse_dirt.
             Direction facing = state.get(ErodedDirtBlock.FACING);
+            int currentStage = state.get(ErodedDirtBlock.STAGE);
+            if (currentStage < 3) {
+                // Advance to the next visual stage, preserving facing.
+                world.setBlockState(pos,
+                        state.with(ErodedDirtBlock.STAGE, currentStage + 1),
+                        Block.NOTIFY_ALL);
+                manager.removeEntry(pos);
+                return;
+            }
+            // Stage 3 reached — carry rotation forward to eroded_coarse_dirt.
             world.setBlockState(pos,
                     TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
                     Block.NOTIFY_ALL);
@@ -203,7 +212,11 @@ public class ServerPlayerEntityMixin {
         }
 
         if (!state.isOf(Blocks.DIRT)) return;
-        world.setBlockState(pos, TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState(),
+        Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
+        world.setBlockState(pos,
+                TRMTBlocks.ERODED_DIRT.getDefaultState()
+                        .with(ErodedDirtBlock.FACING, erodedFacing)
+                        .with(ErodedDirtBlock.STAGE, 1),
                 Block.NOTIFY_ALL);
         manager.removeEntry(pos);
     }

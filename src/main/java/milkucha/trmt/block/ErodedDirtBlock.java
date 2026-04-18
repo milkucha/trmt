@@ -5,6 +5,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.DirectionProperty;
+import net.minecraft.state.property.IntProperty;
 import net.minecraft.state.property.Properties;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -24,14 +25,21 @@ public class ErodedDirtBlock extends Block {
     /** Preserves the rotation of the eroded grass stage that preceded this block. */
     public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;
 
+    /**
+     * Visual erosion stage for eroded_dirt (0–3).
+     * 0 = plain eroded dirt, 1–3 = progressively more eroded using eroded_dirt_0/1/2 textures.
+     * Only used by the ERODED_DIRT block; other eroded blocks always stay at stage 0.
+     */
+    public static final IntProperty STAGE = IntProperty.of("stage", 0, 3);
+
     public ErodedDirtBlock(Settings settings) {
         super(settings);
-        setDefaultState(getStateManager().getDefaultState().with(FACING, Direction.SOUTH));
+        setDefaultState(getStateManager().getDefaultState().with(FACING, Direction.SOUTH).with(STAGE, 0));
     }
 
     @Override
     protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
-        builder.add(FACING);
+        builder.add(FACING, STAGE);
     }
 
     @Override
