@@ -48,8 +48,6 @@ public final class TRMTConfig {
 
     // ── de-erosion timeouts (ticks) ────────────────────────────────────────
     // Ticks of inactivity before a block reverts one step toward un-eroded state.
-    // 20 ticks = 1 second; 24000 ticks = 1 in-game day (20-min real-time at default TPS).
-    // Values scale with in-game time regardless of tick speed mods.
 
     public long deErosionTimeoutTicks_grassStage1 = 12000L;
     public long deErosionTimeoutTicks_grassStage2 = 24000L;
