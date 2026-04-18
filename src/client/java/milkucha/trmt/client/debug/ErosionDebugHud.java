@@ -6,6 +6,7 @@ import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.client.render.ErodedGrassModels;
 import milkucha.trmt.erosion.BlockThresholds;
+import milkucha.trmt.erosion.ErosionMapManager;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -116,9 +117,17 @@ public class ErosionDebugHud {
                 : "age:-";
         drawCenteredScaled(context, tr, ageLabel, x, y, lineH, AGE_COLOR);
 
-        // Line 3: de-erosion timeout for this block/stage
+        // Line 3: de-erosion timeout for this block/stage (halved + "I" if isolated)
         long timeout = resolveTimeout(state, cellEntry);
-        String outLabel = timeout >= 0 ? "out:" + timeout : "out:-";
+        String outLabel;
+        if (timeout < 0) {
+            outLabel = "out:-";
+        } else {
+            ErosionMapManager manager = ErosionMapManager.getInstance();
+            boolean isolated = manager != null && BlockThresholds.isIsolated(world, pos, manager);
+            if (isolated) timeout /= 2;
+            outLabel = "out:" + timeout + (isolated ? " I" : "");
+        }
         drawCenteredScaled(context, tr, outLabel, x, y, lineH * 2, OUT_COLOR);
 
         context.getMatrices().pop();

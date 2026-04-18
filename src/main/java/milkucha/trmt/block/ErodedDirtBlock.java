@@ -59,6 +59,7 @@ public class ErodedDirtBlock extends Block {
 
         long currentTime = world.getTime();
         long timeout = BlockThresholds.getDirtDeErosionTimeout(state.getBlock());
+        if (BlockThresholds.isIsolated(world, pos, manager)) timeout /= 2;
         if (entry != null && currentTime - entry.getLastTouchedGameTime() <= timeout) return;
 
         Direction facing = state.get(FACING);

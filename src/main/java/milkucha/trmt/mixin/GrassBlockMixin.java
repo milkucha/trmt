@@ -35,6 +35,7 @@ public class GrassBlockMixin {
 
         long currentTime = world.getTime();
         long timeout = BlockThresholds.getGrassDeErosionTimeout(stage);
+        if (BlockThresholds.isIsolated(world, pos, manager)) timeout /= 2;
         if (currentTime - entry.getLastTouchedGameTime() <= timeout) return;
 
         // Entry is stale — revert one stage.
