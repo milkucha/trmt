@@ -66,11 +66,11 @@ public class ServerPlayerEntityMixin {
         //   grass_block (6 visual stages) ──► eroded_dirt ──► eroded_coarse_dirt ──┐
         //   dirt ──────────────────────────────────────────► eroded_coarse_dirt ──┼──► eroded_rooted_dirt (final)
         //   coarse_dirt ────────────────────────────────────────────────────────────┘
+        boolean rootedEnabled = TRMTConfig.get().erodedRootedDirtEnabled;
         boolean tracked = state.isOf(Blocks.GRASS_BLOCK)
                 || state.isOf(Blocks.DIRT)
-                || state.isOf(Blocks.COARSE_DIRT)
                 || state.isOf(TRMTBlocks.ERODED_DIRT)
-                || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT);
+                || (rootedEnabled && (state.isOf(Blocks.COARSE_DIRT) || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)));
 
         if (!tracked) {
             return;
@@ -113,9 +113,10 @@ public class ServerPlayerEntityMixin {
     private static void trmt$stepAdjacent(World world, ErosionMapManager manager,
                                            BlockPos pos, float amount, long gameTime) {
         BlockState adjState = world.getBlockState(pos);
+        boolean rootedEnabled = TRMTConfig.get().erodedRootedDirtEnabled;
         if (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(Blocks.DIRT)
-                || adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(TRMTBlocks.ERODED_DIRT)
-                || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
+                || adjState.isOf(TRMTBlocks.ERODED_DIRT)
+                || (rootedEnabled && (adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))) {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
             trmt$tryTransform(world, manager, pos);
         }
@@ -155,6 +156,8 @@ public class ServerPlayerEntityMixin {
             return;
         }
 
+        boolean rootedEnabled = TRMTConfig.get().erodedRootedDirtEnabled;
+
         // Threshold reached — advance visual stage or transform the block.
         if (state.isOf(Blocks.GRASS_BLOCK)) {
             if (entry.getErosionStage() < 5) {
@@ -182,19 +185,26 @@ public class ServerPlayerEntityMixin {
             return;
         }
 
-        BlockState nextState;
-        if (state.isOf(Blocks.DIRT)) {
-            nextState = TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState();
-        } else if (state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
-            // Carry the rotation forward to eroded_rooted_dirt.
+        if (state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
+            if (!rootedEnabled) return;
             Direction facing = state.get(ErodedDirtBlock.FACING);
-            nextState = TRMTBlocks.ERODED_ROOTED_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing);
-        } else {
-            // COARSE_DIRT → terminal state (no rotation to preserve)
-            nextState = TRMTBlocks.ERODED_ROOTED_DIRT.getDefaultState();
+            world.setBlockState(pos,
+                    TRMTBlocks.ERODED_ROOTED_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
+                    Block.NOTIFY_ALL);
+            manager.removeEntry(pos);
+            return;
         }
 
-        world.setBlockState(pos, nextState, Block.NOTIFY_ALL);
+        if (state.isOf(Blocks.COARSE_DIRT)) {
+            if (!rootedEnabled) return;
+            world.setBlockState(pos, TRMTBlocks.ERODED_ROOTED_DIRT.getDefaultState(), Block.NOTIFY_ALL);
+            manager.removeEntry(pos);
+            return;
+        }
+
+        if (!state.isOf(Blocks.DIRT)) return;
+        world.setBlockState(pos, TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState(),
+                Block.NOTIFY_ALL);
         manager.removeEntry(pos);
     }
 

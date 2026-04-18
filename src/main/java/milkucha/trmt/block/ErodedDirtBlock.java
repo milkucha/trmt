@@ -12,15 +12,14 @@ import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.BlockView;
 
 /**
- * Dirt block produced by foot-traffic erosion. One pixel shorter (15/16 of a block)
- * than a normal block, matching the height of a dirt path block.
+ * Dirt block produced by foot-traffic erosion.
  * Stores a {@link #FACING} direction so downstream stages preserve the rotation that
  * was established when the preceding grass stage was eroded.
  * Never placed by players or generated naturally — only set by the erosion system.
  */
 public class ErodedDirtBlock extends Block {
 
-    private static final VoxelShape SHAPE = Block.createCuboidShape(0, 0, 0, 16, 15, 16);
+    private static final VoxelShape SHAPE = Block.createCuboidShape(0, 0, 0, 16, 16, 16);
 
     /** Preserves the rotation of the eroded grass stage that preceded this block. */
     public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;

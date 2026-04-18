@@ -26,11 +26,11 @@ public final class TRMTConfig {
     public float grassBlockMin  = 2.0f;
     public float grassBlockMax  = 4.0f;
 
-    public float dirtMin        = 4.0f;
-    public float dirtMax        = 8.0f;
+    public float dirtMin        = 8.0f;
+    public float dirtMax        = 12.0f;
 
-    public float coarseDirtMin  = 8.0f;
-    public float coarseDirtMax  = 12.0f;
+    public float coarseDirtMin  = 12.0f;
+    public float coarseDirtMax  = 20.0f;
 
     public float vegetationMin        = 2.0f;
     public float vegetationMax        = 3.0f;
@@ -45,6 +45,12 @@ public final class TRMTConfig {
 
     /** Show the erosion debug HUD overlay. Disabled by default; set to true for development. */
     public boolean debugHud = false;
+
+    /**
+     * When true, the erosion chain continues past eroded_coarse_dirt to eroded_rooted_dirt as the final stage.
+     * When false (default), eroded_coarse_dirt is the final stage.
+     */
+    public boolean erodedRootedDirtEnabled = false;
 
     // ── singleton ──────────────────────────────────────────────────────────
     private static TRMTConfig instance = new TRMTConfig();
