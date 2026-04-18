@@ -52,18 +52,19 @@ public final class TRMTConfig {
      */
     public boolean erodedRootedDirtEnabled = false;
 
-    // ── de-erosion timeouts (ticks) ────────────────────────────────────────
-    // Ticks of inactivity before a block reverts one step toward un-eroded state.
+    // ── de-erosion timeouts (Minecraft days) ──────────────────────────────
+    // Minecraft days of inactivity before a block reverts one step toward un-eroded state.
+    // 1 Minecraft day = 24000 ticks (~20 minutes real time).
 
-    public long deErosionTimeoutTicks_grassStage1 = 12000L;
-    public long deErosionTimeoutTicks_grassStage2 = 24000L;
-    public long deErosionTimeoutTicks_grassStage3 = 72000L;
-    public long deErosionTimeoutTicks_grassStage4 = 120000L;
-    public long deErosionTimeoutTicks_grassStage5 = 168000L;
+    public long deErosionTimeoutDays_grassStage1 = 5L;
+    public long deErosionTimeoutDays_grassStage2 = 8L;
+    public long deErosionTimeoutDays_grassStage3 = 13L;
+    public long deErosionTimeoutDays_grassStage4 = 21L;
+    public long deErosionTimeoutDays_grassStage5 = 34L;
 
-    public long deErosionTimeoutTicks_erodedDirt       = 24000L;
-    public long deErosionTimeoutTicks_erodedCoarseDirt = 72000L;
-    public long deErosionTimeoutTicks_erodedRootedDirt = 168000L;
+    public long deErosionTimeoutDays_erodedDirt       = 55L;
+    public long deErosionTimeoutDays_erodedCoarseDirt = 89L;
+    public long deErosionTimeoutDays_erodedRootedDirt = 144L;
 
     // ── singleton ──────────────────────────────────────────────────────────
     private static TRMTConfig instance = new TRMTConfig();
