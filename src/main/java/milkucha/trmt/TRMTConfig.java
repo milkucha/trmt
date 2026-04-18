@@ -46,6 +46,21 @@ public final class TRMTConfig {
     /** Show the erosion debug HUD overlay. Disabled by default; set to true for development. */
     public boolean debugHud = false;
 
+    // ── de-erosion timeouts (ticks) ────────────────────────────────────────
+    // Ticks of inactivity before a block reverts one step toward un-eroded state.
+    // 20 ticks = 1 second; 24000 ticks = 1 in-game day (20-min real-time at default TPS).
+    // Values scale with in-game time regardless of tick speed mods.
+
+    public long deErosionTimeoutTicks_grassStage1 = 12000L;
+    public long deErosionTimeoutTicks_grassStage2 = 24000L;
+    public long deErosionTimeoutTicks_grassStage3 = 72000L;
+    public long deErosionTimeoutTicks_grassStage4 = 120000L;
+    public long deErosionTimeoutTicks_grassStage5 = 168000L;
+
+    public long deErosionTimeoutTicks_erodedDirt       = 24000L;
+    public long deErosionTimeoutTicks_erodedCoarseDirt = 72000L;
+    public long deErosionTimeoutTicks_erodedRootedDirt = 168000L;
+
     // ── singleton ──────────────────────────────────────────────────────────
     private static TRMTConfig instance = new TRMTConfig();
 

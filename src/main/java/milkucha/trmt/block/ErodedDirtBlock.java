@@ -1,13 +1,22 @@
 package milkucha.trmt.block;
 
+import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.erosion.BlockThresholds;
+import milkucha.trmt.erosion.ChunkErosionMap;
+import milkucha.trmt.erosion.ErosionEntry;
+import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.ShapeContext;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.DirectionProperty;
 import net.minecraft.state.property.Properties;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.random.Random;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.BlockView;
 
@@ -33,6 +42,34 @@ public class ErodedDirtBlock extends Block {
     @Override
     protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
         builder.add(FACING);
+    }
+
+    @Override
+    public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
+        ErosionMapManager manager = ErosionMapManager.getInstance();
+        ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
+        ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
+
+        long currentTime = world.getTime();
+        long timeout = BlockThresholds.getDirtDeErosionTimeout(state.getBlock());
+        if (entry != null && currentTime - entry.getLastTouchedGameTime() <= timeout) return;
+
+        Direction facing = state.get(FACING);
+        Block block = state.getBlock();
+
+        if (block == TRMTBlocks.ERODED_ROOTED_DIRT) {
+            world.setBlockState(pos, TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState().with(FACING, facing), Block.NOTIFY_ALL);
+            manager.removeEntry(pos);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_COARSE_DIRT, currentTime);
+        } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
+            world.setBlockState(pos, TRMTBlocks.ERODED_DIRT.getDefaultState().with(FACING, facing), Block.NOTIFY_ALL);
+            manager.removeEntry(pos);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime);
+        } else if (block == TRMTBlocks.ERODED_DIRT) {
+            world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
+            manager.writeErodedGrassCooldownEntry(pos, 5, currentTime);
+            manager.markForRerender(pos);
+        }
     }
 
     @Override

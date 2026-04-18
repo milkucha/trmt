@@ -32,11 +32,12 @@ public class TRMTClient implements ClientModInitializer {
 			int count  = buf.readInt();
 			Map<BlockPos, ClientErosionCache.Entry> chunkEntries = new HashMap<>(count);
 			for (int i = 0; i < count; i++) {
-				BlockPos pos          = buf.readBlockPos();
-				int      stage        = buf.readInt();
-				float    walkedOnCount = buf.readFloat();
-				float    threshold    = buf.readFloat();
-				chunkEntries.put(pos, new ClientErosionCache.Entry(stage, walkedOnCount, threshold));
+				BlockPos pos                = buf.readBlockPos();
+				int      stage              = buf.readInt();
+				float    walkedOnCount      = buf.readFloat();
+				float    threshold          = buf.readFloat();
+				long     lastTouchedGameTime = buf.readLong();
+				chunkEntries.put(pos, new ClientErosionCache.Entry(stage, walkedOnCount, threshold, lastTouchedGameTime));
 			}
 			ChunkPos chunkPos = new ChunkPos(chunkX, chunkZ);
 			client.execute(() -> ClientErosionCache.getInstance().setChunk(chunkPos, chunkEntries));
@@ -44,12 +45,13 @@ public class TRMTClient implements ClientModInitializer {
 
 		// Single-block stage update (advance or reset).
 		ClientPlayNetworking.registerGlobalReceiver(TRMTPackets.UPDATE_STAGE, (client, handler, buf, responseSender) -> {
-			BlockPos pos           = buf.readBlockPos();
-			int      stage         = buf.readInt();
-			float    walkedOnCount = buf.readFloat();
-			float    threshold     = buf.readFloat();
+			BlockPos pos                = buf.readBlockPos();
+			int      stage              = buf.readInt();
+			float    walkedOnCount      = buf.readFloat();
+			float    threshold          = buf.readFloat();
+			long     lastTouchedGameTime = buf.readLong();
 			client.execute(() -> {
-				ClientErosionCache.getInstance().setEntry(pos, stage, walkedOnCount, threshold);
+				ClientErosionCache.getInstance().setEntry(pos, stage, walkedOnCount, threshold, lastTouchedGameTime);
 				if (client.world != null) {
 					client.world.scheduleBlockRerenderIfNeeded(
 						pos,

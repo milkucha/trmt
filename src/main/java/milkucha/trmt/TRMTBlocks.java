@@ -20,7 +20,7 @@ public final class TRMTBlocks {
     public static final Block ERODED_DIRT = Registry.register(
             Registries.BLOCK,
             new Identifier("trmt", "eroded_dirt"),
-            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.DIRT).nonOpaque())
+            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.DIRT).nonOpaque().ticksRandomly())
     );
 
     /**
@@ -30,7 +30,7 @@ public final class TRMTBlocks {
     public static final Block ERODED_COARSE_DIRT = Registry.register(
             Registries.BLOCK,
             new Identifier("trmt", "eroded_coarse_dirt"),
-            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.COARSE_DIRT).nonOpaque())
+            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.COARSE_DIRT).nonOpaque().ticksRandomly())
     );
 
     /**
@@ -41,7 +41,7 @@ public final class TRMTBlocks {
     public static final Block ERODED_ROOTED_DIRT = Registry.register(
             Registries.BLOCK,
             new Identifier("trmt", "eroded_rooted_dirt"),
-            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.ROOTED_DIRT).nonOpaque())
+            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.ROOTED_DIRT).nonOpaque().ticksRandomly())
     );
 
     private TRMTBlocks() {}

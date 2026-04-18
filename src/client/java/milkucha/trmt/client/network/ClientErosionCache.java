@@ -19,11 +19,13 @@ public final class ClientErosionCache {
         public final int   stage;
         public final float walkedOnCount;
         public final float threshold;
+        public final long  lastTouchedGameTime;
 
-        public Entry(int stage, float walkedOnCount, float threshold) {
-            this.stage         = stage;
-            this.walkedOnCount = walkedOnCount;
-            this.threshold     = threshold;
+        public Entry(int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {
+            this.stage               = stage;
+            this.walkedOnCount       = walkedOnCount;
+            this.threshold           = threshold;
+            this.lastTouchedGameTime = lastTouchedGameTime;
         }
     }
 
@@ -65,7 +67,7 @@ public final class ClientErosionCache {
      * Updates (or removes) data for a single block.
      * stage ≤ 0 clears the entry.
      */
-    public void setEntry(BlockPos pos, int stage, float walkedOnCount, float threshold) {
+    public void setEntry(BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {
         ChunkPos chunkPos = new ChunkPos(pos);
         if (stage <= 0) {
             Map<BlockPos, Entry> chunk = chunks.get(chunkPos);
@@ -75,7 +77,7 @@ public final class ClientErosionCache {
             }
         } else {
             chunks.computeIfAbsent(chunkPos, k -> new ConcurrentHashMap<>())
-                  .put(pos.toImmutable(), new Entry(stage, walkedOnCount, threshold));
+                  .put(pos.toImmutable(), new Entry(stage, walkedOnCount, threshold, lastTouchedGameTime));
         }
     }
 

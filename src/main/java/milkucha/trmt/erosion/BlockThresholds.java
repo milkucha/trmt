@@ -77,4 +77,24 @@ public final class BlockThresholds {
         if (max <= min) return min;
         return min + ThreadLocalRandom.current().nextFloat() * (max - min);
     }
+
+    /** Returns the de-erosion inactivity timeout (ticks) for the given grass erosion stage (1–5). */
+    public static long getGrassDeErosionTimeout(int stage) {
+        TRMTConfig cfg = TRMTConfig.get();
+        return switch (stage) {
+            case 1  -> cfg.deErosionTimeoutTicks_grassStage1;
+            case 2  -> cfg.deErosionTimeoutTicks_grassStage2;
+            case 3  -> cfg.deErosionTimeoutTicks_grassStage3;
+            case 4  -> cfg.deErosionTimeoutTicks_grassStage4;
+            default -> cfg.deErosionTimeoutTicks_grassStage5;
+        };
+    }
+
+    /** Returns the de-erosion inactivity timeout (ticks) for the given eroded dirt block type. */
+    public static long getDirtDeErosionTimeout(Block block) {
+        TRMTConfig cfg = TRMTConfig.get();
+        if (block == TRMTBlocks.ERODED_DIRT)        return cfg.deErosionTimeoutTicks_erodedDirt;
+        if (block == TRMTBlocks.ERODED_COARSE_DIRT) return cfg.deErosionTimeoutTicks_erodedCoarseDirt;
+        return cfg.deErosionTimeoutTicks_erodedRootedDirt;
+    }
 }

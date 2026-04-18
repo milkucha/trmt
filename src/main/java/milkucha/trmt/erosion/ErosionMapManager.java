@@ -78,7 +78,7 @@ public class ErosionMapManager {
         int stage = entry.getErosionStage();
         if (stage == 0 && block == Blocks.GRASS_BLOCK) return; // pristine grass — no HUD entry yet
         if (stage == 0) stage = 1; // sentinel for non-grass tracked blocks
-        broadcastStageUpdate(pos, stage, entry.getWalkedOnCount(), entry.getThreshold());
+        broadcastStageUpdate(pos, stage, entry.getWalkedOnCount(), entry.getThreshold(), entry.getLastTouchedGameTime());
     }
 
     /**
@@ -94,7 +94,7 @@ public class ErosionMapManager {
         map.removeEntry(worldPos);
         state.removeChunkMapIfEmpty(chunkPos);
         state.markDirty();
-        broadcastStageUpdate(worldPos, 0, 0f, 0f);
+        broadcastStageUpdate(worldPos, 0, 0f, 0f, 0L);
     }
 
     /**
@@ -107,7 +107,7 @@ public class ErosionMapManager {
         if (map == null) return;
         ErosionEntry entry = map.getEntry(pos);
         if (entry == null) return;
-        broadcastStageUpdate(pos, entry.getErosionStage(), entry.getWalkedOnCount(), entry.getThreshold());
+        broadcastStageUpdate(pos, entry.getErosionStage(), entry.getWalkedOnCount(), entry.getThreshold(), entry.getLastTouchedGameTime());
     }
 
     /**
@@ -116,6 +116,50 @@ public class ErosionMapManager {
     public ChunkErosionMap getChunkMap(ChunkPos chunkPos) {
         if (state == null) return null;
         return state.getChunkMap(chunkPos);
+    }
+
+    /**
+     * Reverts grass erosion at worldPos by one stage and resets {@code lastTouchedGameTime}
+     * to {@code currentGameTime} so the entry acts as its own cooldown.
+     * Call {@link #markForRerender} afterwards to broadcast the new stage to clients.
+     */
+    public void revertGrassStage(BlockPos worldPos, long currentGameTime) {
+        if (state == null) return;
+        ChunkErosionMap map = state.getChunkMap(new ChunkPos(worldPos));
+        if (map == null) return;
+        ErosionEntry entry = map.getEntry(worldPos);
+        if (entry == null) return;
+        entry.revertGrassStage(BlockThresholds.randomThreshold(Blocks.GRASS_BLOCK), currentGameTime);
+        state.markDirty();
+    }
+
+    /**
+     * Writes a grass erosion entry at worldPos with the given stage and a cooldown timestamp.
+     * Used when eroded_dirt reverts to grass_block: the block becomes grass again visually
+     * but should still display as eroded stage {@code stage} until further de-erosion occurs.
+     * Call {@link #markForRerender} afterwards to broadcast the stage to clients.
+     */
+    public void writeErodedGrassCooldownEntry(BlockPos worldPos, int stage, long currentGameTime) {
+        if (state == null) return;
+        ChunkPos chunkPos = new ChunkPos(worldPos);
+        ChunkErosionMap map = state.computeChunkMap(chunkPos);
+        float threshold = BlockThresholds.randomThreshold(Blocks.GRASS_BLOCK);
+        map.putEntry(worldPos.toImmutable(), new ErosionEntry(Blocks.GRASS_BLOCK, threshold, 0f, currentGameTime, stage));
+        state.markDirty();
+    }
+
+    /**
+     * Writes a fresh cooldown entry at worldPos for {@code block}.
+     * Sets walkedOnCount = 0 and lastTouchedGameTime = currentGameTime so the block cannot
+     * immediately de-erode again after a revert.
+     */
+    public void writeCooldownEntry(BlockPos worldPos, Block block, long currentGameTime) {
+        if (state == null) return;
+        ChunkPos chunkPos = new ChunkPos(worldPos);
+        ChunkErosionMap map = state.computeChunkMap(chunkPos);
+        float threshold = BlockThresholds.randomThreshold(block);
+        map.putEntry(worldPos.toImmutable(), new ErosionEntry(block, threshold, 0f, currentGameTime));
+        state.markDirty();
     }
 
     /** Returns an unmodifiable view of all chunk maps. Used by the debug HUD and join sync. */
@@ -146,13 +190,14 @@ public class ErosionMapManager {
                 buf.writeInt(e.getValue().getErosionStage());
                 buf.writeFloat(e.getValue().getWalkedOnCount());
                 buf.writeFloat(e.getValue().getThreshold());
+                buf.writeLong(e.getValue().getLastTouchedGameTime());
             }
             ServerPlayNetworking.send(player, TRMTPackets.SYNC_CHUNK, buf);
         }
     }
 
     /** Broadcasts a single-block stage update to every connected player. */
-    private void broadcastStageUpdate(BlockPos pos, int stage, float walkedOnCount, float threshold) {
+    private void broadcastStageUpdate(BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {
         if (server == null) return;
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
             PacketByteBuf buf = PacketByteBufs.create();
@@ -160,6 +205,7 @@ public class ErosionMapManager {
             buf.writeInt(stage);
             buf.writeFloat(walkedOnCount);
             buf.writeFloat(threshold);
+            buf.writeLong(lastTouchedGameTime);
             ServerPlayNetworking.send(player, TRMTPackets.UPDATE_STAGE, buf);
         }
     }

@@ -2,9 +2,12 @@ package milkucha.trmt;
 
 import milkucha.trmt.erosion.ErosionMapManager;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.server.command.CommandManager;
+import net.minecraft.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +29,16 @@ public class TRMT implements ModInitializer {
 		// Clear the erosion entry when any block is broken so a freshly placed block always starts from zero.
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) ->
 				ErosionMapManager.getInstance().removeEntry(pos));
+
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+				dispatcher.register(CommandManager.literal("trmt")
+						.then(CommandManager.literal("reloadconfig")
+								.requires(src -> src.hasPermissionLevel(2))
+								.executes(ctx -> {
+									TRMTConfig.load();
+									ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] Config reloaded."), true);
+									return 1;
+								}))));
 
 		LOGGER.info("[TRMT] Initialized.");
 	}
