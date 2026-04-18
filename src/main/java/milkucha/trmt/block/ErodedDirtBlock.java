@@ -81,9 +81,9 @@ public class ErodedDirtBlock extends Block {
                 manager.removeEntry(pos);
                 manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime);
             } else {
-                // Stage 0 → revert to grass_block at eroded grass stage 4.
+                // Stage 0 → revert to grass_block at eroded grass stage 5.
                 world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
-                manager.writeErodedGrassCooldownEntry(pos, 4, currentTime);
+                manager.writeErodedGrassCooldownEntry(pos, 5, currentTime);
                 manager.markForRerender(pos);
             }
         }
