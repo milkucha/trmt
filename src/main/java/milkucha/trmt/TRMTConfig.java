@@ -37,14 +37,15 @@ public final class TRMTConfig {
     /** 0.0 = never drops, 1.0 = always drops. Applied per-break as a random roll. */
     public float vegetationDropChance = 0.2f;
 
+    public float leavesMin        = 2.0f;
+    public float leavesMax        = 3.0f;
+    public float leavesDropChance = 0.1f;
+
     /** Multiplier applied to all erosion amounts for every player step. Default 1.0 = vanilla behaviour. */
     public float playerErosionMultiplier = 0.5f;
 
     /** Multiplier applied to all erosion amounts when the player is riding a vehicle (e.g. a horse). */
     public float mountedErosionMultiplier = 1.5f;
-
-    /** Show the erosion debug HUD overlay. Disabled by default; set to true for development. */
-    public boolean debugHud = false;
 
     /**
      * When true, the erosion chain continues past eroded_coarse_dirt to eroded_rooted_dirt as the final stage.

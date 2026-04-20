@@ -20,6 +20,7 @@ import java.util.Map;
 public class TRMTClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
+		TRMTClientConfig.load();
 		ErodedGrassModels.register();
 		// Eroded grass models have transparent holes — must use CUTOUT_MIPPED.
 		BlockRenderLayerMap.INSTANCE.putBlock(Blocks.GRASS_BLOCK, RenderLayer.getCutoutMipped());

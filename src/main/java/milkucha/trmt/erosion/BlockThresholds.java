@@ -5,6 +5,7 @@ import milkucha.trmt.TRMTConfig;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.LeavesBlock;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
@@ -34,6 +35,10 @@ public final class BlockThresholds {
 
     public static boolean isVegetation(Block block) {
         return VEGETATION.contains(block);
+    }
+
+    public static boolean isLeaves(Block block) {
+        return block instanceof LeavesBlock;
     }
 
     /**
@@ -73,6 +78,9 @@ public final class BlockThresholds {
         } else if (VEGETATION.contains(block)) {
             min = cfg.vegetationMin;
             max = cfg.vegetationMax;
+        } else if (block instanceof LeavesBlock) {
+            min = cfg.leavesMin;
+            max = cfg.leavesMax;
         } else {
             min = cfg.grassBlockMin;
             max = cfg.grassBlockMax;
