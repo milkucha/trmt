@@ -75,6 +75,9 @@ public final class BlockThresholds {
         } else if (block == Blocks.COARSE_DIRT) {
             min = cfg.coarseDirtMin;
             max = cfg.coarseDirtMax;
+        } else if (block == Blocks.SAND) {
+            min = cfg.sandMin;
+            max = cfg.sandMax;
         } else if (VEGETATION.contains(block)) {
             min = cfg.vegetationMin;
             max = cfg.vegetationMax;

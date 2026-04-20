@@ -3,6 +3,7 @@ package milkucha.trmt.mixin;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.block.ErodedDirtBlock;
+import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
@@ -71,6 +72,8 @@ public class ServerPlayerEntityMixin {
                 || state.isOf(Blocks.DIRT)
                 || state.isOf(TRMTBlocks.ERODED_DIRT)
                 || (rootedEnabled && (state.isOf(Blocks.COARSE_DIRT) || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))
+                || state.isOf(Blocks.SAND)
+                || state.isOf(TRMTBlocks.ERODED_SAND)
                 || BlockThresholds.isLeaves(block);
 
         if (!tracked) {
@@ -118,6 +121,8 @@ public class ServerPlayerEntityMixin {
         if (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(Blocks.DIRT)
                 || adjState.isOf(TRMTBlocks.ERODED_DIRT)
                 || (rootedEnabled && (adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))
+                || adjState.isOf(Blocks.SAND)
+                || adjState.isOf(TRMTBlocks.ERODED_SAND)
                 || BlockThresholds.isLeaves(adjState.getBlock())) {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
             trmt$tryTransform(world, manager, pos);
@@ -161,6 +166,26 @@ public class ServerPlayerEntityMixin {
         boolean rootedEnabled = TRMTConfig.get().erodedRootedDirtEnabled;
 
         // Threshold reached — advance visual stage or transform the block.
+        if (state.isOf(Blocks.SAND)) {
+            Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
+            world.setBlockState(pos,
+                    TRMTBlocks.ERODED_SAND.getDefaultState()
+                            .with(ErodedSandBlock.FACING, erodedFacing)
+                            .with(ErodedSandBlock.STAGE, 0),
+                    Block.NOTIFY_ALL);
+            manager.removeEntry(pos);
+            return;
+        }
+
+        if (state.isOf(TRMTBlocks.ERODED_SAND)) {
+            int stage = state.get(ErodedSandBlock.STAGE);
+            if (stage < 4) {
+                world.setBlockState(pos, state.with(ErodedSandBlock.STAGE, stage + 1), Block.NOTIFY_ALL);
+            }
+            manager.removeEntry(pos);
+            return;
+        }
+
         if (BlockThresholds.isLeaves(state.getBlock())) {
             float dropChance = TRMTConfig.get().leavesDropChance;
             boolean drops = dropChance >= 1.0f || (dropChance > 0.0f && ThreadLocalRandom.current().nextFloat() < dropChance);

@@ -32,6 +32,9 @@ public final class TRMTConfig {
     public float coarseDirtMin  = 12.0f;
     public float coarseDirtMax  = 20.0f;
 
+    public float sandMin        = 4.0f;
+    public float sandMax        = 8.0f;
+
     public float vegetationMin        = 2.0f;
     public float vegetationMax        = 3.0f;
     /** 0.0 = never drops, 1.0 = always drops. Applied per-break as a random roll. */
