@@ -70,7 +70,8 @@ public class ServerPlayerEntityMixin {
         boolean tracked = state.isOf(Blocks.GRASS_BLOCK)
                 || state.isOf(Blocks.DIRT)
                 || state.isOf(TRMTBlocks.ERODED_DIRT)
-                || (rootedEnabled && (state.isOf(Blocks.COARSE_DIRT) || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)));
+                || (rootedEnabled && (state.isOf(Blocks.COARSE_DIRT) || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))
+                || BlockThresholds.isLeaves(block);
 
         if (!tracked) {
             return;
@@ -116,7 +117,8 @@ public class ServerPlayerEntityMixin {
         boolean rootedEnabled = TRMTConfig.get().erodedRootedDirtEnabled;
         if (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(Blocks.DIRT)
                 || adjState.isOf(TRMTBlocks.ERODED_DIRT)
-                || (rootedEnabled && (adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))) {
+                || (rootedEnabled && (adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))
+                || BlockThresholds.isLeaves(adjState.getBlock())) {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
             trmt$tryTransform(world, manager, pos);
         }
@@ -159,6 +161,14 @@ public class ServerPlayerEntityMixin {
         boolean rootedEnabled = TRMTConfig.get().erodedRootedDirtEnabled;
 
         // Threshold reached — advance visual stage or transform the block.
+        if (BlockThresholds.isLeaves(state.getBlock())) {
+            float dropChance = TRMTConfig.get().leavesDropChance;
+            boolean drops = dropChance >= 1.0f || (dropChance > 0.0f && ThreadLocalRandom.current().nextFloat() < dropChance);
+            world.breakBlock(pos, drops);
+            manager.removeEntry(pos);
+            return;
+        }
+
         if (state.isOf(Blocks.GRASS_BLOCK)) {
             if (entry.getErosionStage() < 5) {
                 // Advance to the next visual erosion stage (0-4); stay as grass_block.

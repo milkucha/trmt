@@ -2,11 +2,10 @@ package milkucha.trmt.client.debug;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.TRMTConfig;
+import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.client.render.ErodedGrassModels;
 import milkucha.trmt.erosion.BlockThresholds;
-import milkucha.trmt.erosion.ErosionMapManager;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -52,7 +51,7 @@ public class ErosionDebugHud {
     }
 
     private static void render(DrawContext context, float tickDelta) {
-        if (!TRMTConfig.get().debugHud) return;
+        if (!TRMTClientConfig.get().debugHud) return;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) return;
 
@@ -123,8 +122,7 @@ public class ErosionDebugHud {
         if (timeout < 0) {
             outLabel = "out:-";
         } else {
-            ErosionMapManager manager = ErosionMapManager.getInstance();
-            boolean isolated = manager != null && BlockThresholds.isIsolated(world, pos, manager);
+            boolean isolated = isIsolatedClient(world, pos);
             if (isolated) timeout /= 2;
             outLabel = "out:" + timeout + (isolated ? " I" : "");
         }
@@ -169,6 +167,29 @@ public class ErosionDebugHud {
         }
         context.drawSprite(x, y, 0, CELL, CELL, sprite);
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+    }
+
+    private static final Direction[] HORIZONTALS = {
+        Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST
+    };
+
+    private static boolean isIsolatedClient(ClientWorld world, BlockPos pos) {
+        ClientErosionCache cache = ClientErosionCache.getInstance();
+        for (Direction dir : HORIZONTALS) {
+            for (int dy = -1; dy <= 1; dy++) {
+                BlockPos neighbor = pos.offset(dir).up(dy);
+                Block neighborBlock = world.getBlockState(neighbor).getBlock();
+                if (neighborBlock == TRMTBlocks.ERODED_DIRT
+                        || neighborBlock == TRMTBlocks.ERODED_COARSE_DIRT
+                        || neighborBlock == TRMTBlocks.ERODED_ROOTED_DIRT) {
+                    return false;
+                }
+                if (neighborBlock == Blocks.GRASS_BLOCK && cache.getStage(neighbor) > 0) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private static ClientErosionCache.Entry getEntry(BlockPos pos) {
