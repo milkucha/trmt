@@ -52,7 +52,7 @@ public final class TRMTBlocks {
     public static final Block ERODED_SAND = Registry.register(
             Registries.BLOCK,
             new Identifier("trmt", "eroded_sand"),
-            new ErodedSandBlock(AbstractBlock.Settings.copy(Blocks.SAND).nonOpaque())
+            new ErodedSandBlock(AbstractBlock.Settings.copy(Blocks.SAND).nonOpaque().ticksRandomly())
     );
 
     private TRMTBlocks() {}

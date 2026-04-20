@@ -2,6 +2,7 @@ package milkucha.trmt.client.debug;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.client.render.ErodedGrassModels;
@@ -151,6 +152,9 @@ public class ErosionDebugHud {
                 || block == TRMTBlocks.ERODED_ROOTED_DIRT) {
             return BlockThresholds.getDirtDeErosionTimeout(block);
         }
+        if (block == TRMTBlocks.ERODED_SAND) {
+            return BlockThresholds.getSandDeErosionTimeout(state.get(ErodedSandBlock.STAGE));
+        }
         return -1;
     }
 
@@ -181,7 +185,8 @@ public class ErosionDebugHud {
                 Block neighborBlock = world.getBlockState(neighbor).getBlock();
                 if (neighborBlock == TRMTBlocks.ERODED_DIRT
                         || neighborBlock == TRMTBlocks.ERODED_COARSE_DIRT
-                        || neighborBlock == TRMTBlocks.ERODED_ROOTED_DIRT) {
+                        || neighborBlock == TRMTBlocks.ERODED_ROOTED_DIRT
+                        || neighborBlock == TRMTBlocks.ERODED_SAND) {
                     return false;
                 }
                 if (neighborBlock == Blocks.GRASS_BLOCK && cache.getStage(neighbor) > 0) {

@@ -66,6 +66,12 @@ public final class TRMTConfig {
     public float deErosionTimeoutDays_grassStage4 = 5f;
     public float deErosionTimeoutDays_grassStage5 = 8f;
 
+    public float deErosionTimeoutDays_erodedSandStage0 = 1f;
+    public float deErosionTimeoutDays_erodedSandStage1 = 1f;
+    public float deErosionTimeoutDays_erodedSandStage2 = 2f;
+    public float deErosionTimeoutDays_erodedSandStage3 = 3f;
+    public float deErosionTimeoutDays_erodedSandStage4 = 5f;
+
     public float deErosionTimeoutDays_erodedDirt       = 13f;
     public float deErosionTimeoutDays_erodedCoarseDirt = 21f;
     public float deErosionTimeoutDays_erodedRootedDirt = 34f;

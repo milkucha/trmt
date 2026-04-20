@@ -61,6 +61,8 @@ public final class BlockThresholds {
             block = Blocks.DIRT;
         } else if (block == TRMTBlocks.ERODED_COARSE_DIRT || block == TRMTBlocks.ERODED_ROOTED_DIRT) {
             block = Blocks.COARSE_DIRT;
+        } else if (block == TRMTBlocks.ERODED_SAND) {
+            block = Blocks.SAND;
         }
 
         TRMTConfig cfg = TRMTConfig.get();
@@ -111,7 +113,8 @@ public final class BlockThresholds {
                 Block neighborBlock = neighborState.getBlock();
                 if (neighborBlock == TRMTBlocks.ERODED_DIRT
                         || neighborBlock == TRMTBlocks.ERODED_COARSE_DIRT
-                        || neighborBlock == TRMTBlocks.ERODED_ROOTED_DIRT) {
+                        || neighborBlock == TRMTBlocks.ERODED_ROOTED_DIRT
+                        || neighborBlock == TRMTBlocks.ERODED_SAND) {
                     return false;
                 }
                 if (neighborBlock == Blocks.GRASS_BLOCK) {
@@ -136,6 +139,18 @@ public final class BlockThresholds {
             case 4  -> (long)(cfg.deErosionTimeoutDays_grassStage4 * TICKS_PER_DAY);
             default -> (long)(cfg.deErosionTimeoutDays_grassStage5 * TICKS_PER_DAY);
         };
+    }
+
+    /** Returns the de-erosion inactivity timeout (ticks) for the given eroded sand stage (0–4). */
+    public static long getSandDeErosionTimeout(int stage) {
+        TRMTConfig cfg = TRMTConfig.get();
+        return (long)((switch (stage) {
+            case 0  -> cfg.deErosionTimeoutDays_erodedSandStage0;
+            case 1  -> cfg.deErosionTimeoutDays_erodedSandStage1;
+            case 2  -> cfg.deErosionTimeoutDays_erodedSandStage2;
+            case 3  -> cfg.deErosionTimeoutDays_erodedSandStage3;
+            default -> cfg.deErosionTimeoutDays_erodedSandStage4;
+        }) * TICKS_PER_DAY);
     }
 
     /** Returns the de-erosion inactivity timeout (ticks) for the given eroded dirt block type. */

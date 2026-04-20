@@ -52,6 +52,14 @@ public class ServerPlayerEntityMixin {
         // The block they are *standing on* is one below.
         BlockPos groundPos = (mounted ? vehicle.getBlockPos() : player.getBlockPos()).down();
 
+        // Sunken blocks (e.g. ERODED_SAND stages 1–4) have a collision height < 1, so the
+        // player's feet land inside the block space and getBlockPos().down() resolves one block
+        // too low. Correct by checking one block up when groundPos yields nothing tracked.
+        World world = player.getWorld();
+        if (world.getBlockState(groundPos.up()).isOf(TRMTBlocks.ERODED_SAND)) {
+            groundPos = groundPos.up();
+        }
+
         // Only process when the player (or vehicle) moves onto a new block, not while standing still.
         if (groundPos.equals(trmt$lastGroundPos)) {
             return;
@@ -59,7 +67,6 @@ public class ServerPlayerEntityMixin {
 
         trmt$lastGroundPos = groundPos.toImmutable();
 
-        World world = player.getWorld();
         BlockState state = world.getBlockState(groundPos);
         Block block = state.getBlock();
 
@@ -174,6 +181,7 @@ public class ServerPlayerEntityMixin {
                             .with(ErodedSandBlock.STAGE, 0),
                     Block.NOTIFY_ALL);
             manager.removeEntry(pos);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime());
             return;
         }
 
@@ -183,6 +191,7 @@ public class ServerPlayerEntityMixin {
                 world.setBlockState(pos, state.with(ErodedSandBlock.STAGE, stage + 1), Block.NOTIFY_ALL);
             }
             manager.removeEntry(pos);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime());
             return;
         }
 
