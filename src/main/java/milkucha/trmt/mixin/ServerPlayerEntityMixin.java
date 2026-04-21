@@ -56,7 +56,8 @@ public class ServerPlayerEntityMixin {
         // player's feet land inside the block space and getBlockPos().down() resolves one block
         // too low. Correct by checking one block up when groundPos yields nothing tracked.
         World world = player.getWorld();
-        if (world.getBlockState(groundPos.up()).isOf(TRMTBlocks.ERODED_SAND)) {
+        BlockState groundUpState = world.getBlockState(groundPos.up());
+        if (groundUpState.isOf(TRMTBlocks.ERODED_SAND) || groundUpState.isOf(Blocks.SAND)) {
             groundPos = groundPos.up();
         }
 

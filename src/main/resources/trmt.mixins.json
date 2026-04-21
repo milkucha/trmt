@@ -5,6 +5,7 @@
 	"mixins": [
 		"GrassBlockMixin",
 		"HoeItemMixin",
+		"SandBlockMixin",
 		"ServerPlayerEntityMixin",
 		"ShovelItemMixin"
 	],
