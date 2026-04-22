@@ -5,6 +5,7 @@ import milkucha.trmt.block.ErodedSandBlock;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.MapColor;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
@@ -52,7 +53,7 @@ public final class TRMTBlocks {
     public static final Block ERODED_SAND = Registry.register(
             Registries.BLOCK,
             new Identifier("trmt", "eroded_sand"),
-            new ErodedSandBlock(AbstractBlock.Settings.copy(Blocks.SAND).nonOpaque().ticksRandomly())
+            new ErodedSandBlock(AbstractBlock.Settings.copy(Blocks.SAND).mapColor(MapColor.TERRACOTTA_YELLOW).nonOpaque().ticksRandomly())
     );
 
     private TRMTBlocks() {}
