@@ -5,6 +5,7 @@ import milkucha.trmt.block.ErodedGrassBlock;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.MapColor;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
@@ -52,7 +53,7 @@ public final class TRMTBlocks {
     public static final Block ERODED_GRASS_BLOCK = Registry.register(
             Registries.BLOCK,
             new Identifier("trmt", "eroded_grass_block"),
-            new ErodedGrassBlock(AbstractBlock.Settings.copy(Blocks.GRASS_BLOCK).ticksRandomly())
+            new ErodedGrassBlock(AbstractBlock.Settings.copy(Blocks.GRASS_BLOCK).mapColor(MapColor.DIRT_BROWN).ticksRandomly())
     );
 
     private TRMTBlocks() {}
