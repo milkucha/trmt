@@ -1,8 +1,6 @@
 package milkucha.trmt.mixin;
 
-import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ChunkErosionMap;
-import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.SpreadableBlock;
@@ -23,27 +21,8 @@ public class GrassBlockMixin {
         ErosionMapManager manager = ErosionMapManager.getInstance();
         ChunkErosionMap map = manager.getChunkMap(new ChunkPos(pos));
         if (map == null) return;
-
-        ErosionEntry entry = map.getEntry(pos);
-        if (entry == null) return;
-
-        // Entry exists → suppress vanilla spreading and vanilla dirt-in-darkness conversion.
-        ci.cancel();
-
-        int stage = entry.getErosionStage();
-        if (stage == 0) return; // pristine entry — nothing to de-erode
-
-        long currentTime = world.getTime();
-        long timeout = BlockThresholds.getGrassDeErosionTimeout(stage);
-        if (BlockThresholds.isIsolated(world, pos, manager)) timeout /= 2;
-        if (currentTime - entry.getLastTouchedGameTime() <= timeout) return;
-
-        // Entry is stale — revert one stage.
-        if (stage == 1) {
-            manager.removeEntry(pos); // back to pristine; broadcasts stage=0 to clients
-        } else {
-            manager.revertGrassStage(pos, currentTime); // updates entry in place with cooldown
-            manager.markForRerender(pos);               // broadcasts new lower stage to clients
-        }
+        // Entry exists → suppress vanilla spreading while this block is being walked on.
+        // De-erosion of eroded grass is handled by ErodedGrassBlock.randomTick.
+        if (map.getEntry(pos) != null) ci.cancel();
     }
 }

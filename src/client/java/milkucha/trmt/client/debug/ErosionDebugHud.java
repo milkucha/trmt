@@ -2,14 +2,13 @@ package milkucha.trmt.client.debug;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
-import milkucha.trmt.client.render.ErodedGrassModels;
 import milkucha.trmt.erosion.BlockThresholds;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -81,13 +80,7 @@ public class ErosionDebugHud {
         BlockState state = world.getBlockState(pos);
 
         ClientErosionCache.Entry cellEntry = getEntry(pos);
-        BakedModel model;
-        if (state.isOf(Blocks.GRASS_BLOCK) && cellEntry != null && cellEntry.stage > 0) {
-            model = ErodedGrassModels.getModel(cellEntry.stage);
-            if (model == null) model = client.getBlockRenderManager().getModel(state);
-        } else {
-            model = client.getBlockRenderManager().getModel(state);
-        }
+        BakedModel model = client.getBlockRenderManager().getModel(state);
         Random rng = Random.create(0);
         for (BakedQuad quad : model.getQuads(state, null, rng)) {
             drawQuad(context, client, state, world, pos, x, y, quad);
@@ -143,8 +136,8 @@ public class ErosionDebugHud {
 
     private static long resolveTimeout(BlockState state, ClientErosionCache.Entry entry) {
         Block block = state.getBlock();
-        if (block == Blocks.GRASS_BLOCK && entry != null && entry.stage > 0) {
-            return BlockThresholds.getGrassDeErosionTimeout(entry.stage);
+        if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
+            return BlockThresholds.getGrassDeErosionTimeout(state.get(ErodedGrassBlock.STAGE) + 1);
         }
         if (block == TRMTBlocks.ERODED_DIRT
                 || block == TRMTBlocks.ERODED_COARSE_DIRT
@@ -174,17 +167,14 @@ public class ErosionDebugHud {
     };
 
     private static boolean isIsolatedClient(ClientWorld world, BlockPos pos) {
-        ClientErosionCache cache = ClientErosionCache.getInstance();
         for (Direction dir : HORIZONTALS) {
             for (int dy = -1; dy <= 1; dy++) {
                 BlockPos neighbor = pos.offset(dir).up(dy);
                 Block neighborBlock = world.getBlockState(neighbor).getBlock();
-                if (neighborBlock == TRMTBlocks.ERODED_DIRT
+                if (neighborBlock == TRMTBlocks.ERODED_GRASS_BLOCK
+                        || neighborBlock == TRMTBlocks.ERODED_DIRT
                         || neighborBlock == TRMTBlocks.ERODED_COARSE_DIRT
                         || neighborBlock == TRMTBlocks.ERODED_ROOTED_DIRT) {
-                    return false;
-                }
-                if (neighborBlock == Blocks.GRASS_BLOCK && cache.getStage(neighbor) > 0) {
                     return false;
                 }
             }

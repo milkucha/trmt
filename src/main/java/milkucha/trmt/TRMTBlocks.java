@@ -1,6 +1,7 @@
 package milkucha.trmt;
 
 import milkucha.trmt.block.ErodedDirtBlock;
+import milkucha.trmt.block.ErodedGrassBlock;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
@@ -42,6 +43,17 @@ public final class TRMTBlocks {
             Registries.BLOCK,
             new Identifier("trmt", "eroded_rooted_dirt"),
             new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.ROOTED_DIRT).nonOpaque().ticksRandomly())
+    );
+
+    /**
+     * Eroded grass block produced by foot-traffic erosion.
+     * Stores FACING (UV rotation) and STAGE (0–4, matching grass_block_eroded_0–4 models).
+     * Never obtainable as an item.
+     */
+    public static final Block ERODED_GRASS_BLOCK = Registry.register(
+            Registries.BLOCK,
+            new Identifier("trmt", "eroded_grass_block"),
+            new ErodedGrassBlock(AbstractBlock.Settings.copy(Blocks.GRASS_BLOCK).nonOpaque().ticksRandomly())
     );
 
     private TRMTBlocks() {}

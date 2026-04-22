@@ -1,14 +1,15 @@
 package milkucha.trmt.client;
 
+import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.client.debug.ErosionDebugHud;
 import milkucha.trmt.client.network.ClientErosionCache;
-import milkucha.trmt.client.render.ErodedGrassModels;
 import milkucha.trmt.network.TRMTPackets;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.block.Blocks;
+import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
+import net.minecraft.client.color.world.BiomeColors;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -21,9 +22,15 @@ public class TRMTClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		TRMTClientConfig.load();
-		ErodedGrassModels.register();
-		// Eroded grass models have transparent holes — must use CUTOUT_MIPPED.
-		BlockRenderLayerMap.INSTANCE.putBlock(Blocks.GRASS_BLOCK, RenderLayer.getCutoutMipped());
+		// Eroded grass models have transparent overlay pixels — must use CUTOUT_MIPPED.
+		BlockRenderLayerMap.INSTANCE.putBlock(TRMTBlocks.ERODED_GRASS_BLOCK, RenderLayer.getCutoutMipped());
+		// Apply biome grass tint (same as vanilla grass_block) so eroded grass is not gray.
+		ColorProviderRegistry.BLOCK.register(
+				(state, world, pos, tintIndex) -> world != null && pos != null
+						? BiomeColors.getGrassColor(world, pos)
+						: 0x79C05A, // default plains grass color fallback (item rendering)
+				TRMTBlocks.ERODED_GRASS_BLOCK
+		);
 		ErosionDebugHud.register();
 
 		// Full chunk sync received on join.
@@ -51,16 +58,9 @@ public class TRMTClient implements ClientModInitializer {
 			float    walkedOnCount      = buf.readFloat();
 			float    threshold          = buf.readFloat();
 			long     lastTouchedGameTime = buf.readLong();
-			client.execute(() -> {
-				ClientErosionCache.getInstance().setEntry(pos, stage, walkedOnCount, threshold, lastTouchedGameTime);
-				if (client.world != null) {
-					client.world.scheduleBlockRerenderIfNeeded(
-						pos,
-						Blocks.AIR.getDefaultState(),
-						client.world.getBlockState(pos)
-					);
-				}
-			});
+			client.execute(() ->
+				ClientErosionCache.getInstance().setEntry(pos, stage, walkedOnCount, threshold, lastTouchedGameTime)
+			);
 		});
 
 		// Clear cached stages when disconnecting so stale data never leaks into the next session.

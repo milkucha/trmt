@@ -20,7 +20,11 @@ public class TRMT implements ModInitializer {
 		TRMTConfig.load();
 		TRMTBlocks.register();
 		// Load (or create) persistent erosion state once the server and its worlds are ready.
-		ServerLifecycleEvents.SERVER_STARTED.register(server -> ErosionMapManager.getInstance().loadState(server));
+		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+			ErosionMapManager manager = ErosionMapManager.getInstance();
+			manager.loadState(server);
+			manager.migrateGrassEntries(server);
+		});
 		// Send full erosion data to each player when they join (covers existing erosion they'd otherwise miss).
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
 				ErosionMapManager.getInstance().sendFullSyncToPlayer(handler.player));

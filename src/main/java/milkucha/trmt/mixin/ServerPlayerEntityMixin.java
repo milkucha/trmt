@@ -3,6 +3,7 @@ package milkucha.trmt.mixin;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.block.ErodedDirtBlock;
+import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
@@ -68,6 +69,7 @@ public class ServerPlayerEntityMixin {
         //   coarse_dirt ──────────────────────────────────────────────────────────────────────────┘
         boolean rootedEnabled = TRMTConfig.get().erodedRootedDirtEnabled;
         boolean tracked = state.isOf(Blocks.GRASS_BLOCK)
+                || state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)
                 || state.isOf(Blocks.DIRT)
                 || state.isOf(TRMTBlocks.ERODED_DIRT)
                 || (rootedEnabled && (state.isOf(Blocks.COARSE_DIRT) || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))
@@ -115,8 +117,8 @@ public class ServerPlayerEntityMixin {
                                            BlockPos pos, float amount, long gameTime) {
         BlockState adjState = world.getBlockState(pos);
         boolean rootedEnabled = TRMTConfig.get().erodedRootedDirtEnabled;
-        if (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(Blocks.DIRT)
-                || adjState.isOf(TRMTBlocks.ERODED_DIRT)
+        if (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)
+                || adjState.isOf(Blocks.DIRT) || adjState.isOf(TRMTBlocks.ERODED_DIRT)
                 || (rootedEnabled && (adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))
                 || BlockThresholds.isLeaves(adjState.getBlock())) {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
@@ -170,16 +172,30 @@ public class ServerPlayerEntityMixin {
         }
 
         if (state.isOf(Blocks.GRASS_BLOCK)) {
-            if (entry.getErosionStage() < 5) {
-                // Advance to the next visual erosion stage (0-4); stay as grass_block.
-                entry.advanceGrassStage(BlockThresholds.randomThreshold(state.getBlock()));
-                manager.markForRerender(pos);
-                return;
-            }
-            // Stage 5 reached — convert to eroded_dirt, preserving the same rotation used for the eroded grass overlay.
+            // Threshold reached — place the real eroded grass block at stage 0.
             Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
             world.setBlockState(pos,
-                    TRMTBlocks.ERODED_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, erodedFacing),
+                    TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
+                            .with(ErodedGrassBlock.FACING, erodedFacing)
+                            .with(ErodedGrassBlock.STAGE, 0),
+                    Block.NOTIFY_ALL);
+            manager.removeEntry(pos);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, world.getTime());
+            return;
+        }
+
+        if (state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)) {
+            Direction facing = state.get(ErodedGrassBlock.FACING);
+            int currentStage = state.get(ErodedGrassBlock.STAGE);
+            if (currentStage < 4) {
+                world.setBlockState(pos, state.with(ErodedGrassBlock.STAGE, currentStage + 1), Block.NOTIFY_ALL);
+                manager.removeEntry(pos);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, world.getTime());
+                return;
+            }
+            // Stage 4 reached — convert to eroded_dirt, carrying FACING forward.
+            world.setBlockState(pos,
+                    TRMTBlocks.ERODED_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
                     Block.NOTIFY_ALL);
             manager.removeEntry(pos);
             return;

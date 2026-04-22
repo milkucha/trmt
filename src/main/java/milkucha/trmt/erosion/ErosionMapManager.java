@@ -1,5 +1,8 @@
 package milkucha.trmt.erosion;
 
+import milkucha.trmt.TRMT;
+import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.network.TRMTPackets;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -8,8 +11,14 @@ import net.minecraft.block.Blocks;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.world.World;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import java.util.Collections;
 import java.util.Map;
@@ -160,6 +169,70 @@ public class ErosionMapManager {
         float threshold = BlockThresholds.randomThreshold(block);
         map.putEntry(worldPos.toImmutable(), new ErosionEntry(block, threshold, 0f, currentGameTime));
         state.markDirty();
+    }
+
+    /**
+     * One-time migration: converts legacy ErosionEntry records that used to drive the
+     * client-side proxy model (trackedBlock=GRASS_BLOCK, erosionStage 1–5) into real
+     * ERODED_GRASS_BLOCK placements with the equivalent STAGE and FACING.
+     * Safe to call on every server start — entries that have already been migrated won't
+     * match the criteria and are silently skipped.
+     */
+    public void migrateGrassEntries(MinecraftServer server) {
+        if (state == null) return;
+        ServerWorld world = server.getWorld(World.OVERWORLD);
+        if (world == null) return;
+
+        // Collect candidate positions first (getEntries returns an unmodifiable view).
+        List<BlockPos> candidates = new ArrayList<>();
+        for (ChunkErosionMap chunk : state.getAllChunkMaps().values()) {
+            for (Map.Entry<BlockPos, ErosionEntry> e : chunk.getEntries().entrySet()) {
+                ErosionEntry entry = e.getValue();
+                if (entry.getTrackedBlock() == Blocks.GRASS_BLOCK && entry.getErosionStage() > 0) {
+                    candidates.add(e.getKey());
+                }
+            }
+        }
+
+        if (candidates.isEmpty()) return;
+
+        long currentTime = world.getTime();
+        int migrated = 0;
+        for (BlockPos pos : candidates) {
+            ChunkErosionMap chunk = state.getChunkMap(new ChunkPos(pos));
+            if (chunk == null) continue;
+            ErosionEntry entry = chunk.getEntry(pos);
+            if (entry == null) continue;
+
+            if (!world.getBlockState(pos).isOf(Blocks.GRASS_BLOCK)) {
+                removeEntry(pos);
+                continue;
+            }
+
+            int stage = entry.getErosionStage() - 1; // old stages 1–5 → new STAGE 0–4
+            Direction facing = facingFromPos(pos);
+            world.setBlockState(pos,
+                    TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
+                            .with(ErodedGrassBlock.FACING, facing)
+                            .with(ErodedGrassBlock.STAGE, stage),
+                    Block.NOTIFY_ALL);
+            removeEntry(pos);
+            writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, currentTime);
+            migrated++;
+        }
+
+        if (migrated > 0) {
+            TRMT.LOGGER.info("[TRMT] Migrated {} eroded grass entries to eroded_grass_block.", migrated);
+        }
+    }
+
+    private static Direction facingFromPos(BlockPos pos) {
+        return switch (BlockThresholds.posRotation(pos)) {
+            case 1  -> Direction.WEST;
+            case 2  -> Direction.NORTH;
+            case 3  -> Direction.EAST;
+            default -> Direction.SOUTH;
+        };
     }
 
     /** Returns an unmodifiable view of all chunk maps. Used by the debug HUD and join sync. */
