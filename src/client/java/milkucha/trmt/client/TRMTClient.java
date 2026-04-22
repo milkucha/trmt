@@ -3,6 +3,7 @@ package milkucha.trmt.client;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.client.debug.ErosionDebugHud;
 import milkucha.trmt.client.network.ClientErosionCache;
+import milkucha.trmt.client.render.ErodedGrassBlockModels;
 import milkucha.trmt.network.TRMTPackets;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
@@ -22,6 +23,7 @@ public class TRMTClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		TRMTClientConfig.load();
+		ErodedGrassBlockModels.register();
 		// Eroded grass models have transparent overlay pixels — must use CUTOUT_MIPPED.
 		BlockRenderLayerMap.INSTANCE.putBlock(TRMTBlocks.ERODED_GRASS_BLOCK, RenderLayer.getCutoutMipped());
 		// Apply biome grass tint (same as vanilla grass_block) so eroded grass is not gray.

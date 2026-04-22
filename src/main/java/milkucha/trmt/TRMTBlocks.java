@@ -53,7 +53,7 @@ public final class TRMTBlocks {
     public static final Block ERODED_GRASS_BLOCK = Registry.register(
             Registries.BLOCK,
             new Identifier("trmt", "eroded_grass_block"),
-            new ErodedGrassBlock(AbstractBlock.Settings.copy(Blocks.GRASS_BLOCK).nonOpaque().ticksRandomly())
+            new ErodedGrassBlock(AbstractBlock.Settings.copy(Blocks.GRASS_BLOCK).ticksRandomly())
     );
 
     private TRMTBlocks() {}
