@@ -26,14 +26,12 @@ public class ErodedSandBlock extends Block {
     public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;
     public static final IntProperty STAGE = IntProperty.of("stage", 0, 4);
 
-    public static final VoxelShape SUNKEN_SHAPE = Block.createCuboidShape(0, 0, 0, 16, 10, 16);
-
     private static final VoxelShape[] SHAPES = {
-        SUNKEN_SHAPE,
-        SUNKEN_SHAPE,
-        SUNKEN_SHAPE,
-        SUNKEN_SHAPE,
-        SUNKEN_SHAPE,
+        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 0
+        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 1
+        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 2
+        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 3
+        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 4
     };
 
     public ErodedSandBlock(Settings settings) {
