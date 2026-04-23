@@ -76,11 +76,11 @@ public final class TRMTConfig {
     }
 
     public static class SandDeErosion {
-        public float stage0 = 1f;
         public float stage1 = 1f;
-        public float stage2 = 2f;
-        public float stage3 = 3f;
-        public float stage4 = 5f;
+        public float stage2 = 1f;
+        public float stage3 = 2f;
+        public float stage4 = 3f;
+        public float stage5 = 5f;
     }
 
     public static class DeErosionTimeoutDays {

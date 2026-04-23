@@ -144,11 +144,11 @@ public final class BlockThresholds {
         TRMTConfig cfg = TRMTConfig.get();
         TRMTConfig.SandDeErosion s = cfg.deErosionTimeoutDays.sand;
         return (long)((switch (stage) {
-            case 0  -> s.stage0;
-            case 1  -> s.stage1;
-            case 2  -> s.stage2;
-            case 3  -> s.stage3;
-            default -> s.stage4;
+            case 0  -> s.stage1;
+            case 1  -> s.stage2;
+            case 2  -> s.stage3;
+            case 3  -> s.stage4;
+            default -> s.stage5;
         }) * TICKS_PER_DAY);
     }
 

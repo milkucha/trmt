@@ -48,7 +48,7 @@ public final class TRMTBlocks {
 
     /**
      * Eroded grass block produced by foot-traffic erosion.
-     * Stores FACING (UV rotation) and STAGE (0–4, matching grass_block_eroded_0–4 models).
+     * Stores FACING (UV rotation) and STAGE (0–4, matching eroded_grass_block_s0–s4 models).
      * Never obtainable as an item.
      */
     public static final Block ERODED_GRASS_BLOCK = Registry.register(
