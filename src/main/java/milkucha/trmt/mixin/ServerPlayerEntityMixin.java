@@ -2,6 +2,7 @@ package milkucha.trmt.mixin;
 
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
+import milkucha.trmt.TRMTEffects;
 import milkucha.trmt.block.ErodedDirtBlock;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.block.ErodedSandBlock;
@@ -14,6 +15,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.block.TallPlantBlock;
 import net.minecraft.block.enums.DoubleBlockHalf;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
@@ -68,6 +70,11 @@ public class ServerPlayerEntityMixin {
         }
 
         trmt$lastGroundPos = groundPos.toImmutable();
+
+        // Potion of Lightness suppresses erosion for the affected player or their mount.
+        if (!mounted && player.hasStatusEffect(TRMTEffects.LIGHTNESS)) return;
+        if (vehicle instanceof LivingEntity livingVehicle
+                && livingVehicle.hasStatusEffect(TRMTEffects.LIGHTNESS)) return;
 
         BlockState state = world.getBlockState(groundPos);
         Block block = state.getBlock();
