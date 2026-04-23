@@ -49,9 +49,9 @@ public class TRMT implements ModInitializer {
 				String serverVer = getModVersion();
 				if (isClientOutdated(clientVer, serverVer)) {
 					server.execute(() -> handler.disconnect(Text.literal(
-						"[TRMT] Client outdated (v" + clientVer + ").\n" +
+						"The Roads More Travelled (TRMT) client version is outdated (v" + clientVer + ")!\n" +
 						"This server requires v" + serverVer + " or newer.\n" +
-						"Download the update to join this server."
+						"Please download the update to join this server."
 					)));
 				}
 			});

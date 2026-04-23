@@ -30,13 +30,13 @@ public abstract class DisconnectedScreenMixin extends Screen {
     @Inject(method = "init()V", at = @At("TAIL"))
     private void trmt$addUpdateButton(CallbackInfo ci) {
         trmt$downloadButton = null;
-        if (this.reason == null || !this.reason.getString().startsWith("[TRMT]")) return;
+        if (this.reason == null || !this.reason.getString().startsWith("The Roads More Travelled")) return;
         for (Element child : this.children()) {
             if (!(child instanceof ButtonWidget backBtn)) continue;
             trmt$downloadButton = this.addDrawableChild(
                 ButtonWidget.builder(
-                    Text.literal("Download TRMT Update"),
-                    btn -> Util.getOperatingSystem().open(URI.create(TRMTPackets.CURSEFORGE_URL))
+                    Text.literal("Download Mod Update"),
+                    btn -> Util.getOperatingSystem().open(URI.create(TRMTPackets.MODRINTH_URL))
                 ).dimensions(backBtn.getX(), backBtn.getY() + 25, backBtn.getWidth(), 20).build()
             );
             return;

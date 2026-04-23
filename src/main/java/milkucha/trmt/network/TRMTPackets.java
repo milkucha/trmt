@@ -14,7 +14,7 @@ public final class TRMTPackets {
     /** Login query: server sends its version, client responds with its own. */
     public static final Identifier VERSION_CHECK = new Identifier("trmt", "version_check");
 
-    public static final String CURSEFORGE_URL = "https://www.curseforge.com/minecraft/mc-mods/the-roads-more-travelled";
+    public static final String MODRINTH_URL = "https://modrinth.com/mod/the-roads-more-travelled";
 
     private TRMTPackets() {}
 }
