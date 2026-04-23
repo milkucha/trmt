@@ -27,8 +27,6 @@ public class TRMTClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		TRMTClientConfig.load();
-<<<<<<< HEAD
-=======
 
 		// Respond to the server's login version query with our own version.
 		ClientLoginNetworking.registerGlobalReceiver(TRMTPackets.VERSION_CHECK, (client, handler, buf, listenerAdder) -> {
@@ -42,7 +40,6 @@ public class TRMTClient implements ClientModInitializer {
 			return CompletableFuture.completedFuture(response);
 		});
 
->>>>>>> feat/version-update-prompt
 		ErodedGrassModels.register();
 		// Eroded grass models have transparent holes — must use CUTOUT_MIPPED.
 		BlockRenderLayerMap.INSTANCE.putBlock(Blocks.GRASS_BLOCK, RenderLayer.getCutoutMipped());
