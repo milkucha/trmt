@@ -2,6 +2,7 @@ package milkucha.trmt;
 
 import milkucha.trmt.block.ErodedDirtBlock;
 import milkucha.trmt.block.ErodedGrassBlock;
+import milkucha.trmt.block.ErodedSandBlock;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
@@ -54,6 +55,16 @@ public final class TRMTBlocks {
             Registries.BLOCK,
             new Identifier("trmt", "eroded_grass_block"),
             new ErodedGrassBlock(AbstractBlock.Settings.copy(Blocks.GRASS_BLOCK).mapColor(MapColor.DIRT_BROWN).ticksRandomly())
+    );
+
+    /**
+     * Sand produced by foot-traffic erosion. Full block, sandstone_bottom top face,
+     * sand texture on all other faces. Never obtainable as an item.
+     */
+    public static final Block ERODED_SAND = Registry.register(
+            Registries.BLOCK,
+            new Identifier("trmt", "eroded_sand"),
+            new ErodedSandBlock(AbstractBlock.Settings.copy(Blocks.SAND).mapColor(MapColor.TERRACOTTA_YELLOW).nonOpaque().ticksRandomly())
     );
 
     private TRMTBlocks() {}

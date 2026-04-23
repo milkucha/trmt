@@ -1,0 +1,24 @@
+{
+  "variants": {
+    "facing=south,stage=0": { "model": "trmt:block/eroded_sand" },
+    "facing=west,stage=0":  { "model": "trmt:block/eroded_sand",    "y": 90 },
+    "facing=north,stage=0": { "model": "trmt:block/eroded_sand",    "y": 180 },
+    "facing=east,stage=0":  { "model": "trmt:block/eroded_sand",    "y": 270 },
+    "facing=south,stage=1": { "model": "trmt:block/eroded_sand_s1" },
+    "facing=west,stage=1":  { "model": "trmt:block/eroded_sand_s1", "y": 90 },
+    "facing=north,stage=1": { "model": "trmt:block/eroded_sand_s1", "y": 180 },
+    "facing=east,stage=1":  { "model": "trmt:block/eroded_sand_s1", "y": 270 },
+    "facing=south,stage=2": { "model": "trmt:block/eroded_sand_s2" },
+    "facing=west,stage=2":  { "model": "trmt:block/eroded_sand_s2", "y": 90 },
+    "facing=north,stage=2": { "model": "trmt:block/eroded_sand_s2", "y": 180 },
+    "facing=east,stage=2":  { "model": "trmt:block/eroded_sand_s2", "y": 270 },
+    "facing=south,stage=3": { "model": "trmt:block/eroded_sand_s3" },
+    "facing=west,stage=3":  { "model": "trmt:block/eroded_sand_s3", "y": 90 },
+    "facing=north,stage=3": { "model": "trmt:block/eroded_sand_s3", "y": 180 },
+    "facing=east,stage=3":  { "model": "trmt:block/eroded_sand_s3", "y": 270 },
+    "facing=south,stage=4": { "model": "trmt:block/eroded_sand_s4" },
+    "facing=west,stage=4":  { "model": "trmt:block/eroded_sand_s4", "y": 90 },
+    "facing=north,stage=4": { "model": "trmt:block/eroded_sand_s4", "y": 180 },
+    "facing=east,stage=4":  { "model": "trmt:block/eroded_sand_s4", "y": 270 }
+  }
+}
