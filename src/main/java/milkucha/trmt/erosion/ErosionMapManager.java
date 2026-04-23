@@ -2,6 +2,7 @@ package milkucha.trmt.erosion;
 
 import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.network.TRMTPackets;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
@@ -16,6 +17,10 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
+import net.minecraft.world.chunk.ChunkStatus;
+
+import java.util.HashSet;
+import java.util.Set;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -233,6 +238,72 @@ public class ErosionMapManager {
             case 3  -> Direction.EAST;
             default -> Direction.SOUTH;
         };
+    }
+
+    /**
+     * Scans one loaded chunk and reverts any eroded blocks whose category is currently disabled.
+     * No-ops if state is not yet initialized or all toggles are enabled.
+     */
+    public void revertDisabledBlocks(ServerWorld world, ChunkPos chunkPos) {
+        if (state == null) return;
+        TRMTConfig.ErosionToggles t = TRMTConfig.get().erosion;
+        if (t.grassEnabled && t.dirtEnabled && t.sandEnabled) return;
+
+        int startX = chunkPos.getStartX();
+        int startZ = chunkPos.getStartZ();
+        int minY   = world.getBottomY();
+        int maxY   = world.getTopY();
+
+        BlockPos.Mutable mutable = new BlockPos.Mutable();
+        for (int x = startX; x < startX + 16; x++) {
+            for (int z = startZ; z < startZ + 16; z++) {
+                for (int y = minY; y < maxY; y++) {
+                    mutable.set(x, y, z);
+                    Block block = world.getBlockState(mutable).getBlock();
+
+                    if (!t.grassEnabled && block == TRMTBlocks.ERODED_GRASS_BLOCK) {
+                        world.setBlockState(mutable.toImmutable(), Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
+                        removeEntry(mutable.toImmutable());
+                    } else if (!t.dirtEnabled) {
+                        if (block == TRMTBlocks.ERODED_DIRT) {
+                            world.setBlockState(mutable.toImmutable(), Blocks.DIRT.getDefaultState(), Block.NOTIFY_ALL);
+                            removeEntry(mutable.toImmutable());
+                        } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
+                            world.setBlockState(mutable.toImmutable(), Blocks.COARSE_DIRT.getDefaultState(), Block.NOTIFY_ALL);
+                            removeEntry(mutable.toImmutable());
+                        }
+                    } else if (!t.sandEnabled && block == TRMTBlocks.ERODED_SAND) {
+                        world.setBlockState(mutable.toImmutable(), Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
+                        removeEntry(mutable.toImmutable());
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Scans all chunks loaded around online players and reverts eroded blocks whose
+     * category is disabled. Called after a config reload.
+     */
+    public void revertDisabledBlocksAllLoaded(MinecraftServer server) {
+        TRMTConfig.ErosionToggles t = TRMTConfig.get().erosion;
+        if (t.grassEnabled && t.dirtEnabled && t.sandEnabled) return;
+
+        int viewDistance = server.getPlayerManager().getViewDistance();
+        for (ServerWorld world : server.getWorlds()) {
+            Set<ChunkPos> scanned = new HashSet<>();
+            for (ServerPlayerEntity player : world.getPlayers()) {
+                ChunkPos playerChunk = player.getChunkPos();
+                for (int dx = -viewDistance; dx <= viewDistance; dx++) {
+                    for (int dz = -viewDistance; dz <= viewDistance; dz++) {
+                        ChunkPos cp = new ChunkPos(playerChunk.x + dx, playerChunk.z + dz);
+                        if (scanned.add(cp) && world.getChunk(cp.x, cp.z, ChunkStatus.FULL, false) != null) {
+                            revertDisabledBlocks(world, cp);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /** Returns an unmodifiable view of all chunk maps. Used by the debug HUD and join sync. */

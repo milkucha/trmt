@@ -34,7 +34,7 @@
     "dirt":       "minecraft:block/dirt",
     "side":       "minecraft:block/grass_block_side",
     "overlay":    "minecraft:block/grass_block_side_overlay",
-    "eroded_top": "trmt:block/grass_block_top_eroded_3",
+    "eroded_top": "trmt:block/eroded_grass_block_top_2",
     "particle":   "minecraft:block/dirt"
   }
 }

@@ -37,18 +37,8 @@ public final class TRMTBlocks {
     );
 
     /**
-     * Rooted dirt produced by erosion. Visually identical to vanilla rooted dirt.
-     * The terminal state of the erosion chain. Never obtainable as an item.
-     */
-    public static final Block ERODED_ROOTED_DIRT = Registry.register(
-            Registries.BLOCK,
-            new Identifier("trmt", "eroded_rooted_dirt"),
-            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.ROOTED_DIRT).ticksRandomly())
-    );
-
-    /**
      * Eroded grass block produced by foot-traffic erosion.
-     * Stores FACING (UV rotation) and STAGE (0–4, matching grass_block_eroded_0–4 models).
+     * Stores FACING (UV rotation) and STAGE (0–4, matching eroded_grass_block_s0–s4 models).
      * Never obtainable as an item.
      */
     public static final Block ERODED_GRASS_BLOCK = Registry.register(

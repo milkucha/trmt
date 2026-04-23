@@ -21,7 +21,7 @@ import net.minecraft.util.math.random.Random;
 /**
  * Grass block produced by foot-traffic erosion.
  * Stores a FACING direction (established when grass first erodes) for UV rotation,
- * and a STAGE (0–4) matching grass_block_eroded_0 through grass_block_eroded_4 models.
+ * and a STAGE (0–4) matching eroded_grass_block_s0 through eroded_grass_block_s4 models.
  * Never placed by players or generated naturally — only set by the erosion system.
  */
 public class ErodedGrassBlock extends Block {

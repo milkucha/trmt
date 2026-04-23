@@ -72,13 +72,6 @@ public class BoneMealItemMixin {
                     Block.NOTIFY_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime);
-        } else if (block == TRMTBlocks.ERODED_ROOTED_DIRT) {
-            Direction facing = state.get(ErodedDirtBlock.FACING);
-            world.setBlockState(pos,
-                    TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
-                    Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_COARSE_DIRT, currentTime);
         } else {
             return;
         }

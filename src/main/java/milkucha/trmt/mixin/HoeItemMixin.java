@@ -20,8 +20,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Extends hoe tilling to cover trmt:eroded_coarse_dirt and trmt:eroded_rooted_dirt,
- * converting them to farmland — matching the behaviour of vanilla dirt/grass tilling.
+ * Extends hoe tilling to cover trmt:eroded_coarse_dirt,
+ * converting it to farmland — matching the behaviour of vanilla dirt/grass tilling.
  */
 @Mixin(HoeItem.class)
 public class HoeItemMixin {
@@ -32,7 +32,7 @@ public class HoeItemMixin {
         World world = context.getWorld();
         BlockState state = world.getBlockState(pos);
 
-        if (!state.isOf(TRMTBlocks.ERODED_COARSE_DIRT) && !state.isOf(TRMTBlocks.ERODED_ROOTED_DIRT)) {
+        if (!state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
             return;
         }
 

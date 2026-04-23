@@ -141,8 +141,7 @@ public class ErosionDebugHud {
             return BlockThresholds.getGrassDeErosionTimeout(state.get(ErodedGrassBlock.STAGE) + 1);
         }
         if (block == TRMTBlocks.ERODED_DIRT
-                || block == TRMTBlocks.ERODED_COARSE_DIRT
-                || block == TRMTBlocks.ERODED_ROOTED_DIRT) {
+                || block == TRMTBlocks.ERODED_COARSE_DIRT) {
             return BlockThresholds.getDirtDeErosionTimeout(block);
         }
         if (block == TRMTBlocks.ERODED_SAND) {
@@ -178,7 +177,6 @@ public class ErosionDebugHud {
                 if (neighborBlock == TRMTBlocks.ERODED_GRASS_BLOCK
                         || neighborBlock == TRMTBlocks.ERODED_DIRT
                         || neighborBlock == TRMTBlocks.ERODED_COARSE_DIRT
-                        || neighborBlock == TRMTBlocks.ERODED_ROOTED_DIRT
                         || neighborBlock == TRMTBlocks.ERODED_SAND) {
                     return false;
                 }

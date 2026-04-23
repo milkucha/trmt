@@ -22,59 +22,76 @@ public final class TRMTConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String FILE_NAME = "trmt.json";
 
-    // ── defaults (match the hardcoded values that existed before) ──────────
-    public float grassBlockMin  = 2.0f;
-    public float grassBlockMax  = 4.0f;
+    // ── nested config types ────────────────────────────────────────────────
 
-    public float dirtMin        = 8.0f;
-    public float dirtMax        = 12.0f;
+    public static class Multipliers {
+        public float player  = 0.5f;
+        public float mounted = 1.5f;
+    }
 
-    public float coarseDirtMin  = 12.0f;
-    public float coarseDirtMax  = 20.0f;
+    public static class MinMax {
+        public float min, max;
+        MinMax(float min, float max) { this.min = min; this.max = max; }
+    }
 
-    public float sandMin        = 4.0f;
-    public float sandMax        = 8.0f;
+    public static class ErosionToggles {
+        public boolean grassEnabled      = true;
+        public boolean dirtEnabled       = true;
+        public boolean sandEnabled       = true;
+        public boolean leavesEnabled     = true;
+        public boolean vegetationEnabled = true;
+    }
 
-    public float vegetationMin        = 2.0f;
-    public float vegetationMax        = 3.0f;
-    /** 0.0 = never drops, 1.0 = always drops. Applied per-break as a random roll. */
-    public float vegetationDropChance = 0.2f;
+    public static class VegetationThreshold extends MinMax {
+        public float dropChance;
+        VegetationThreshold(float min, float max, float dropChance) {
+            super(min, max);
+            this.dropChance = dropChance;
+        }
+    }
 
-    public float leavesMin        = 2.0f;
-    public float leavesMax        = 3.0f;
-    public float leavesDropChance = 0.1f;
+    public static class ErosionThresholds {
+        public MinMax            grass               = new MinMax(2f, 4f);
+        public MinMax            dirt                = new MinMax(8f, 12f);
+        public MinMax            coarseDirt          = new MinMax(12f, 20f);
+        public MinMax            sand                = new MinMax(4f, 8f);
+        public VegetationThreshold vegetation        = new VegetationThreshold(2f, 3f, 0.2f);
+        public VegetationThreshold leaves            = new VegetationThreshold(2f, 3f, 0.1f);
+    }
 
-    /** Multiplier applied to all erosion amounts for every player step. Default 1.0 = vanilla behaviour. */
-    public float playerErosionMultiplier = 0.5f;
+    public static class GrassDeErosion {
+        public float stage1 = 1f;
+        public float stage2 = 2f;
+        public float stage3 = 3f;
+        public float stage4 = 5f;
+        public float stage5 = 8f;
+    }
 
-    /** Multiplier applied to all erosion amounts when the player is riding a vehicle (e.g. a horse). */
-    public float mountedErosionMultiplier = 1.5f;
+    public static class DirtDeErosion {
+        public float erodedDirt       = 13f;
+        public float erodedCoarseDirt = 21f;
+    }
 
-    /**
-     * When true, the erosion chain continues past eroded_coarse_dirt to eroded_rooted_dirt as the final stage.
-     * When false (default), eroded_coarse_dirt is the final stage.
-     */
-    public boolean erodedRootedDirtEnabled = false;
+    public static class SandDeErosion {
+        public float stage1 = 1f;
+        public float stage2 = 1f;
+        public float stage3 = 2f;
+        public float stage4 = 3f;
+        public float stage5 = 5f;
+    }
 
-    // ── de-erosion timeouts (Minecraft days) ──────────────────────────────
-    // Minecraft days of inactivity before a block reverts one step toward un-eroded state.
-    // 1 Minecraft day = 24000 ticks (~20 minutes real time).
+    public static class DeErosionTimeoutDays {
+        public GrassDeErosion grass = new GrassDeErosion();
+        public DirtDeErosion  dirt  = new DirtDeErosion();
+        public SandDeErosion  sand  = new SandDeErosion();
+    }
 
-    public float deErosionTimeoutDays_grassStage1 = 1f;
-    public float deErosionTimeoutDays_grassStage2 = 2f;
-    public float deErosionTimeoutDays_grassStage3 = 3f;
-    public float deErosionTimeoutDays_grassStage4 = 5f;
-    public float deErosionTimeoutDays_grassStage5 = 8f;
+    // ── top-level fields ───────────────────────────────────────────────────
 
-    public float deErosionTimeoutDays_erodedSandStage0 = 1f;
-    public float deErosionTimeoutDays_erodedSandStage1 = 1f;
-    public float deErosionTimeoutDays_erodedSandStage2 = 2f;
-    public float deErosionTimeoutDays_erodedSandStage3 = 3f;
-    public float deErosionTimeoutDays_erodedSandStage4 = 5f;
-
-    public float deErosionTimeoutDays_erodedDirt       = 13f;
-    public float deErosionTimeoutDays_erodedCoarseDirt = 21f;
-    public float deErosionTimeoutDays_erodedRootedDirt = 34f;
+    public ErosionToggles       erosion              = new ErosionToggles();
+    public Multipliers          erosionMultipliers   = new Multipliers();
+    public ErosionThresholds    erosionThresholds    = new ErosionThresholds();
+    public DeErosionTimeoutDays deErosionTimeoutDays = new DeErosionTimeoutDays();
 
     // ── singleton ──────────────────────────────────────────────────────────
     private static TRMTConfig instance = new TRMTConfig();
