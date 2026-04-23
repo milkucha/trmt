@@ -24,6 +24,8 @@ public class TRMT implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		TRMTConfig.load();
+		TRMTEffects.register();
+		TRMTPotions.register();
 		TRMTBlocks.register();
 		// Load (or create) persistent erosion state once the server and its worlds are ready.
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
