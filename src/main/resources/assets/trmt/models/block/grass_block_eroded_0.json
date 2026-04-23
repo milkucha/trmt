@@ -1,5 +1,4 @@
 {
-  "ambientocclusion": false,
   "elements": [
     {
       "comment": "Base cube — dirt texture on all faces, no tint",

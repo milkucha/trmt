@@ -57,7 +57,9 @@ public final class BlockThresholds {
      */
     public static float randomThreshold(Block block) {
         // Eroded variants use the same range as their vanilla counterpart.
-        if (block == TRMTBlocks.ERODED_DIRT) {
+        if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
+            block = Blocks.GRASS_BLOCK;
+        } else if (block == TRMTBlocks.ERODED_DIRT) {
             block = Blocks.DIRT;
         } else if (block == TRMTBlocks.ERODED_COARSE_DIRT || block == TRMTBlocks.ERODED_ROOTED_DIRT) {
             block = Blocks.COARSE_DIRT;
@@ -106,7 +108,8 @@ public final class BlockThresholds {
                 BlockPos neighbor = pos.offset(dir).up(dy);
                 BlockState neighborState = world.getBlockState(neighbor);
                 Block neighborBlock = neighborState.getBlock();
-                if (neighborBlock == TRMTBlocks.ERODED_DIRT
+                if (neighborBlock == TRMTBlocks.ERODED_GRASS_BLOCK
+                        || neighborBlock == TRMTBlocks.ERODED_DIRT
                         || neighborBlock == TRMTBlocks.ERODED_COARSE_DIRT
                         || neighborBlock == TRMTBlocks.ERODED_ROOTED_DIRT) {
                     return false;

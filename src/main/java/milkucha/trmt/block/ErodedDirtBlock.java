@@ -7,7 +7,6 @@ import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.StateManager;
@@ -82,10 +81,14 @@ public class ErodedDirtBlock extends Block {
                 manager.removeEntry(pos);
                 manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime);
             } else {
-                // Stage 0 → revert to grass_block at eroded grass stage 5.
-                world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
-                manager.writeErodedGrassCooldownEntry(pos, 5, currentTime);
-                manager.markForRerender(pos);
+                // Stage 0 → revert to eroded grass block at its most-eroded stage, preserving rotation.
+                world.setBlockState(pos,
+                        TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
+                                .with(ErodedGrassBlock.FACING, facing)
+                                .with(ErodedGrassBlock.STAGE, 4),
+                        Block.NOTIFY_ALL);
+                manager.removeEntry(pos);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, currentTime);
             }
         }
     }
