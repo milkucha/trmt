@@ -83,25 +83,36 @@ public class ServerPlayerEntityMixin {
         //   grass_block (6 visual stages) ──► eroded_dirt (s0→s1→s2→s3) ──► eroded_coarse_dirt ──┐
         //   dirt ───────────────────────────► eroded_dirt (s1→s2→s3)     ──► eroded_coarse_dirt ──┼──► eroded_rooted_dirt (final)
         //   coarse_dirt ──────────────────────────────────────────────────────────────────────────┘
-        TRMTConfig.ErosionToggles erosion = TRMTConfig.get().erosion;
-        boolean rootedEnabled = erosion.erodedRootedDirtEnabled;
-        boolean tracked = (erosion.grassEnabled && (state.isOf(Blocks.GRASS_BLOCK) || state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)))
-                || (erosion.dirtEnabled && (state.isOf(Blocks.DIRT) || state.isOf(TRMTBlocks.ERODED_DIRT)
-                    || (rootedEnabled && (state.isOf(Blocks.COARSE_DIRT) || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))))
-                || (erosion.sandEnabled && (state.isOf(Blocks.SAND) || state.isOf(TRMTBlocks.ERODED_SAND)))
-                || (erosion.vegetationEnabled && BlockThresholds.isVegetation(block))
-                || (erosion.leavesEnabled && BlockThresholds.isLeaves(block));
-
-        if (!tracked) {
-            return;
-        }
-
         // Apply player erosion multiplier; mounted players get an additional configurable boost.
         float mult = TRMTConfig.get().erosionMultipliers.player
                 * (mounted ? TRMTConfig.get().erosionMultipliers.mounted : 1.0f);
 
         ErosionMapManager manager = ErosionMapManager.getInstance();
         long gameTime = world.getTime();
+        TRMTConfig.ErosionToggles erosion = TRMTConfig.get().erosion;
+
+        // Check for vegetation at the player's feet level (one block above the ground).
+        // Vegetation has no collision so the player passes through it — track and break it.
+        // This fires regardless of what the ground block is so that vegetation on any surface
+        // can be trampled, even when the ground block's own erosion category is disabled.
+        BlockPos vegPos = groundPos.up();
+        BlockState vegState = world.getBlockState(vegPos);
+        if (erosion.vegetationEnabled && BlockThresholds.isVegetation(vegState.getBlock())) {
+            manager.onStep(vegPos, vegState.getBlock(), 1.0f * mult, gameTime);
+            trmt$tryBreakVegetation(world, manager, vegPos, vegState);
+            manager.broadcastEntryUpdate(vegPos, vegState.getBlock());
+        }
+
+        boolean rootedEnabled = erosion.erodedRootedDirtEnabled;
+        boolean tracked = (erosion.grassEnabled && (state.isOf(Blocks.GRASS_BLOCK) || state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)))
+                || (erosion.dirtEnabled && (state.isOf(Blocks.DIRT) || state.isOf(TRMTBlocks.ERODED_DIRT)
+                    || (rootedEnabled && (state.isOf(Blocks.COARSE_DIRT) || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))))
+                || (erosion.sandEnabled && (state.isOf(Blocks.SAND) || state.isOf(TRMTBlocks.ERODED_SAND)))
+                || (erosion.leavesEnabled && BlockThresholds.isLeaves(block));
+
+        if (!tracked) {
+            return;
+        }
 
         manager.onStep(groundPos, block, 1.0f * mult, gameTime);
         trmt$tryTransform(world, manager, groundPos);
@@ -118,15 +129,6 @@ public class ServerPlayerEntityMixin {
         trmt$stepAdjacent(world, manager, groundPos.offset(facing), 0.2f * mult, gameTime);
         trmt$stepAdjacent(world, manager, groundPos.offset(left),   0.5f * mult, gameTime);
         trmt$stepAdjacent(world, manager, groundPos.offset(right),  0.5f * mult, gameTime);
-
-        // Check for vegetation at the player's feet level (one block above the ground).
-        // Vegetation has no collision so the player passes through it — track and break it.
-        BlockPos vegPos = groundPos.up();
-        BlockState vegState = world.getBlockState(vegPos);
-        if (erosion.vegetationEnabled && BlockThresholds.isVegetation(vegState.getBlock())) {
-            manager.onStep(vegPos, vegState.getBlock(), 1.0f * mult, gameTime);
-            trmt$tryBreakVegetation(world, manager, vegPos, vegState);
-        }
     }
 
     @Unique
