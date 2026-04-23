@@ -1,6 +1,5 @@
 package milkucha.trmt.mixin;
 
-import milkucha.trmt.block.ErodedSandBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.ShapeContext;
@@ -12,12 +11,14 @@ import org.spongepowered.asm.mixin.Mixin;
 @Mixin(targets = "net.minecraft.block.SandBlock")
 public abstract class SandBlockMixin extends Block {
 
+    private static final VoxelShape SAND_COLLISION_SHAPE = Block.createCuboidShape(0, 0, 0, 16, 16, 16);
+
     protected SandBlockMixin(Settings settings) {
         super(settings);
     }
 
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
-        return ErodedSandBlock.SUNKEN_SHAPE;
+        return SAND_COLLISION_SHAPE;
     }
 }
