@@ -64,11 +64,7 @@ public class ErodedDirtBlock extends Block {
         Direction facing = state.get(FACING);
         Block block = state.getBlock();
 
-        if (block == TRMTBlocks.ERODED_ROOTED_DIRT) {
-            world.setBlockState(pos, TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState().with(FACING, facing), Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_COARSE_DIRT, currentTime);
-        } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
+        if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
             // De-erode to the most eroded dirt stage.
             world.setBlockState(pos, TRMTBlocks.ERODED_DIRT.getDefaultState().with(FACING, facing).with(STAGE, 3), Block.NOTIFY_ALL);
             manager.removeEntry(pos);

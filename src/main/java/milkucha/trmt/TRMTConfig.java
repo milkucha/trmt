@@ -35,13 +35,11 @@ public final class TRMTConfig {
     }
 
     public static class ErosionToggles {
-        public boolean grassEnabled             = true;
-        public boolean dirtEnabled              = true;
-        /** When true, the erosion chain continues past eroded_coarse_dirt to eroded_rooted_dirt. */
-        public boolean erodedRootedDirtEnabled  = false;
-        public boolean sandEnabled              = true;
-        public boolean leavesEnabled            = true;
-        public boolean vegetationEnabled        = true;
+        public boolean grassEnabled      = true;
+        public boolean dirtEnabled       = true;
+        public boolean sandEnabled       = true;
+        public boolean leavesEnabled     = true;
+        public boolean vegetationEnabled = true;
     }
 
     public static class VegetationThreshold extends MinMax {
@@ -72,7 +70,6 @@ public final class TRMTConfig {
     public static class DirtDeErosion {
         public float erodedDirt       = 13f;
         public float erodedCoarseDirt = 21f;
-        public float erodedRootedDirt = 34f;
     }
 
     public static class SandDeErosion {

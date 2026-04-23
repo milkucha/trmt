@@ -80,9 +80,8 @@ public class ServerPlayerEntityMixin {
         Block block = state.getBlock();
 
         // Transformation chain:
-        //   grass_block (6 visual stages) ──► eroded_dirt (s0→s1→s2→s3) ──► eroded_coarse_dirt ──┐
-        //   dirt ───────────────────────────► eroded_dirt (s1→s2→s3)     ──► eroded_coarse_dirt ──┼──► eroded_rooted_dirt (final)
-        //   coarse_dirt ──────────────────────────────────────────────────────────────────────────┘
+        //   grass_block ──► eroded_grass_block (s0→s4) ──► eroded_dirt (s0→s3) ──► eroded_coarse_dirt (final)
+        //   dirt ────────► eroded_dirt (s1→s3) ──► eroded_coarse_dirt (final)
         // Apply player erosion multiplier; mounted players get an additional configurable boost.
         float mult = TRMTConfig.get().erosionMultipliers.player
                 * (mounted ? TRMTConfig.get().erosionMultipliers.mounted : 1.0f);
@@ -103,10 +102,8 @@ public class ServerPlayerEntityMixin {
             manager.broadcastEntryUpdate(vegPos, vegState.getBlock());
         }
 
-        boolean rootedEnabled = erosion.erodedRootedDirtEnabled;
         boolean tracked = (erosion.grassEnabled && (state.isOf(Blocks.GRASS_BLOCK) || state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)))
-                || (erosion.dirtEnabled && (state.isOf(Blocks.DIRT) || state.isOf(TRMTBlocks.ERODED_DIRT)
-                    || (rootedEnabled && (state.isOf(Blocks.COARSE_DIRT) || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))))
+                || (erosion.dirtEnabled && (state.isOf(Blocks.DIRT) || state.isOf(TRMTBlocks.ERODED_DIRT)))
                 || (erosion.sandEnabled && (state.isOf(Blocks.SAND) || state.isOf(TRMTBlocks.ERODED_SAND)))
                 || (erosion.leavesEnabled && BlockThresholds.isLeaves(block));
 
@@ -136,10 +133,8 @@ public class ServerPlayerEntityMixin {
                                            BlockPos pos, float amount, long gameTime) {
         BlockState adjState = world.getBlockState(pos);
         TRMTConfig.ErosionToggles erosion = TRMTConfig.get().erosion;
-        boolean rootedEnabled = erosion.erodedRootedDirtEnabled;
         if ((erosion.grassEnabled && (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)))
-                || (erosion.dirtEnabled && (adjState.isOf(Blocks.DIRT) || adjState.isOf(TRMTBlocks.ERODED_DIRT)
-                    || (rootedEnabled && (adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))))
+                || (erosion.dirtEnabled && (adjState.isOf(Blocks.DIRT) || adjState.isOf(TRMTBlocks.ERODED_DIRT)))
                 || (erosion.sandEnabled && (adjState.isOf(Blocks.SAND) || adjState.isOf(TRMTBlocks.ERODED_SAND)))
                 || (erosion.leavesEnabled && BlockThresholds.isLeaves(adjState.getBlock()))) {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
@@ -180,8 +175,6 @@ public class ServerPlayerEntityMixin {
         if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) {
             return;
         }
-
-        boolean rootedEnabled = TRMTConfig.get().erosion.erodedRootedDirtEnabled;
 
         // Threshold reached — advance visual stage or transform the block.
         if (state.isOf(Blocks.SAND)) {
@@ -259,23 +252,6 @@ public class ServerPlayerEntityMixin {
             world.setBlockState(pos,
                     TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
                     Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-            return;
-        }
-
-        if (state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
-            if (!rootedEnabled) return;
-            Direction facing = state.get(ErodedDirtBlock.FACING);
-            world.setBlockState(pos,
-                    TRMTBlocks.ERODED_ROOTED_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
-                    Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-            return;
-        }
-
-        if (state.isOf(Blocks.COARSE_DIRT)) {
-            if (!rootedEnabled) return;
-            world.setBlockState(pos, TRMTBlocks.ERODED_ROOTED_DIRT.getDefaultState(), Block.NOTIFY_ALL);
             manager.removeEntry(pos);
             return;
         }

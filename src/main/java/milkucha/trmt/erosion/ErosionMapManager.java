@@ -271,9 +271,6 @@ public class ErosionMapManager {
                         } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
                             world.setBlockState(mutable.toImmutable(), Blocks.COARSE_DIRT.getDefaultState(), Block.NOTIFY_ALL);
                             removeEntry(mutable.toImmutable());
-                        } else if (block == TRMTBlocks.ERODED_ROOTED_DIRT) {
-                            world.setBlockState(mutable.toImmutable(), Blocks.ROOTED_DIRT.getDefaultState(), Block.NOTIFY_ALL);
-                            removeEntry(mutable.toImmutable());
                         }
                     } else if (!t.sandEnabled && block == TRMTBlocks.ERODED_SAND) {
                         world.setBlockState(mutable.toImmutable(), Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);

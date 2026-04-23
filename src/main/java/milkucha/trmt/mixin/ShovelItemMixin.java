@@ -18,8 +18,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Extends shovel path-flattening to cover trmt:eroded_coarse_dirt and trmt:eroded_rooted_dirt,
- * matching the behaviour of their vanilla counterparts (coarse_dirt and rooted_dirt).
+ * Extends shovel path-flattening to cover trmt:eroded_coarse_dirt,
+ * matching the behaviour of its vanilla counterpart (coarse_dirt).
  */
 @Mixin(ShovelItem.class)
 public class ShovelItemMixin {
@@ -30,7 +30,7 @@ public class ShovelItemMixin {
         World world = context.getWorld();
         BlockState state = world.getBlockState(pos);
 
-        if (!state.isOf(TRMTBlocks.ERODED_COARSE_DIRT) && !state.isOf(TRMTBlocks.ERODED_ROOTED_DIRT)) {
+        if (!state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
             return;
         }
 
