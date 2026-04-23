@@ -38,7 +38,7 @@ public class ErosionPersistentState extends PersistentState {
     public static ErosionPersistentState getOrCreate(MinecraftServer server) {
         return server.getWorld(World.OVERWORLD)
                 .getPersistentStateManager()
-                .getOrCreate(ErosionPersistentState::fromNbt, ErosionPersistentState::new, DATA_KEY);
+                .getOrCreate(new PersistentState.Type<>(ErosionPersistentState::new, ErosionPersistentState::fromNbt, null), DATA_KEY);
     }
 
     // --- Map access ---

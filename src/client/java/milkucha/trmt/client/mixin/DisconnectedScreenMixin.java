@@ -1,7 +1,6 @@
 package milkucha.trmt.client.mixin;
 
 import milkucha.trmt.network.TRMTPackets;
-import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Element;
 import net.minecraft.client.gui.screen.DisconnectedScreen;
 import net.minecraft.client.gui.screen.Screen;
@@ -14,6 +13,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
 
 import java.net.URI;
 
@@ -43,16 +43,4 @@ public abstract class DisconnectedScreenMixin extends Screen {
         }
     }
 
-    // Sync position to the back button every frame so any resize is corrected immediately.
-    @Inject(method = "render", at = @At("HEAD"))
-    private void trmt$syncButtonPosition(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        if (trmt$downloadButton == null) return;
-        for (Element child : this.children()) {
-            if (child instanceof ButtonWidget backBtn && backBtn != trmt$downloadButton) {
-                ((ClickableWidgetPositionAccessor) trmt$downloadButton).trmt$setX(backBtn.getX());
-                ((ClickableWidgetPositionAccessor) trmt$downloadButton).trmt$setY(backBtn.getY() + 25);
-                return;
-            }
-        }
-    }
 }
