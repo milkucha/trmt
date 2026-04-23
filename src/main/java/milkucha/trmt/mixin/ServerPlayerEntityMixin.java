@@ -83,23 +83,22 @@ public class ServerPlayerEntityMixin {
         //   grass_block (6 visual stages) ──► eroded_dirt (s0→s1→s2→s3) ──► eroded_coarse_dirt ──┐
         //   dirt ───────────────────────────► eroded_dirt (s1→s2→s3)     ──► eroded_coarse_dirt ──┼──► eroded_rooted_dirt (final)
         //   coarse_dirt ──────────────────────────────────────────────────────────────────────────┘
-        boolean rootedEnabled = TRMTConfig.get().erodedRootedDirtEnabled;
-        boolean tracked = state.isOf(Blocks.GRASS_BLOCK)
-                || state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)
-                || state.isOf(Blocks.DIRT)
-                || state.isOf(TRMTBlocks.ERODED_DIRT)
-                || (rootedEnabled && (state.isOf(Blocks.COARSE_DIRT) || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))
-                || state.isOf(Blocks.SAND)
-                || state.isOf(TRMTBlocks.ERODED_SAND)
-                || BlockThresholds.isLeaves(block);
+        TRMTConfig.ErosionToggles erosion = TRMTConfig.get().erosion;
+        boolean rootedEnabled = erosion.erodedRootedDirtEnabled;
+        boolean tracked = (erosion.grassEnabled && (state.isOf(Blocks.GRASS_BLOCK) || state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)))
+                || (erosion.dirtEnabled && (state.isOf(Blocks.DIRT) || state.isOf(TRMTBlocks.ERODED_DIRT)
+                    || (rootedEnabled && (state.isOf(Blocks.COARSE_DIRT) || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))))
+                || (erosion.sandEnabled && (state.isOf(Blocks.SAND) || state.isOf(TRMTBlocks.ERODED_SAND)))
+                || (erosion.vegetationEnabled && BlockThresholds.isVegetation(block))
+                || (erosion.leavesEnabled && BlockThresholds.isLeaves(block));
 
         if (!tracked) {
             return;
         }
 
         // Apply player erosion multiplier; mounted players get an additional configurable boost.
-        float mult = TRMTConfig.get().playerErosionMultiplier
-                * (mounted ? TRMTConfig.get().mountedErosionMultiplier : 1.0f);
+        float mult = TRMTConfig.get().erosionMultipliers.player
+                * (mounted ? TRMTConfig.get().erosionMultipliers.mounted : 1.0f);
 
         ErosionMapManager manager = ErosionMapManager.getInstance();
         long gameTime = world.getTime();
@@ -124,7 +123,7 @@ public class ServerPlayerEntityMixin {
         // Vegetation has no collision so the player passes through it — track and break it.
         BlockPos vegPos = groundPos.up();
         BlockState vegState = world.getBlockState(vegPos);
-        if (BlockThresholds.isVegetation(vegState.getBlock())) {
+        if (erosion.vegetationEnabled && BlockThresholds.isVegetation(vegState.getBlock())) {
             manager.onStep(vegPos, vegState.getBlock(), 1.0f * mult, gameTime);
             trmt$tryBreakVegetation(world, manager, vegPos, vegState);
         }
@@ -134,13 +133,13 @@ public class ServerPlayerEntityMixin {
     private static void trmt$stepAdjacent(World world, ErosionMapManager manager,
                                            BlockPos pos, float amount, long gameTime) {
         BlockState adjState = world.getBlockState(pos);
-        boolean rootedEnabled = TRMTConfig.get().erodedRootedDirtEnabled;
-        if (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)
-                || adjState.isOf(Blocks.DIRT) || adjState.isOf(TRMTBlocks.ERODED_DIRT)
-                || (rootedEnabled && (adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))
-                || adjState.isOf(Blocks.SAND)
-                || adjState.isOf(TRMTBlocks.ERODED_SAND)
-                || BlockThresholds.isLeaves(adjState.getBlock())) {
+        TRMTConfig.ErosionToggles erosion = TRMTConfig.get().erosion;
+        boolean rootedEnabled = erosion.erodedRootedDirtEnabled;
+        if ((erosion.grassEnabled && (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)))
+                || (erosion.dirtEnabled && (adjState.isOf(Blocks.DIRT) || adjState.isOf(TRMTBlocks.ERODED_DIRT)
+                    || (rootedEnabled && (adjState.isOf(Blocks.COARSE_DIRT) || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))))
+                || (erosion.sandEnabled && (adjState.isOf(Blocks.SAND) || adjState.isOf(TRMTBlocks.ERODED_SAND)))
+                || (erosion.leavesEnabled && BlockThresholds.isLeaves(adjState.getBlock()))) {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
             trmt$tryTransform(world, manager, pos);
         }
@@ -161,7 +160,7 @@ public class ServerPlayerEntityMixin {
             }
         }
 
-        float dropChance = TRMTConfig.get().vegetationDropChance;
+        float dropChance = TRMTConfig.get().erosionThresholds.vegetation.dropChance;
         boolean drops = dropChance >= 1.0f || (dropChance > 0.0f && ThreadLocalRandom.current().nextFloat() < dropChance);
         world.breakBlock(pos, drops);
         manager.removeEntry(pos);
@@ -180,7 +179,7 @@ public class ServerPlayerEntityMixin {
             return;
         }
 
-        boolean rootedEnabled = TRMTConfig.get().erodedRootedDirtEnabled;
+        boolean rootedEnabled = TRMTConfig.get().erosion.erodedRootedDirtEnabled;
 
         // Threshold reached — advance visual stage or transform the block.
         if (state.isOf(Blocks.SAND)) {
@@ -206,7 +205,7 @@ public class ServerPlayerEntityMixin {
         }
 
         if (BlockThresholds.isLeaves(state.getBlock())) {
-            float dropChance = TRMTConfig.get().leavesDropChance;
+            float dropChance = TRMTConfig.get().erosionThresholds.leaves.dropChance;
             boolean drops = dropChance >= 1.0f || (dropChance > 0.0f && ThreadLocalRandom.current().nextFloat() < dropChance);
             world.breakBlock(pos, drops);
             manager.removeEntry(pos);

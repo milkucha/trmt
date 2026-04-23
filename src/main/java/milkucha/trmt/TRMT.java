@@ -38,7 +38,7 @@ public class TRMT implements ModInitializer {
 				ErosionMapManager.getInstance().sendFullSyncToPlayer(handler.player));
 		// Reset the erosion manager when the server stops so state does not bleed between sessions.
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> ErosionMapManager.reset());
-		// Clear the erosion entry when any block is broken so a freshly placed block always starts from zero.
+// Clear the erosion entry when any block is broken so a freshly placed block always starts from zero.
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) ->
 				ErosionMapManager.getInstance().removeEntry(pos));
 
@@ -68,6 +68,7 @@ public class TRMT implements ModInitializer {
 								.requires(src -> src.hasPermissionLevel(2))
 								.executes(ctx -> {
 									TRMTConfig.load();
+									ErosionMapManager.getInstance().revertDisabledBlocksAllLoaded(ctx.getSource().getServer());
 									ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] Config reloaded."), true);
 									return 1;
 								}))));
