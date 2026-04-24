@@ -34,7 +34,7 @@ public class HoeItemMixin {
         World world = context.getWorld();
         BlockState state = world.getBlockState(pos);
 
-        if (!state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
+        if (!state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK) && !state.isOf(TRMTBlocks.ERODED_DIRT)) {
             return;
         }
 

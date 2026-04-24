@@ -1,6 +1,7 @@
 package milkucha.trmt.mixin;
 
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -32,7 +33,7 @@ public class ShovelItemMixin {
         World world = context.getWorld();
         BlockState state = world.getBlockState(pos);
 
-        if (!state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
+        if (!state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK) && !state.isOf(TRMTBlocks.ERODED_DIRT)) {
             return;
         }
 
@@ -41,6 +42,7 @@ public class ShovelItemMixin {
         if (!world.isClient) {
             world.setBlockState(pos, Blocks.DIRT_PATH.getDefaultState(),
                     Block.NOTIFY_ALL | Block.REDRAW_ON_MAIN_THREAD);
+            ErosionMapManager.getInstance().removeEntry(pos);
             if (player != null) {
                 context.getStack().damage(1, player,
                         context.getHand() == Hand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);

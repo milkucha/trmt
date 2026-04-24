@@ -22,18 +22,23 @@ import java.net.URI;
 public abstract class DisconnectedScreenMixin extends Screen {
 
     @Final @Shadow private DisconnectionInfo info;
+    @Unique private ButtonWidget trmt$backButton;
     @Unique private ButtonWidget trmt$downloadButton;
 
     protected DisconnectedScreenMixin(Text title) {
         super(title);
     }
 
+    // Creates the button and stores a reference to the Back button.
+    // Position may be pre-layout at this point; initTabNavigation() corrects it.
     @Inject(method = "init()V", at = @At("TAIL"))
     private void trmt$addUpdateButton(CallbackInfo ci) {
+        trmt$backButton = null;
         trmt$downloadButton = null;
         if (this.info == null || !this.info.reason().getString().startsWith("The Roads More Travelled")) return;
         for (Element child : this.children()) {
             if (!(child instanceof ButtonWidget backBtn)) continue;
+            trmt$backButton = backBtn;
             trmt$downloadButton = this.addDrawableChild(
                 ButtonWidget.builder(
                     Text.literal("Download Mod Update"),
@@ -42,6 +47,14 @@ public abstract class DisconnectedScreenMixin extends Screen {
             );
             return;
         }
+    }
+
+    // initTabNavigation() is called after init() and after every resize (via clearAndInit).
+    // By this point the layout has set final positions, so we correct our button here.
+    @Inject(method = "initTabNavigation()V", at = @At("TAIL"))
+    private void trmt$repositionUpdateButton(CallbackInfo ci) {
+        if (trmt$downloadButton == null || trmt$backButton == null) return;
+        trmt$downloadButton.setPosition(trmt$backButton.getX(), trmt$backButton.getY() + 25);
     }
 
 }
