@@ -72,9 +72,9 @@ public class ServerPlayerEntityMixin {
         trmt$lastGroundPos = groundPos.toImmutable();
 
         // Potion of Lightness suppresses erosion for the affected player or their mount.
-        if (!mounted && player.hasStatusEffect(TRMTEffects.LIGHTNESS)) return;
+        if (!mounted && player.hasStatusEffect(TRMTEffects.LIGHTNESS_ENTRY)) return;
         if (vehicle instanceof LivingEntity livingVehicle
-                && livingVehicle.hasStatusEffect(TRMTEffects.LIGHTNESS)) return;
+                && livingVehicle.hasStatusEffect(TRMTEffects.LIGHTNESS_ENTRY)) return;
 
         BlockState state = world.getBlockState(groundPos);
         Block block = state.getBlock();

@@ -5,6 +5,7 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
@@ -16,10 +17,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Persists the full erosion map to world/data/trmt_erosion.dat via Minecraft's PersistentState API.
- * Attached to the overworld's PersistentStateManager; automatically saved on world save.
- */
 public class ErosionPersistentState extends PersistentState {
 
     private static final String DATA_KEY = "trmt_erosion";
@@ -34,11 +31,13 @@ public class ErosionPersistentState extends PersistentState {
         this.chunkMaps = chunkMaps;
     }
 
-    /** Retrieves or creates the persistent state attached to the overworld. */
     public static ErosionPersistentState getOrCreate(MinecraftServer server) {
         return server.getWorld(World.OVERWORLD)
                 .getPersistentStateManager()
-                .getOrCreate(ErosionPersistentState::fromNbt, ErosionPersistentState::new, DATA_KEY);
+                .getOrCreate(new PersistentState.Type<>(
+                        ErosionPersistentState::new,
+                        ErosionPersistentState::fromNbt,
+                        null), DATA_KEY);
     }
 
     // --- Map access ---
@@ -65,7 +64,7 @@ public class ErosionPersistentState extends PersistentState {
     // --- NBT serialization ---
 
     @Override
-    public NbtCompound writeNbt(NbtCompound nbt) {
+    public NbtCompound writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
         NbtList chunkList = new NbtList();
 
         for (Map.Entry<ChunkPos, ChunkErosionMap> chunkEntry : chunkMaps.entrySet()) {
@@ -100,7 +99,7 @@ public class ErosionPersistentState extends PersistentState {
         return nbt;
     }
 
-    private static ErosionPersistentState fromNbt(NbtCompound nbt) {
+    private static ErosionPersistentState fromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
         Map<ChunkPos, ChunkErosionMap> chunkMaps = new HashMap<>();
 
         NbtList chunkList = nbt.getList("chunks", NbtElement.COMPOUND_TYPE);
@@ -117,7 +116,7 @@ public class ErosionPersistentState extends PersistentState {
                         entryNbt.getInt("y"),
                         entryNbt.getInt("z")
                 );
-                Block block = Registries.BLOCK.get(new Identifier(entryNbt.getString("block")));
+                Block block = Registries.BLOCK.get(Identifier.of(entryNbt.getString("block")));
                 float count     = entryNbt.getFloat("count");
                 float threshold = entryNbt.getFloat("threshold");
                 long  lastTime  = entryNbt.getLong("lastTime");

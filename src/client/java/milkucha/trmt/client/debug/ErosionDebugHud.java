@@ -8,6 +8,7 @@ import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.erosion.BlockThresholds;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
@@ -50,7 +51,7 @@ public class ErosionDebugHud {
         HudRenderCallback.EVENT.register(ErosionDebugHud::render);
     }
 
-    private static void render(DrawContext context, float tickDelta) {
+    private static void render(DrawContext context, RenderTickCounter tickCounter) {
         if (!TRMTClientConfig.get().debugHud) return;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) return;

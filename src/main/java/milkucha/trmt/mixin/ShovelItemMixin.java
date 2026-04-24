@@ -4,9 +4,11 @@ import milkucha.trmt.TRMTBlocks;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemUsageContext;
 import net.minecraft.item.ShovelItem;
+import net.minecraft.util.Hand;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.ActionResult;
@@ -40,7 +42,8 @@ public class ShovelItemMixin {
             world.setBlockState(pos, Blocks.DIRT_PATH.getDefaultState(),
                     Block.NOTIFY_ALL | Block.REDRAW_ON_MAIN_THREAD);
             if (player != null) {
-                context.getStack().damage(1, player, p -> p.sendToolBreakStatus(context.getHand()));
+                context.getStack().damage(1, player,
+                        context.getHand() == Hand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);
             }
         }
         cir.setReturnValue(ActionResult.success(world.isClient));

@@ -10,9 +10,10 @@ public final class ErodedGrassBlockModels {
     public static void register() {
         ModelLoadingPlugin.register(pluginContext ->
             pluginContext.modifyModelAfterBake().register((model, context) -> {
-                if (context.id() instanceof ModelIdentifier mid
-                        && "trmt".equals(mid.getNamespace())
-                        && "eroded_grass_block".equals(mid.getPath())) {
+                ModelIdentifier mid = context.topLevelId();
+                if (mid != null
+                        && "trmt".equals(mid.id().getNamespace())
+                        && "eroded_grass_block".equals(mid.id().getPath())) {
                     return new ErodedGrassBlockModel(model);
                 }
                 return model;

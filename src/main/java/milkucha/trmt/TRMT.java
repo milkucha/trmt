@@ -1,17 +1,19 @@
 package milkucha.trmt;
 
 import milkucha.trmt.erosion.ErosionMapManager;
-import milkucha.trmt.network.TRMTPackets;
+import milkucha.trmt.network.SyncChunkPayload;
+import milkucha.trmt.network.UpdateStagePayload;
+import milkucha.trmt.network.VersionCheckPayload;
+import milkucha.trmt.network.VersionResponsePayload;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerLoginNetworking;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.text.Text;
 import org.slf4j.Logger;
@@ -27,40 +29,41 @@ public class TRMT implements ModInitializer {
 		TRMTEffects.register();
 		TRMTPotions.register();
 		TRMTBlocks.register();
-		// Load (or create) persistent erosion state once the server and its worlds are ready.
+
+		PayloadTypeRegistry.configurationS2C().register(VersionCheckPayload.ID, VersionCheckPayload.CODEC);
+		PayloadTypeRegistry.configurationC2S().register(VersionResponsePayload.ID, VersionResponsePayload.CODEC);
+		PayloadTypeRegistry.playS2C().register(SyncChunkPayload.ID, SyncChunkPayload.CODEC);
+		PayloadTypeRegistry.playS2C().register(UpdateStagePayload.ID, UpdateStagePayload.CODEC);
+
+		// During configuration, send our version; client responds with its own version.
+		ServerConfigurationConnectionEvents.CONFIGURE.register((handler, server) -> {
+			if (ServerConfigurationNetworking.canSend(handler, VersionCheckPayload.ID)) {
+				ServerConfigurationNetworking.send(handler, new VersionCheckPayload(getModVersion()));
+			}
+		});
+		ServerConfigurationNetworking.registerGlobalReceiver(VersionResponsePayload.ID,
+			(payload, context) -> {
+				String clientVer = payload.version();
+				String serverVer = getModVersion();
+				if (isClientOutdated(clientVer, serverVer)) {
+					context.networkHandler().disconnect(Text.literal(
+						"The Roads More Travelled (TRMT) client version is outdated (v" + clientVer + ")!\n" +
+						"This server requires v" + serverVer + " or newer.\n" +
+						"Please download the update to join this server."
+					));
+				}
+			});
+
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
 			ErosionMapManager manager = ErosionMapManager.getInstance();
 			manager.loadState(server);
 			manager.migrateGrassEntries(server);
 		});
-		// Send full erosion data to each player when they join (covers existing erosion they'd otherwise miss).
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
 				ErosionMapManager.getInstance().sendFullSyncToPlayer(handler.player));
-		// Reset the erosion manager when the server stops so state does not bleed between sessions.
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> ErosionMapManager.reset());
-// Clear the erosion entry when any block is broken so a freshly placed block always starts from zero.
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) ->
 				ErosionMapManager.getInstance().removeEntry(pos));
-
-		// During login, send server version; disconnect client if its version is older.
-		ServerLoginConnectionEvents.QUERY_START.register((handler, server, sender, synchronizer) -> {
-			PacketByteBuf buf = PacketByteBufs.create();
-			buf.writeString(getModVersion());
-			sender.sendPacket(TRMTPackets.VERSION_CHECK, buf);
-		});
-		ServerLoginNetworking.registerGlobalReceiver(TRMTPackets.VERSION_CHECK,
-			(server, handler, understood, buf, synchronizer, responseSender) -> {
-				if (!understood) return;
-				String clientVer = buf.readString(32767);
-				String serverVer = getModVersion();
-				if (isClientOutdated(clientVer, serverVer)) {
-					server.execute(() -> handler.disconnect(Text.literal(
-						"The Roads More Travelled (TRMT) client version is outdated (v" + clientVer + ")!\n" +
-						"This server requires v" + serverVer + " or newer.\n" +
-						"Please download the update to join this server."
-					)));
-				}
-			});
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
 				dispatcher.register(CommandManager.literal("trmt")
