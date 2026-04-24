@@ -22,6 +22,7 @@ public abstract class DisconnectedScreenMixin extends Screen {
 
     @Shadow private Text reason;
     @Unique private ButtonWidget trmt$downloadButton;
+    @Unique private ButtonWidget trmt$backButton;
 
     protected DisconnectedScreenMixin(Text title) {
         super(title);
@@ -30,9 +31,11 @@ public abstract class DisconnectedScreenMixin extends Screen {
     @Inject(method = "init()V", at = @At("TAIL"))
     private void trmt$addUpdateButton(CallbackInfo ci) {
         trmt$downloadButton = null;
+        trmt$backButton = null;
         if (this.reason == null || !this.reason.getString().startsWith("The Roads More Travelled")) return;
         for (Element child : this.children()) {
             if (!(child instanceof ButtonWidget backBtn)) continue;
+            trmt$backButton = backBtn;
             trmt$downloadButton = this.addDrawableChild(
                 ButtonWidget.builder(
                     Text.literal("Download Mod Update"),
@@ -41,6 +44,12 @@ public abstract class DisconnectedScreenMixin extends Screen {
             );
             return;
         }
+    }
+
+    @Inject(method = "initTabNavigation()V", at = @At("TAIL"))
+    private void trmt$repositionUpdateButton(CallbackInfo ci) {
+        if (trmt$downloadButton == null || trmt$backButton == null) return;
+        trmt$downloadButton.setPosition(trmt$backButton.getX(), trmt$backButton.getY() + 25);
     }
 
 }

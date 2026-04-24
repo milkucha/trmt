@@ -1,6 +1,7 @@
 package milkucha.trmt.mixin;
 
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -17,10 +18,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Extends shovel path-flattening to cover trmt:eroded_coarse_dirt,
- * matching the behaviour of its vanilla counterpart (coarse_dirt).
- */
 @Mixin(ShovelItem.class)
 public class ShovelItemMixin {
 
@@ -30,7 +27,7 @@ public class ShovelItemMixin {
         World world = context.getWorld();
         BlockState state = world.getBlockState(pos);
 
-        if (!state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
+        if (!state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK) && !state.isOf(TRMTBlocks.ERODED_DIRT)) {
             return;
         }
 
@@ -39,6 +36,7 @@ public class ShovelItemMixin {
         if (!world.isClient) {
             world.setBlockState(pos, Blocks.DIRT_PATH.getDefaultState(),
                     Block.NOTIFY_ALL | Block.REDRAW_ON_MAIN_THREAD);
+            ErosionMapManager.getInstance().removeEntry(pos);
             if (player != null) {
                 context.getStack().damage(1, player, p -> p.sendToolBreakStatus(context.getHand()));
             }
