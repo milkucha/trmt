@@ -4,7 +4,7 @@ import net.minecraft.block.Block;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
-import net.minecraft.registry.Registries;
+import net.minecraft.util.registry.Registry;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
@@ -81,7 +81,7 @@ public class ErosionPersistentState extends PersistentState {
                 entryNbt.putInt("x", pos.getX());
                 entryNbt.putInt("y", pos.getY());
                 entryNbt.putInt("z", pos.getZ());
-                entryNbt.putString("block", Registries.BLOCK.getId(erosion.getTrackedBlock()).toString());
+                entryNbt.putString("block", Registry.BLOCK.getId(erosion.getTrackedBlock()).toString());
                 entryNbt.putFloat("count", erosion.getWalkedOnCount());
                 entryNbt.putFloat("threshold", erosion.getThreshold());
                 entryNbt.putLong("lastTime", erosion.getLastTouchedGameTime());
@@ -117,7 +117,7 @@ public class ErosionPersistentState extends PersistentState {
                         entryNbt.getInt("y"),
                         entryNbt.getInt("z")
                 );
-                Block block = Registries.BLOCK.get(new Identifier(entryNbt.getString("block")));
+                Block block = Registry.BLOCK.get(new Identifier(entryNbt.getString("block")));
                 float count     = entryNbt.getFloat("count");
                 float threshold = entryNbt.getFloat("threshold");
                 long  lastTime  = entryNbt.getLong("lastTime");

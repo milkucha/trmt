@@ -5,20 +5,19 @@ import net.minecraft.item.Items;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.Potions;
 import net.minecraft.recipe.BrewingRecipeRegistry;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.registry.Registry;
 
 public final class TRMTPotions {
 
     public static final Potion LIGHTNESS = Registry.register(
-            Registries.POTION,
+            Registry.POTION,
             new Identifier("trmt", "lightness"),
             new Potion("trmt.lightness", new StatusEffectInstance(TRMTEffects.LIGHTNESS, 3600))
     );
 
     public static final Potion LONG_LIGHTNESS = Registry.register(
-            Registries.POTION,
+            Registry.POTION,
             new Identifier("trmt", "long_lightness"),
             new Potion("trmt.lightness", new StatusEffectInstance(TRMTEffects.LIGHTNESS, 9600))
     );

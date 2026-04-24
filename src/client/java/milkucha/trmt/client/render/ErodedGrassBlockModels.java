@@ -1,22 +1,10 @@
 package milkucha.trmt.client.render;
 
-import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
-import net.minecraft.client.util.ModelIdentifier;
-
+// ModelLoadingPlugin (fabric-model-loading-api-v1) does not exist in Fabric API 0.77.x (1.19.2).
+// CUTOUT_MIPPED render layer registered in TRMTClient is sufficient for vanilla rendering.
 public final class ErodedGrassBlockModels {
 
     private ErodedGrassBlockModels() {}
 
-    public static void register() {
-        ModelLoadingPlugin.register(pluginContext ->
-            pluginContext.modifyModelAfterBake().register((model, context) -> {
-                if (context.id() instanceof ModelIdentifier mid
-                        && "trmt".equals(mid.getNamespace())
-                        && "eroded_grass_block".equals(mid.getPath())) {
-                    return new ErodedGrassBlockModel(model);
-                }
-                return model;
-            })
-        );
-    }
+    public static void register() {}
 }

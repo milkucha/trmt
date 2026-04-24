@@ -3,6 +3,7 @@ package milkucha.trmt.client.render;
 import net.fabricmc.fabric.api.renderer.v1.RendererAccess;
 import net.fabricmc.fabric.api.renderer.v1.material.BlendMode;
 import net.fabricmc.fabric.api.renderer.v1.material.RenderMaterial;
+import net.fabricmc.fabric.api.renderer.v1.model.FabricBakedModel;
 import net.fabricmc.fabric.api.renderer.v1.render.RenderContext;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.render.model.BakedModel;
@@ -13,6 +14,7 @@ import net.minecraft.client.texture.Sprite;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.random.Random;
 import net.minecraft.world.BlockRenderView;
 
 import java.util.List;
@@ -24,8 +26,11 @@ import java.util.function.Supplier;
  * eroded-top overlay and the grass_block_side_overlay are discarded correctly.
  * Stage texture selection and FACING Y-rotation are already baked into the wrapped
  * model by the block-state system, so this class needs no per-position lookups.
+ *
+ * NOTE: In 1.19.2, ErodedGrassBlockModels.register() is a no-op (ModelLoadingPlugin
+ * unavailable), so this class is never instantiated. It is kept for source parity only.
  */
-public class ErodedGrassBlockModel implements BakedModel {
+public class ErodedGrassBlockModel implements BakedModel, FabricBakedModel {
 
     private final BakedModel wrapped;
     private static RenderMaterial cutoutMaterial;
@@ -34,7 +39,7 @@ public class ErodedGrassBlockModel implements BakedModel {
         if (cutoutMaterial == null) {
             cutoutMaterial = RendererAccess.INSTANCE.getRenderer()
                     .materialFinder()
-                    .blendMode(BlendMode.CUTOUT)
+                    .blendMode(0, BlendMode.CUTOUT)
                     .find();
         }
         return cutoutMaterial;
@@ -49,7 +54,7 @@ public class ErodedGrassBlockModel implements BakedModel {
 
     @Override
     public void emitBlockQuads(BlockRenderView world, BlockState state, BlockPos pos,
-                               Supplier<net.minecraft.util.math.random.Random> randomSupplier,
+                               Supplier<Random> randomSupplier,
                                RenderContext context) {
         context.pushTransform(quad -> {
             if (quad.nominalFace() != Direction.DOWN) {
@@ -57,19 +62,18 @@ public class ErodedGrassBlockModel implements BakedModel {
             }
             return true;
         });
-        wrapped.emitBlockQuads(world, state, pos, randomSupplier, context);
+        ((FabricBakedModel) wrapped).emitBlockQuads(world, state, pos, randomSupplier, context);
         context.popTransform();
     }
 
     @Override
-    public void emitItemQuads(ItemStack stack, Supplier<net.minecraft.util.math.random.Random> randomSupplier,
+    public void emitItemQuads(ItemStack stack, Supplier<Random> randomSupplier,
                                RenderContext context) {
-        wrapped.emitItemQuads(stack, randomSupplier, context);
+        ((FabricBakedModel) wrapped).emitItemQuads(stack, randomSupplier, context);
     }
 
     @Override
-    public List<BakedQuad> getQuads(BlockState state, Direction face,
-                                    net.minecraft.util.math.random.Random random) {
+    public List<BakedQuad> getQuads(BlockState state, Direction face, Random random) {
         return wrapped.getQuads(state, face, random);
     }
 

@@ -1,8 +1,8 @@
 package milkucha.trmt.client.mixin;
 
 import milkucha.trmt.network.TRMTPackets;
-import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Element;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.gui.screen.DisconnectedScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -34,10 +34,9 @@ public abstract class DisconnectedScreenMixin extends Screen {
         for (Element child : this.children()) {
             if (!(child instanceof ButtonWidget backBtn)) continue;
             trmt$downloadButton = this.addDrawableChild(
-                ButtonWidget.builder(
+                new ButtonWidget(backBtn.x, backBtn.y + 25, backBtn.getWidth(), 20,
                     Text.literal("Download Mod Update"),
-                    btn -> Util.getOperatingSystem().open(URI.create(TRMTPackets.MODRINTH_URL))
-                ).dimensions(backBtn.getX(), backBtn.getY() + 25, backBtn.getWidth(), 20).build()
+                    btn -> Util.getOperatingSystem().open(URI.create(TRMTPackets.MODRINTH_URL)))
             );
             return;
         }
@@ -45,12 +44,12 @@ public abstract class DisconnectedScreenMixin extends Screen {
 
     // Sync position to the back button every frame so any resize is corrected immediately.
     @Inject(method = "render", at = @At("HEAD"))
-    private void trmt$syncButtonPosition(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    private void trmt$syncButtonPosition(MatrixStack matrices, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (trmt$downloadButton == null) return;
         for (Element child : this.children()) {
             if (child instanceof ButtonWidget backBtn && backBtn != trmt$downloadButton) {
-                ((ClickableWidgetPositionAccessor) trmt$downloadButton).trmt$setX(backBtn.getX());
-                ((ClickableWidgetPositionAccessor) trmt$downloadButton).trmt$setY(backBtn.getY() + 25);
+                ((ClickableWidgetPositionAccessor) trmt$downloadButton).trmt$setX(backBtn.x);
+                ((ClickableWidgetPositionAccessor) trmt$downloadButton).trmt$setY(backBtn.y + 25);
                 return;
             }
         }

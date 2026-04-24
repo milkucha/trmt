@@ -38,7 +38,7 @@ public class HoeItemMixin {
 
         // Hoes can only till if the block above is air or replaceable — same rule as vanilla.
         BlockState above = world.getBlockState(pos.up());
-        if (!above.isAir() && !above.isReplaceable()) {
+        if (!above.isAir() && !above.getMaterial().isReplaceable()) {
             cir.setReturnValue(ActionResult.PASS);
             return;
         }

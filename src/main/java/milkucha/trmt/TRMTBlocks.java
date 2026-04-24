@@ -7,9 +7,8 @@ import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.MapColor;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.registry.Registry;
 
 /**
  * Registry for all custom TRMT blocks.
@@ -21,7 +20,7 @@ public final class TRMTBlocks {
      * grass stage. Never obtainable as an item.
      */
     public static final Block ERODED_DIRT = Registry.register(
-            Registries.BLOCK,
+            Registry.BLOCK,
             new Identifier("trmt", "eroded_dirt"),
             new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.DIRT).ticksRandomly())
     );
@@ -31,7 +30,7 @@ public final class TRMTBlocks {
      * Never obtainable as an item.
      */
     public static final Block ERODED_COARSE_DIRT = Registry.register(
-            Registries.BLOCK,
+            Registry.BLOCK,
             new Identifier("trmt", "eroded_coarse_dirt"),
             new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.COARSE_DIRT).ticksRandomly())
     );
@@ -42,7 +41,7 @@ public final class TRMTBlocks {
      * Never obtainable as an item.
      */
     public static final Block ERODED_GRASS_BLOCK = Registry.register(
-            Registries.BLOCK,
+            Registry.BLOCK,
             new Identifier("trmt", "eroded_grass_block"),
             new ErodedGrassBlock(AbstractBlock.Settings.copy(Blocks.GRASS_BLOCK).mapColor(MapColor.DIRT_BROWN).ticksRandomly())
     );
@@ -52,7 +51,7 @@ public final class TRMTBlocks {
      * sand texture on all other faces. Never obtainable as an item.
      */
     public static final Block ERODED_SAND = Registry.register(
-            Registries.BLOCK,
+            Registry.BLOCK,
             new Identifier("trmt", "eroded_sand"),
             new ErodedSandBlock(AbstractBlock.Settings.copy(Blocks.SAND).mapColor(MapColor.TERRACOTTA_YELLOW).nonOpaque().ticksRandomly())
     );
