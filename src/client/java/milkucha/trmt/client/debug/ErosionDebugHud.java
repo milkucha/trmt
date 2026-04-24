@@ -161,7 +161,7 @@ public class ErosionDebugHud {
             float b = ( color        & 0xFF) / 255.0f;
             RenderSystem.setShaderColor(r, g, b, 1.0f);
         }
-        RenderSystem.setShaderTexture(0, sprite.getId());
+        RenderSystem.setShaderTexture(0, sprite.getAtlas().getId());
         DrawableHelper.drawSprite(matrixStack, x, y, 0, CELL, CELL, sprite);
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
     }
