@@ -12,8 +12,9 @@ A dynamic terrain mod that adds a gradual erosion system to the game, slowly tra
 - Erosion thresholds are randomly determined by configurable ranges assigned to each block type, making erosion happen in a more organic, less determnistic way.
 - Erosion can be triggered by both players and mounts. The strength of the erosion is controlled by a configurable multiplier. By default, mounts erode terrain three times faster than players on foot.
 - Eroded blocks that have not been walked on for a long time gradually revert to previous stages of erosion, simulating terrain recovery. The amount of time is controlled by a configurable de-erosion timeout window (measured in Minecraft days).
-- Toggles for erodable blocks, erosion thresholds, multipliers and de-erosion timeout windows can all be modified via the config file
+- Toggles for erodable blocks, erosion thresholds, multipliers and de-erosion timeout windows can all be modified via the config file*
 
+*Default values might feel a little **too** gradual for some! Feel free to experiment with them and share feedback if you're keen. Increasing the player multiplier will make the erosion much faster to appear.
 
 ## Features
 
