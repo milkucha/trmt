@@ -24,7 +24,6 @@ A dynamic terrain mod that adds a gradual erosion system to the game, slowly tra
 - **Multiplayer supported**
 
 ## Showcase
-<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/OvsNVaFiK1Y" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
 
 <div align="center">
 <img src="https://i.imgur.com/LOvPlVV.png" alt="map view" style="display: block; margin: 0 auto;">
@@ -61,5 +60,6 @@ Compatible with Xaero's World Map, JourneyMap and VoxelMap. The roads more trave
 - Planned port to Forge if enough people are interested as well!
 
 <br></br>
-_<center>Traveller, there is no road. The road is made by walking.</center>_<center>Antonio Machado</center>
+_<center>Traveller, there is no road. The road is made by walking.</center>_
+<center>Antonio Machado</center>
 <br></br>
