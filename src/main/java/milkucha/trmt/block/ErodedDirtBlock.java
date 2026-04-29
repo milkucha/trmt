@@ -10,7 +10,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.StateManager;
-import net.minecraft.state.property.DirectionProperty;
+import net.minecraft.state.property.EnumProperty;
 import net.minecraft.state.property.IntProperty;
 import net.minecraft.state.property.Properties;
 import net.minecraft.util.math.BlockPos;
@@ -31,7 +31,7 @@ public class ErodedDirtBlock extends Block {
     private static final VoxelShape SHAPE = Block.createCuboidShape(0, 0, 0, 16, 16, 16);
 
     /** Preserves the rotation of the eroded grass stage that preceded this block. */
-    public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;
+    public static final EnumProperty<Direction> FACING = Properties.HORIZONTAL_FACING;
 
     /**
      * Visual erosion stage for eroded_dirt (0–3).

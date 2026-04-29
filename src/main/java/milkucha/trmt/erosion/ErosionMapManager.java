@@ -197,7 +197,7 @@ public class ErosionMapManager {
         int startX = chunkPos.getStartX();
         int startZ = chunkPos.getStartZ();
         int minY   = world.getBottomY();
-        int maxY   = world.getTopY();
+        int maxY   = world.getTopYInclusive() + 1;
 
         BlockPos.Mutable mutable = new BlockPos.Mutable();
         for (int x = startX; x < startX + 16; x++) {

@@ -33,9 +33,9 @@ public final class TRMTPotions {
         );
 
         FabricBrewingRecipeRegistryBuilder.BUILD.register(builder -> {
-            RegistryEntry<Potion> lightnessEntry = Registries.POTION.entryOf(
+            RegistryEntry<Potion> lightnessEntry = Registries.POTION.getOrThrow(
                     RegistryKey.of(RegistryKeys.POTION, Identifier.of("trmt", "lightness")));
-            RegistryEntry<Potion> longLightnessEntry = Registries.POTION.entryOf(
+            RegistryEntry<Potion> longLightnessEntry = Registries.POTION.getOrThrow(
                     RegistryKey.of(RegistryKeys.POTION, Identifier.of("trmt", "long_lightness")));
             builder.registerPotionRecipe(Potions.AWKWARD, Ingredient.ofItems(Items.FEATHER), lightnessEntry);
             builder.registerPotionRecipe(lightnessEntry, Ingredient.ofItems(Items.REDSTONE), longLightnessEntry);

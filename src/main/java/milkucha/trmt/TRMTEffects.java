@@ -22,7 +22,7 @@ public final class TRMTEffects {
     private TRMTEffects() {}
 
     public static void register() {
-        LIGHTNESS_ENTRY = Registries.STATUS_EFFECT.entryOf(
+        LIGHTNESS_ENTRY = Registries.STATUS_EFFECT.getOrThrow(
                 RegistryKey.of(RegistryKeys.STATUS_EFFECT, Identifier.of("trmt", "lightness"))
         );
     }
