@@ -1,4 +1,5 @@
 {
+  "render_type": "minecraft:cutout_mipped",
   "elements": [
     {
       "comment": "Base cube — dirt texture on all faces, no tint",

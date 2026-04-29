@@ -4,17 +4,17 @@ import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.block.ErodedDirtBlock;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.erosion.ErosionMapManager;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.BoneMealItem;
-import net.minecraft.item.ItemUsageContext;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BoneMealItem;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -23,65 +23,63 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(BoneMealItem.class)
 public class BoneMealItemMixin {
 
-    @Inject(method = "useOnBlock", at = @At("HEAD"), cancellable = true)
-    private void trmt$onBoneMealUse(ItemUsageContext context, CallbackInfoReturnable<ActionResult> cir) {
-        World world = context.getWorld();
-        if (!(world instanceof ServerWorld serverWorld)) return;
+    @Inject(method = "useOn", at = @At("HEAD"), cancellable = true)
+    private void trmt$onBoneMealUse(UseOnContext context, CallbackInfoReturnable<InteractionResult> cir) {
+        Level level = context.getLevel();
+        if (!(level instanceof ServerLevel serverLevel)) return;
 
-        BlockPos pos = context.getBlockPos();
-        BlockState state = world.getBlockState(pos);
+        BlockPos pos = context.getClickedPos();
+        BlockState state = level.getBlockState(pos);
         Block block = state.getBlock();
 
         ErosionMapManager manager = ErosionMapManager.getInstance();
-        long currentTime = serverWorld.getTime();
+        long currentTime = serverLevel.getGameTime();
 
-        if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
-            int stage = state.get(ErodedGrassBlock.STAGE);
+        if (block == TRMTBlocks.ERODED_GRASS_BLOCK.get()) {
+            int stage = state.getValue(ErodedGrassBlock.STAGE);
             if (stage > 0) {
-                world.setBlockState(pos, state.with(ErodedGrassBlock.STAGE, stage - 1), Block.NOTIFY_ALL);
+                level.setBlock(pos, state.setValue(ErodedGrassBlock.STAGE, stage - 1), Block.UPDATE_ALL);
                 manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, currentTime);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK.get(), currentTime);
             } else {
-                // Stage 0 → fully recovered, revert to vanilla grass.
-                world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
+                level.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
                 manager.removeEntry(pos);
             }
-        } else if (block == TRMTBlocks.ERODED_DIRT) {
-            int stage = state.get(ErodedDirtBlock.STAGE);
-            Direction facing = state.get(ErodedDirtBlock.FACING);
+        } else if (block == TRMTBlocks.ERODED_DIRT.get()) {
+            int stage = state.getValue(ErodedDirtBlock.STAGE);
+            Direction facing = state.getValue(ErodedDirtBlock.FACING);
             if (stage > 0) {
-                world.setBlockState(pos, state.with(ErodedDirtBlock.STAGE, stage - 1), Block.NOTIFY_ALL);
+                level.setBlock(pos, state.setValue(ErodedDirtBlock.STAGE, stage - 1), Block.UPDATE_ALL);
                 manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT.get(), currentTime);
             } else {
-                // Stage 0 → revert to most-eroded grass stage, preserving facing.
-                world.setBlockState(pos,
-                        TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
-                                .with(ErodedGrassBlock.FACING, facing)
-                                .with(ErodedGrassBlock.STAGE, 4),
-                        Block.NOTIFY_ALL);
+                level.setBlock(pos,
+                    TRMTBlocks.ERODED_GRASS_BLOCK.get().defaultBlockState()
+                        .setValue(ErodedGrassBlock.FACING, facing)
+                        .setValue(ErodedGrassBlock.STAGE, 4),
+                    Block.UPDATE_ALL);
                 manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, currentTime);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK.get(), currentTime);
             }
-        } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
-            Direction facing = state.get(ErodedDirtBlock.FACING);
-            world.setBlockState(pos,
-                    TRMTBlocks.ERODED_DIRT.getDefaultState()
-                            .with(ErodedDirtBlock.FACING, facing)
-                            .with(ErodedDirtBlock.STAGE, 3),
-                    Block.NOTIFY_ALL);
+        } else if (block == TRMTBlocks.ERODED_COARSE_DIRT.get()) {
+            Direction facing = state.getValue(ErodedDirtBlock.FACING);
+            level.setBlock(pos,
+                TRMTBlocks.ERODED_DIRT.get().defaultBlockState()
+                    .setValue(ErodedDirtBlock.FACING, facing)
+                    .setValue(ErodedDirtBlock.STAGE, 3),
+                Block.UPDATE_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT.get(), currentTime);
         } else {
             return;
         }
 
-        PlayerEntity player = context.getPlayer();
+        Player player = context.getPlayer();
         if (player != null && !player.isCreative()) {
-            context.getStack().decrement(1);
+            context.getItemInHand().shrink(1);
         }
 
-        serverWorld.syncWorldEvent(2005, pos, 0);
-        cir.setReturnValue(ActionResult.SUCCESS);
+        serverLevel.levelEvent(2005, pos, 0);
+        cir.setReturnValue(InteractionResult.SUCCESS);
     }
 }

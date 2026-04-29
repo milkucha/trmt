@@ -1,7 +1,7 @@
 package milkucha.trmt.client.network;
 
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ChunkPos;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -65,7 +65,7 @@ public final class ClientErosionCache {
 
     /**
      * Updates (or removes) data for a single block.
-     * stage ≤ 0 clears the entry.
+     * stage <= 0 clears the entry.
      */
     public void setEntry(BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {
         ChunkPos chunkPos = new ChunkPos(pos);
@@ -77,7 +77,7 @@ public final class ClientErosionCache {
             }
         } else {
             chunks.computeIfAbsent(chunkPos, k -> new ConcurrentHashMap<>())
-                  .put(pos.toImmutable(), new Entry(stage, walkedOnCount, threshold, lastTouchedGameTime));
+                  .put(pos.immutable(), new Entry(stage, walkedOnCount, threshold, lastTouchedGameTime));
         }
     }
 

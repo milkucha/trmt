@@ -1,29 +1,15 @@
 package milkucha.trmt;
 
 import milkucha.trmt.effect.LightnessEffect;
-import net.minecraft.entity.effect.StatusEffect;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.effect.MobEffect;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class TRMTEffects {
+    public static final DeferredRegister<MobEffect> MOB_EFFECTS = DeferredRegister.create(Registries.MOB_EFFECT, TRMT.MOD_ID);
 
-    public static final StatusEffect LIGHTNESS = Registry.register(
-            Registries.STATUS_EFFECT,
-            Identifier.of("trmt", "lightness"),
-            new LightnessEffect()
-    );
-
-    public static RegistryEntry<StatusEffect> LIGHTNESS_ENTRY;
+    public static final DeferredHolder<MobEffect, LightnessEffect> LIGHTNESS = MOB_EFFECTS.register("lightness", LightnessEffect::new);
 
     private TRMTEffects() {}
-
-    public static void register() {
-        LIGHTNESS_ENTRY = Registries.STATUS_EFFECT.entryOf(
-                RegistryKey.of(RegistryKeys.STATUS_EFFECT, Identifier.of("trmt", "lightness"))
-        );
-    }
 }

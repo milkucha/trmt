@@ -2,7 +2,7 @@ package milkucha.trmt;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.fabricmc.loader.api.FabricLoader;
+import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -106,7 +106,7 @@ public final class TRMTConfig {
 
     /**
      * Loads config from disk, or writes a default config if the file does not exist.
-     * Called once from {@link TRMT#onInitialize()}.
+     * Called once from the mod constructor.
      */
     public static void load() {
         Path path = configPath();
@@ -144,6 +144,6 @@ public final class TRMTConfig {
     }
 
     private static Path configPath() {
-        return FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME);
+        return FMLPaths.CONFIGDIR.get().resolve(FILE_NAME);
     }
 }
