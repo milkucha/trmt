@@ -3,41 +3,27 @@ package milkucha.trmt;
 import milkucha.trmt.block.ErodedDirtBlock;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.block.ErodedSandBlock;
-import net.minecraft.block.AbstractBlock;
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.MapColor;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.util.Identifier;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.MapColor;
+import net.neoforged.neoforge.registries.DeferredBlock;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class TRMTBlocks {
+    public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(TRMT.MOD_ID);
 
-    public static final Block ERODED_DIRT = Registry.register(
-            Registries.BLOCK,
-            Identifier.of("trmt", "eroded_dirt"),
-            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.DIRT).ticksRandomly())
-    );
+    public static final DeferredBlock<Block> ERODED_DIRT = BLOCKS.register("eroded_dirt",
+        () -> new ErodedDirtBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.DIRT).randomTicks()));
 
-    public static final Block ERODED_COARSE_DIRT = Registry.register(
-            Registries.BLOCK,
-            Identifier.of("trmt", "eroded_coarse_dirt"),
-            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.COARSE_DIRT).ticksRandomly())
-    );
+    public static final DeferredBlock<Block> ERODED_COARSE_DIRT = BLOCKS.register("eroded_coarse_dirt",
+        () -> new ErodedDirtBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.COARSE_DIRT).randomTicks()));
 
-    public static final Block ERODED_GRASS_BLOCK = Registry.register(
-            Registries.BLOCK,
-            Identifier.of("trmt", "eroded_grass_block"),
-            new ErodedGrassBlock(AbstractBlock.Settings.copy(Blocks.GRASS_BLOCK).mapColor(MapColor.DIRT_BROWN).ticksRandomly())
-    );
+    public static final DeferredBlock<Block> ERODED_GRASS_BLOCK = BLOCKS.register("eroded_grass_block",
+        () -> new ErodedGrassBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.GRASS_BLOCK).mapColor(MapColor.DIRT).randomTicks()));
 
-    public static final Block ERODED_SAND = Registry.register(
-            Registries.BLOCK,
-            Identifier.of("trmt", "eroded_sand"),
-            new ErodedSandBlock(AbstractBlock.Settings.copy(Blocks.SAND).mapColor(MapColor.TERRACOTTA_YELLOW).nonOpaque().ticksRandomly())
-    );
+    public static final DeferredBlock<Block> ERODED_SAND = BLOCKS.register("eroded_sand",
+        () -> new ErodedSandBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.SAND).mapColor(MapColor.TERRACOTTA_YELLOW).noOcclusion().randomTicks()));
 
     private TRMTBlocks() {}
-
-    public static void register() {}
 }

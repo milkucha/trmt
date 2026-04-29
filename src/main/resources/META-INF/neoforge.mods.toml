@@ -1,0 +1,30 @@
+modLoader = "javafml"
+loaderVersion = "${loader_version}"
+license = "CC BY-NC 4.0"
+
+[[mods]]
+    modId = "${mod_id}"
+    version = "${version}"
+    displayName = "TRMT - The Roads More Travelled"
+    description = "Foot-traffic erosion for Minecraft blocks."
+    logoFile = "assets/trmt/icon.png"
+
+[[mixins]]
+    config = "trmt.mixins.json"
+
+[[mixins]]
+    config = "trmt.client.mixins.json"
+
+[[dependencies.trmt]]
+    modId = "neoforge"
+    type = "required"
+    versionRange = "[${neoforge_version},)"
+    ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies.trmt]]
+    modId = "minecraft"
+    type = "required"
+    versionRange = "[${minecraft_version},1.21.2)"
+    ordering = "NONE"
+    side = "BOTH"

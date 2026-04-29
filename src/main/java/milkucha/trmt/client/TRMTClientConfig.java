@@ -2,7 +2,7 @@ package milkucha.trmt.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.fabricmc.loader.api.FabricLoader;
+import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -62,6 +62,6 @@ public final class TRMTClientConfig {
     }
 
     private static Path configPath() {
-        return FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME);
+        return FMLPaths.CONFIGDIR.get().resolve(FILE_NAME);
     }
 }

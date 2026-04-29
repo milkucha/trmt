@@ -2,33 +2,27 @@ package milkucha.trmt.erosion;
 
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.LeavesBlock;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LeavesBlock;
+import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
-/**
- * Per-block-type threshold ranges for the erosion transformation chain.
- * Ranges are read from {@link TRMTConfig} so they can be tuned via
- * {@code config/trmt.json} without recompiling.
- */
 public final class BlockThresholds {
 
-    /** All vegetation blocks that are subject to erosion trampling. */
     public static final Set<Block> VEGETATION = Set.of(
-            Blocks.SHORT_GRASS, Blocks.TALL_GRASS,
-            Blocks.DANDELION, Blocks.POPPY, Blocks.BLUE_ORCHID, Blocks.ALLIUM,
-            Blocks.AZURE_BLUET, Blocks.RED_TULIP, Blocks.ORANGE_TULIP,
-            Blocks.WHITE_TULIP, Blocks.PINK_TULIP, Blocks.OXEYE_DAISY,
-            Blocks.CORNFLOWER, Blocks.LILY_OF_THE_VALLEY, Blocks.WITHER_ROSE,
-            Blocks.SUNFLOWER, Blocks.LILAC, Blocks.ROSE_BUSH, Blocks.PEONY
+        Blocks.SHORT_GRASS, Blocks.TALL_GRASS,
+        Blocks.DANDELION, Blocks.POPPY, Blocks.BLUE_ORCHID, Blocks.ALLIUM,
+        Blocks.AZURE_BLUET, Blocks.RED_TULIP, Blocks.ORANGE_TULIP,
+        Blocks.WHITE_TULIP, Blocks.PINK_TULIP, Blocks.OXEYE_DAISY,
+        Blocks.CORNFLOWER, Blocks.LILY_OF_THE_VALLEY, Blocks.WITHER_ROSE,
+        Blocks.SUNFLOWER, Blocks.LILAC, Blocks.ROSE_BUSH, Blocks.PEONY
     );
 
     private BlockThresholds() {}
@@ -41,29 +35,19 @@ public final class BlockThresholds {
         return block instanceof LeavesBlock;
     }
 
-    /**
-     * Deterministic rotation index (0–3) derived from block position, matching the UV
-     * rotation applied to eroded grass top textures in {@code GrassErosionProxyModel}.
-     * 0 = 0°, 1 = 90° CW, 2 = 180°, 3 = 270° CW.
-     */
     public static int posRotation(BlockPos pos) {
         int h = (pos.getX() * 1619) ^ (pos.getZ() * 31337);
         return ((h >>> 4) ^ (h >>> 8)) & 3;
     }
 
-    /**
-     * Returns a random threshold for the given block type, drawn uniformly from its
-     * configured range.  Call this once per block position when it first becomes tracked.
-     */
     public static float randomThreshold(Block block) {
-        // Eroded variants use the same range as their vanilla counterpart.
-        if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
+        if (block == TRMTBlocks.ERODED_GRASS_BLOCK.get()) {
             block = Blocks.GRASS_BLOCK;
-        } else if (block == TRMTBlocks.ERODED_DIRT) {
+        } else if (block == TRMTBlocks.ERODED_DIRT.get()) {
             block = Blocks.DIRT;
-        } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
+        } else if (block == TRMTBlocks.ERODED_COARSE_DIRT.get()) {
             block = Blocks.COARSE_DIRT;
-        } else if (block == TRMTBlocks.ERODED_SAND) {
+        } else if (block == TRMTBlocks.ERODED_SAND.get()) {
             block = Blocks.SAND;
         }
 
@@ -86,7 +70,6 @@ public final class BlockThresholds {
             range = cfg.erosionThresholds.grass;
         }
         float min = range.min, max = range.max;
-
         if (max <= min) return min;
         return min + ThreadLocalRandom.current().nextFloat() * (max - min);
     }
@@ -97,20 +80,16 @@ public final class BlockThresholds {
         Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST
     };
 
-    /**
-     * Returns true if none of the 12 slope-aware horizontal neighbours (4 directions × 3 heights)
-     * are an eroded block — meaning this block is an isolated erosion patch and should de-erode faster.
-     */
-    public static boolean isIsolated(World world, BlockPos pos, ErosionMapManager manager) {
+    public static boolean isIsolated(Level level, BlockPos pos, ErosionMapManager manager) {
         for (Direction dir : HORIZONTALS) {
             for (int dy = -1; dy <= 1; dy++) {
-                BlockPos neighbor = pos.offset(dir).up(dy);
-                BlockState neighborState = world.getBlockState(neighbor);
+                BlockPos neighbor = pos.relative(dir).above(dy);
+                BlockState neighborState = level.getBlockState(neighbor);
                 Block neighborBlock = neighborState.getBlock();
-                if (neighborBlock == TRMTBlocks.ERODED_GRASS_BLOCK
-                        || neighborBlock == TRMTBlocks.ERODED_DIRT
-                        || neighborBlock == TRMTBlocks.ERODED_COARSE_DIRT
-                        || neighborBlock == TRMTBlocks.ERODED_SAND) {
+                if (neighborBlock == TRMTBlocks.ERODED_GRASS_BLOCK.get()
+                        || neighborBlock == TRMTBlocks.ERODED_DIRT.get()
+                        || neighborBlock == TRMTBlocks.ERODED_COARSE_DIRT.get()
+                        || neighborBlock == TRMTBlocks.ERODED_SAND.get()) {
                     return false;
                 }
                 if (neighborBlock == Blocks.GRASS_BLOCK) {
@@ -125,7 +104,6 @@ public final class BlockThresholds {
         return true;
     }
 
-    /** Returns the de-erosion inactivity timeout (ticks) for the given grass erosion stage (1–5). */
     public static long getGrassDeErosionTimeout(int stage) {
         TRMTConfig cfg = TRMTConfig.get();
         TRMTConfig.GrassDeErosion g = cfg.deErosionTimeoutDays.grass;
@@ -138,7 +116,6 @@ public final class BlockThresholds {
         };
     }
 
-    /** Returns the de-erosion inactivity timeout (ticks) for the given eroded sand stage (0–4). */
     public static long getSandDeErosionTimeout(int stage) {
         TRMTConfig cfg = TRMTConfig.get();
         TRMTConfig.SandDeErosion s = cfg.deErosionTimeoutDays.sand;
@@ -151,11 +128,10 @@ public final class BlockThresholds {
         }) * TICKS_PER_DAY);
     }
 
-    /** Returns the de-erosion inactivity timeout (ticks) for the given eroded dirt block type. */
     public static long getDirtDeErosionTimeout(Block block) {
         TRMTConfig cfg = TRMTConfig.get();
         TRMTConfig.DirtDeErosion d = cfg.deErosionTimeoutDays.dirt;
-        if (block == TRMTBlocks.ERODED_DIRT) return (long)(d.erodedDirt       * TICKS_PER_DAY);
+        if (block == TRMTBlocks.ERODED_DIRT.get()) return (long)(d.erodedDirt * TICKS_PER_DAY);
         return (long)(d.erodedCoarseDirt * TICKS_PER_DAY);
     }
 }

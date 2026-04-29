@@ -1,4 +1,5 @@
 {
+  "render_type": "minecraft:cutout_mipped",
   "elements": [
     {
       "from": [0, 0, 0],

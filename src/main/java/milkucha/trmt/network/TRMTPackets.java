@@ -1,20 +1,11 @@
 package milkucha.trmt.network;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
-/** Packet identifiers for TRMT networking. */
 public final class TRMTPackets {
-
-    /** Full erosion data for one chunk. Sent to each player on join. */
-    public static final Identifier SYNC_CHUNK   = Identifier.of("trmt", "sync_chunk");
-
-    /** Single-block stage update. Sent to all players whenever a stage advances or resets. */
-    public static final Identifier UPDATE_STAGE = Identifier.of("trmt", "update_stage");
-
-    /** Login query: server sends its version, client responds with its own. */
-    public static final Identifier VERSION_CHECK = Identifier.of("trmt", "version_check");
-
+    public static final ResourceLocation SYNC_CHUNK = ResourceLocation.fromNamespaceAndPath("trmt", "sync_chunk");
+    public static final ResourceLocation UPDATE_STAGE = ResourceLocation.fromNamespaceAndPath("trmt", "update_stage");
+    public static final ResourceLocation VERSION_CHECK = ResourceLocation.fromNamespaceAndPath("trmt", "version_check");
     public static final String MODRINTH_URL = "https://modrinth.com/mod/the-roads-more-travelled";
-
     private TRMTPackets() {}
 }

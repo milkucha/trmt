@@ -1,25 +1,25 @@
 package milkucha.trmt.network;
 
-import net.minecraft.network.RegistryByteBuf;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.packet.CustomPayload;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 
-public record UpdateStagePayload(BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) implements CustomPayload {
+public record UpdateStagePayload(BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) implements CustomPacketPayload {
 
-    public static final Id<UpdateStagePayload> ID = new Id<>(Identifier.of("trmt", "update_stage"));
+    public static final Type<UpdateStagePayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath("trmt", "update_stage"));
 
-    public static final PacketCodec<RegistryByteBuf, UpdateStagePayload> CODEC = PacketCodec.of(
-        (payload, buf) -> {
-            BlockPos.PACKET_CODEC.encode(buf, payload.pos());
+    public static final StreamCodec<RegistryFriendlyByteBuf, UpdateStagePayload> STREAM_CODEC = StreamCodec.of(
+        (buf, payload) -> {
+            BlockPos.STREAM_CODEC.encode(buf, payload.pos());
             buf.writeInt(payload.stage());
             buf.writeFloat(payload.walkedOnCount());
             buf.writeFloat(payload.threshold());
             buf.writeLong(payload.lastTouchedGameTime());
         },
         buf -> new UpdateStagePayload(
-            BlockPos.PACKET_CODEC.decode(buf),
+            BlockPos.STREAM_CODEC.decode(buf),
             buf.readInt(),
             buf.readFloat(),
             buf.readFloat(),
@@ -28,5 +28,5 @@ public record UpdateStagePayload(BlockPos pos, int stage, float walkedOnCount, f
     );
 
     @Override
-    public Id<? extends CustomPayload> getId() { return ID; }
+    public Type<? extends CustomPacketPayload> type() { return TYPE; }
 }
