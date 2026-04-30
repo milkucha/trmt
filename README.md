@@ -99,5 +99,6 @@ Absolutely.
 - Bug fixes
 
 <br></br>
-_<center>Traveller, there is no road. The road is made by walking.</center>_<center>Antonio Machado</center>
+_<center>Traveller, there is no road. The road is made by walking.</center>_
+<center>Antonio Machado</center>
 <br></br>
