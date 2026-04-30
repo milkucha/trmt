@@ -95,7 +95,7 @@ Absolutely.
 ## Roadmap
 - Port to NeoForge and Forge
 - Port to 1.21.4, 1.21.11 and 26.1+26.1.1+26.1.2
-- Added features: snow erosion, crop erosion, de-erosion toggle, path persistence
+- Added features: snow erosion, de-erosion toggle, path persistence mechanic
 - Bug fixes
 
 <br></br>
