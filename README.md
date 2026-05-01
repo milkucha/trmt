@@ -33,7 +33,7 @@ These are the parameters that govern the mod's logic and which can be tweaked to
 - **Multiplayer supported**
 
 ## Showcase
-[![Watch the video](https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg)](https://www.youtube.com/watch?v=OvsNVaFiK1Y)
+[![Watch the video](https://img.youtube.com/vi/OvsNVaFiK1Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=OvsNVaFiK1Y)
 
 <div align="center">
 <img src="https://i.imgur.com/LOvPlVV.png" alt="map view" style="display: block; margin: 0 auto;">
