@@ -58,7 +58,7 @@ public class ServerPlayerEntityMixin {
         // Sunken blocks (e.g. ERODED_SAND stages 1–4) have a collision height < 1, so the
         // player's feet land inside the block space and getBlockPos().down() resolves one block
         // too low. Correct by checking one block up when groundPos yields nothing tracked.
-        World world = player.getWorld();
+        World world = player.getEntityWorld();
         BlockState groundUpState = world.getBlockState(groundPos.up());
         if (groundUpState.isOf(TRMTBlocks.ERODED_SAND) || groundUpState.isOf(Blocks.SAND)) {
             groundPos = groundPos.up();

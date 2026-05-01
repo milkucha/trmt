@@ -68,7 +68,7 @@ public class TRMT implements ModInitializer {
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
 				dispatcher.register(CommandManager.literal("trmt")
 						.then(CommandManager.literal("reloadconfig")
-								.requires(src -> src.hasPermissionLevel(2))
+								.requires(CommandManager.requirePermissionLevel(CommandManager.GAMEMASTERS_CHECK))
 								.executes(ctx -> {
 									TRMTConfig.load();
 									ErosionMapManager.getInstance().revertDisabledBlocksAllLoaded(ctx.getSource().getServer());

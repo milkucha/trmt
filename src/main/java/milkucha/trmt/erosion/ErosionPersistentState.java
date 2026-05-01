@@ -1,20 +1,21 @@
 package milkucha.trmt.erosion;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.block.Block;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
+import net.minecraft.datafixer.DataFixTypes;
 import net.minecraft.registry.Registries;
-import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.PersistentState;
+import net.minecraft.world.PersistentStateType;
 import net.minecraft.world.World;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ErosionPersistentState extends PersistentState {
@@ -34,10 +35,7 @@ public class ErosionPersistentState extends PersistentState {
     public static ErosionPersistentState getOrCreate(MinecraftServer server) {
         return server.getWorld(World.OVERWORLD)
                 .getPersistentStateManager()
-                .getOrCreate(new PersistentState.Type<>(
-                        ErosionPersistentState::new,
-                        ErosionPersistentState::fromNbt,
-                        null), DATA_KEY);
+                .getOrCreate(TYPE);
     }
 
     // --- Map access ---
@@ -61,73 +59,65 @@ public class ErosionPersistentState extends PersistentState {
         return Collections.unmodifiableMap(chunkMaps);
     }
 
-    // --- NBT serialization ---
+    // --- Codec-based serialization ---
 
-    @Override
-    public NbtCompound writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
-        NbtList chunkList = new NbtList();
-
-        for (Map.Entry<ChunkPos, ChunkErosionMap> chunkEntry : chunkMaps.entrySet()) {
-            ChunkPos chunkPos = chunkEntry.getKey();
-            ChunkErosionMap chunkMap = chunkEntry.getValue();
-
-            NbtList entryList = new NbtList();
-            for (Map.Entry<BlockPos, ErosionEntry> entry : chunkMap.getEntries().entrySet()) {
-                BlockPos pos = entry.getKey();
-                ErosionEntry erosion = entry.getValue();
-
-                NbtCompound entryNbt = new NbtCompound();
-                entryNbt.putInt("x", pos.getX());
-                entryNbt.putInt("y", pos.getY());
-                entryNbt.putInt("z", pos.getZ());
-                entryNbt.putString("block", Registries.BLOCK.getId(erosion.getTrackedBlock()).toString());
-                entryNbt.putFloat("count", erosion.getWalkedOnCount());
-                entryNbt.putFloat("threshold", erosion.getThreshold());
-                entryNbt.putLong("lastTime", erosion.getLastTouchedGameTime());
-                entryNbt.putInt("stage", erosion.getErosionStage());
-                entryList.add(entryNbt);
-            }
-
-            NbtCompound chunkNbt = new NbtCompound();
-            chunkNbt.putInt("cx", chunkPos.x);
-            chunkNbt.putInt("cz", chunkPos.z);
-            chunkNbt.put("entries", entryList);
-            chunkList.add(chunkNbt);
-        }
-
-        nbt.put("chunks", chunkList);
-        return nbt;
+    private record StoredEntry(BlockPos pos, Identifier block, float threshold, float count, long lastTime, int stage) {
+        static final Codec<StoredEntry> CODEC = RecordCodecBuilder.create(i -> i.group(
+                BlockPos.CODEC.fieldOf("pos").forGetter(StoredEntry::pos),
+                Identifier.CODEC.fieldOf("block").forGetter(StoredEntry::block),
+                Codec.FLOAT.fieldOf("threshold").forGetter(StoredEntry::threshold),
+                Codec.FLOAT.fieldOf("count").forGetter(StoredEntry::count),
+                Codec.LONG.fieldOf("lastTime").forGetter(StoredEntry::lastTime),
+                Codec.INT.fieldOf("stage").forGetter(StoredEntry::stage)
+        ).apply(i, StoredEntry::new));
     }
 
-    private static ErosionPersistentState fromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
+    private record StoredChunk(ChunkPos pos, List<StoredEntry> entries) {
+        static final Codec<StoredChunk> CODEC = RecordCodecBuilder.create(i -> i.group(
+                ChunkPos.CODEC.fieldOf("pos").forGetter(StoredChunk::pos),
+                StoredEntry.CODEC.listOf().fieldOf("entries").forGetter(StoredChunk::entries)
+        ).apply(i, StoredChunk::new));
+    }
+
+    public static final Codec<ErosionPersistentState> CODEC = StoredChunk.CODEC.listOf()
+            .xmap(ErosionPersistentState::fromStored, ErosionPersistentState::toStored);
+
+    public static final PersistentStateType<ErosionPersistentState> TYPE = new PersistentStateType<>(
+            DATA_KEY,
+            ErosionPersistentState::new,
+            CODEC,
+            DataFixTypes.LEVEL
+    );
+
+    private static ErosionPersistentState fromStored(List<StoredChunk> stored) {
         Map<ChunkPos, ChunkErosionMap> chunkMaps = new HashMap<>();
-
-        NbtList chunkList = nbt.getList("chunks", NbtElement.COMPOUND_TYPE);
-        for (int i = 0; i < chunkList.size(); i++) {
-            NbtCompound chunkNbt = chunkList.getCompound(i);
-            ChunkPos chunkPos = new ChunkPos(chunkNbt.getInt("cx"), chunkNbt.getInt("cz"));
+        for (StoredChunk chunk : stored) {
             ChunkErosionMap chunkMap = new ChunkErosionMap();
-
-            NbtList entryList = chunkNbt.getList("entries", NbtElement.COMPOUND_TYPE);
-            for (int j = 0; j < entryList.size(); j++) {
-                NbtCompound entryNbt = entryList.getCompound(j);
-                BlockPos pos = new BlockPos(
-                        entryNbt.getInt("x"),
-                        entryNbt.getInt("y"),
-                        entryNbt.getInt("z")
-                );
-                Block block = Registries.BLOCK.get(Identifier.of(entryNbt.getString("block")));
-                float count     = entryNbt.getFloat("count");
-                float threshold = entryNbt.getFloat("threshold");
-                long  lastTime  = entryNbt.getLong("lastTime");
-                int   stage     = entryNbt.getInt("stage");
-
-                chunkMap.putEntry(pos, new ErosionEntry(block, threshold, count, lastTime, stage));
+            for (StoredEntry entry : chunk.entries()) {
+                Block block = Registries.BLOCK.get(entry.block());
+                chunkMap.putEntry(entry.pos(),
+                        new ErosionEntry(block, entry.threshold(), entry.count(), entry.lastTime(), entry.stage()));
             }
-
-            chunkMaps.put(chunkPos, chunkMap);
+            chunkMaps.put(chunk.pos(), chunkMap);
         }
-
         return new ErosionPersistentState(chunkMaps);
+    }
+
+    private static List<StoredChunk> toStored(ErosionPersistentState state) {
+        return state.chunkMaps.entrySet().stream()
+                .map(chunkEntry -> {
+                    List<StoredEntry> entries = chunkEntry.getValue().getEntries().entrySet().stream()
+                            .map(e -> new StoredEntry(
+                                    e.getKey(),
+                                    Registries.BLOCK.getId(e.getValue().getTrackedBlock()),
+                                    e.getValue().getThreshold(),
+                                    e.getValue().getWalkedOnCount(),
+                                    e.getValue().getLastTouchedGameTime(),
+                                    e.getValue().getErosionStage()
+                            ))
+                            .toList();
+                    return new StoredChunk(chunkEntry.getKey(), entries);
+                })
+                .toList();
     }
 }

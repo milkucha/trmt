@@ -11,7 +11,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.StateManager;
-import net.minecraft.state.property.DirectionProperty;
+import net.minecraft.state.property.EnumProperty;
 import net.minecraft.state.property.IntProperty;
 import net.minecraft.state.property.Properties;
 import net.minecraft.util.math.BlockPos;
@@ -23,7 +23,7 @@ import net.minecraft.world.BlockView;
 
 public class ErodedSandBlock extends Block {
 
-    public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;
+    public static final EnumProperty<Direction> FACING = Properties.HORIZONTAL_FACING;
     public static final IntProperty STAGE = IntProperty.of("stage", 0, 4);
 
     private static final VoxelShape[] SHAPES = {

@@ -53,7 +53,7 @@ public class HoeItemMixin {
 
         PlayerEntity player = context.getPlayer();
         world.playSound(player, pos, SoundEvents.ITEM_HOE_TILL, SoundCategory.BLOCKS, 1.0f, 1.0f);
-        if (!world.isClient) {
+        if (!world.isClient()) {
             world.setBlockState(pos, Blocks.FARMLAND.getDefaultState(),
                     Block.NOTIFY_ALL | Block.REDRAW_ON_MAIN_THREAD);
             ErosionMapManager.getInstance().removeEntry(pos);
@@ -62,6 +62,6 @@ public class HoeItemMixin {
                         context.getHand() == Hand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);
             }
         }
-        cir.setReturnValue(ActionResult.success(world.isClient));
+        cir.setReturnValue(ActionResult.SUCCESS);
     }
 }
