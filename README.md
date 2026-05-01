@@ -33,7 +33,7 @@ These are the parameters that govern the mod's logic and which can be tweaked to
 - **Multiplayer supported**
 
 ## Showcase
-<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/OvsNVaFiK1Y" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+[![Watch the video](https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg)](https://www.youtube.com/watch?v=OvsNVaFiK1Y)
 
 <div align="center">
 <img src="https://i.imgur.com/LOvPlVV.png" alt="map view" style="display: block; margin: 0 auto;">
