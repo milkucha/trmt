@@ -4,8 +4,6 @@ import milkucha.trmt.effect.LightnessEffect;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.Identifier;
 
@@ -22,8 +20,6 @@ public final class TRMTEffects {
     private TRMTEffects() {}
 
     public static void register() {
-        LIGHTNESS_ENTRY = Registries.STATUS_EFFECT.entryOf(
-                RegistryKey.of(RegistryKeys.STATUS_EFFECT, Identifier.of("trmt", "lightness"))
-        );
+        LIGHTNESS_ENTRY = Registries.STATUS_EFFECT.getEntry(LIGHTNESS);
     }
 }

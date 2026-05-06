@@ -62,6 +62,6 @@ public class HoeItemMixin {
                         context.getHand() == Hand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);
             }
         }
-        cir.setReturnValue(ActionResult.success(world.isClient));
+        cir.setReturnValue(world.isClient ? ActionResult.SUCCESS : ActionResult.CONSUME);
     }
 }

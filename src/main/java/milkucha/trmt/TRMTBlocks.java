@@ -9,6 +9,8 @@ import net.minecraft.block.Blocks;
 import net.minecraft.block.MapColor;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
 
 public final class TRMTBlocks {
@@ -16,25 +18,29 @@ public final class TRMTBlocks {
     public static final Block ERODED_DIRT = Registry.register(
             Registries.BLOCK,
             Identifier.of("trmt", "eroded_dirt"),
-            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.DIRT).ticksRandomly())
+            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.DIRT).ticksRandomly()
+                    .registryKey(RegistryKey.of(RegistryKeys.BLOCK, Identifier.of("trmt", "eroded_dirt"))))
     );
 
     public static final Block ERODED_COARSE_DIRT = Registry.register(
             Registries.BLOCK,
             Identifier.of("trmt", "eroded_coarse_dirt"),
-            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.COARSE_DIRT).ticksRandomly())
+            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.COARSE_DIRT).ticksRandomly()
+                    .registryKey(RegistryKey.of(RegistryKeys.BLOCK, Identifier.of("trmt", "eroded_coarse_dirt"))))
     );
 
     public static final Block ERODED_GRASS_BLOCK = Registry.register(
             Registries.BLOCK,
             Identifier.of("trmt", "eroded_grass_block"),
-            new ErodedGrassBlock(AbstractBlock.Settings.copy(Blocks.GRASS_BLOCK).mapColor(MapColor.DIRT_BROWN).ticksRandomly())
+            new ErodedGrassBlock(AbstractBlock.Settings.copy(Blocks.GRASS_BLOCK).mapColor(MapColor.DIRT_BROWN).ticksRandomly()
+                    .registryKey(RegistryKey.of(RegistryKeys.BLOCK, Identifier.of("trmt", "eroded_grass_block"))))
     );
 
     public static final Block ERODED_SAND = Registry.register(
             Registries.BLOCK,
             Identifier.of("trmt", "eroded_sand"),
-            new ErodedSandBlock(AbstractBlock.Settings.copy(Blocks.SAND).mapColor(MapColor.TERRACOTTA_YELLOW).nonOpaque().ticksRandomly())
+            new ErodedSandBlock(AbstractBlock.Settings.copy(Blocks.SAND).mapColor(MapColor.TERRACOTTA_YELLOW).nonOpaque().ticksRandomly()
+                    .registryKey(RegistryKey.of(RegistryKeys.BLOCK, Identifier.of("trmt", "eroded_sand"))))
     );
 
     private TRMTBlocks() {}

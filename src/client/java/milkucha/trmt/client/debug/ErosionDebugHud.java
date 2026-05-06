@@ -1,6 +1,6 @@
 package milkucha.trmt.client.debug;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.render.RenderLayer;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.block.ErodedSandBlock;
@@ -155,15 +155,10 @@ public class ErosionDebugHud {
                                   BlockState state, ClientWorld world, BlockPos pos,
                                   int x, int y, BakedQuad quad) {
         Sprite sprite = quad.getSprite();
-        if (quad.hasColor()) {
-            int color = client.getBlockColors().getColor(state, world, pos, quad.getColorIndex());
-            float r = ((color >> 16) & 0xFF) / 255.0f;
-            float g = ((color >>  8) & 0xFF) / 255.0f;
-            float b = ( color        & 0xFF) / 255.0f;
-            RenderSystem.setShaderColor(r, g, b, 1.0f);
-        }
-        context.drawSprite(x, y, 0, CELL, CELL, sprite);
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        int color = quad.hasTint()
+                ? (0xFF000000 | client.getBlockColors().getColor(state, world, pos, quad.getTintIndex()))
+                : 0xFFFFFFFF;
+        context.drawSpriteStretched(RenderLayer::getGuiTextured, sprite, x, y, CELL, CELL, color);
     }
 
     private static final Direction[] HORIZONTALS = {

@@ -1,43 +1,42 @@
 package milkucha.trmt.client.render;
 
-import net.fabricmc.fabric.api.renderer.v1.RendererAccess;
+import net.fabricmc.fabric.api.renderer.v1.Renderer;
 import net.fabricmc.fabric.api.renderer.v1.material.BlendMode;
 import net.fabricmc.fabric.api.renderer.v1.material.RenderMaterial;
-import net.fabricmc.fabric.api.renderer.v1.render.RenderContext;
+import net.fabricmc.fabric.api.renderer.v1.mesh.QuadEmitter;
+import net.fabricmc.fabric.api.renderer.v1.model.FabricBakedModel;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.render.model.BakedModel;
 import net.minecraft.client.render.model.BakedQuad;
-import net.minecraft.client.render.model.json.ModelOverrideList;
 import net.minecraft.client.render.model.json.ModelTransformation;
 import net.minecraft.client.texture.Sprite;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.random.Random;
 import net.minecraft.world.BlockRenderView;
 
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-/**
- * FabricBakedModel wrapper for ErodedGrassBlock block-state models.
- * Applies CUTOUT material to every non-DOWN quad so that transparent pixels in the
- * eroded-top overlay and the grass_block_side_overlay are discarded correctly.
- * Stage texture selection and FACING Y-rotation are already baked into the wrapped
- * model by the block-state system, so this class needs no per-position lookups.
- */
-public class ErodedGrassBlockModel implements BakedModel {
+public class ErodedGrassBlockModel implements BakedModel, FabricBakedModel {
 
     private final BakedModel wrapped;
     private static RenderMaterial cutoutMaterial;
+    private static RenderMaterial defaultMaterial;
 
     private static RenderMaterial cutoutMaterial() {
         if (cutoutMaterial == null) {
-            cutoutMaterial = RendererAccess.INSTANCE.getRenderer()
-                    .materialFinder()
-                    .blendMode(BlendMode.CUTOUT)
-                    .find();
+            cutoutMaterial = Renderer.get().materialFinder().blendMode(BlendMode.CUTOUT).find();
         }
         return cutoutMaterial;
+    }
+
+    private static RenderMaterial defaultMaterial() {
+        if (defaultMaterial == null) {
+            defaultMaterial = Renderer.get().materialFinder().find();
+        }
+        return defaultMaterial;
     }
 
     public ErodedGrassBlockModel(BakedModel wrapped) {
@@ -48,36 +47,42 @@ public class ErodedGrassBlockModel implements BakedModel {
     public boolean isVanillaAdapter() { return false; }
 
     @Override
-    public void emitBlockQuads(BlockRenderView world, BlockState state, BlockPos pos,
-                               Supplier<net.minecraft.util.math.random.Random> randomSupplier,
-                               RenderContext context) {
-        context.pushTransform(quad -> {
-            if (quad.nominalFace() != Direction.DOWN) {
-                quad.material(cutoutMaterial());
+    public void emitBlockQuads(QuadEmitter emitter, BlockRenderView world, BlockState state, BlockPos pos,
+                               Supplier<Random> randomSupplier, Predicate<Direction> cullTest) {
+        Random random = randomSupplier.get();
+        for (Direction face : Direction.values()) {
+            if (cullTest.test(face)) continue;
+            for (BakedQuad quad : wrapped.getQuads(state, face, random)) {
+                emitter.fromVanilla(quad, face == Direction.DOWN ? defaultMaterial() : cutoutMaterial(), face);
+                emitter.emit();
             }
-            return true;
-        });
-        wrapped.emitBlockQuads(world, state, pos, randomSupplier, context);
-        context.popTransform();
+        }
+        for (BakedQuad quad : wrapped.getQuads(state, null, random)) {
+            emitter.fromVanilla(quad, cutoutMaterial(), null);
+            emitter.emit();
+        }
     }
 
     @Override
-    public void emitItemQuads(ItemStack stack, Supplier<net.minecraft.util.math.random.Random> randomSupplier,
-                               RenderContext context) {
-        wrapped.emitItemQuads(stack, randomSupplier, context);
+    public void emitItemQuads(QuadEmitter emitter, Supplier<Random> randomSupplier) {
+        if (wrapped instanceof FabricBakedModel fabricModel && !fabricModel.isVanillaAdapter()) {
+            fabricModel.emitItemQuads(emitter, randomSupplier);
+        } else {
+            for (BakedQuad quad : wrapped.getQuads(null, null, randomSupplier.get())) {
+                emitter.fromVanilla(quad, defaultMaterial(), null);
+                emitter.emit();
+            }
+        }
     }
 
     @Override
-    public List<BakedQuad> getQuads(BlockState state, Direction face,
-                                    net.minecraft.util.math.random.Random random) {
+    public List<BakedQuad> getQuads(BlockState state, Direction face, Random random) {
         return wrapped.getQuads(state, face, random);
     }
 
     @Override public boolean useAmbientOcclusion() { return true; }
     @Override public boolean hasDepth()             { return wrapped.hasDepth(); }
     @Override public boolean isSideLit()            { return wrapped.isSideLit(); }
-    @Override public boolean isBuiltin()            { return wrapped.isBuiltin(); }
     @Override public Sprite getParticleSprite()     { return wrapped.getParticleSprite(); }
     @Override public ModelTransformation getTransformation() { return wrapped.getTransformation(); }
-    @Override public ModelOverrideList getOverrides()        { return wrapped.getOverrides(); }
 }
