@@ -14,9 +14,9 @@ import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.command.DefaultPermissions;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.text.Text;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.permissions.Permissions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +47,7 @@ public class TRMT implements ModInitializer {
 				String clientVer = payload.version();
 				String serverVer = getModVersion();
 				if (isClientOutdated(clientVer, serverVer)) {
-					context.networkHandler().disconnect(Text.literal(
+					context.networkHandler().disconnect(Component.literal(
 						"The Roads More Travelled (TRMT) client version is outdated (v" + clientVer + ")!\n" +
 						"This server requires v" + serverVer + " or newer.\n" +
 						"Please download the update to join this server."
@@ -67,13 +67,13 @@ public class TRMT implements ModInitializer {
 				ErosionMapManager.getInstance().removeEntry(pos));
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
-				dispatcher.register(CommandManager.literal("trmt")
-						.then(CommandManager.literal("reloadconfig")
-								.requires(src -> src.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS))
+				dispatcher.register(Commands.literal("trmt")
+						.then(Commands.literal("reloadconfig")
+								.requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
 								.executes(ctx -> {
 									TRMTConfig.load();
 									ErosionMapManager.getInstance().revertDisabledBlocksAllLoaded(ctx.getSource().getServer());
-									ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] Config reloaded."), true);
+									ctx.getSource().sendSuccess(() -> Component.literal("[TRMT] Config reloaded."), true);
 									return 1;
 								}))));
 

@@ -1,19 +1,19 @@
 package milkucha.trmt.network;
 
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.packet.CustomPayload;
-import net.minecraft.util.Identifier;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 
-public record VersionCheckPayload(String version) implements CustomPayload {
+public record VersionCheckPayload(String version) implements CustomPacketPayload {
 
-    public static final Id<VersionCheckPayload> ID = new Id<>(Identifier.of("trmt", "version_check"));
+    public static final Type<VersionCheckPayload> ID = new Type<>(Identifier.fromNamespaceAndPath("trmt", "version_check"));
 
-    public static final PacketCodec<PacketByteBuf, VersionCheckPayload> CODEC = PacketCodec.of(
-        (payload, buf) -> buf.writeString(payload.version()),
-        buf -> new VersionCheckPayload(buf.readString())
+    public static final StreamCodec<FriendlyByteBuf, VersionCheckPayload> CODEC = StreamCodec.ofMember(
+        (payload, buf) -> buf.writeUtf(payload.version()),
+        buf -> new VersionCheckPayload(buf.readUtf())
     );
 
     @Override
-    public Id<? extends CustomPayload> getId() { return ID; }
+    public Type<? extends CustomPacketPayload> type() { return ID; }
 }

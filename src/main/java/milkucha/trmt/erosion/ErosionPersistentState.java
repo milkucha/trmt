@@ -2,20 +2,19 @@ package milkucha.trmt.erosion;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.datafixer.DataFixTypes;
-import net.minecraft.registry.Registries;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.PersistentState;
-import net.minecraft.world.PersistentStateType;
-import net.minecraft.world.World;
-
+import net.minecraft.util.datafix.DataFixTypes;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ErosionPersistentState extends PersistentState {
+public class ErosionPersistentState extends SavedData {
 
     private static final String DATA_KEY = "trmt_erosion";
 
@@ -32,7 +31,7 @@ public class ErosionPersistentState extends PersistentState {
     // --- Codec-based serialization (1.21.11+) ---
 
     private static final Codec<ErosionEntry> ENTRY_CODEC = RecordCodecBuilder.create(instance -> instance.group(
-        Registries.BLOCK.getCodec().fieldOf("block").forGetter(ErosionEntry::getTrackedBlock),
+        BuiltInRegistries.BLOCK.byNameCodec().fieldOf("block").forGetter(ErosionEntry::getTrackedBlock),
         Codec.FLOAT.fieldOf("threshold").forGetter(ErosionEntry::getThreshold),
         Codec.FLOAT.fieldOf("count").forGetter(ErosionEntry::getWalkedOnCount),
         Codec.LONG.fieldOf("lastTime").forGetter(ErosionEntry::getLastTouchedGameTime),
@@ -67,13 +66,13 @@ public class ErosionPersistentState extends PersistentState {
             state -> state.chunkMaps
         );
 
-    private static final PersistentStateType<ErosionPersistentState> TYPE =
-        new PersistentStateType<>(DATA_KEY, ErosionPersistentState::new, CODEC, DataFixTypes.SAVED_DATA_SCOREBOARD);
+    private static final SavedDataType<ErosionPersistentState> TYPE =
+        new SavedDataType<>(DATA_KEY, ErosionPersistentState::new, CODEC, DataFixTypes.SAVED_DATA_SCOREBOARD);
 
     public static ErosionPersistentState getOrCreate(MinecraftServer server) {
-        return server.getWorld(World.OVERWORLD)
-                .getPersistentStateManager()
-                .getOrCreate(TYPE);
+        return server.getLevel(Level.OVERWORLD)
+                .getDataStorage()
+                .computeIfAbsent(TYPE);
     }
 
     // --- Map access ---

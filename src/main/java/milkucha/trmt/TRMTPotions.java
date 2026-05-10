@@ -1,17 +1,15 @@
 package milkucha.trmt;
 
 import net.fabricmc.fabric.api.registry.FabricBrewingRecipeRegistryBuilder;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.item.Items;
-import net.minecraft.potion.Potion;
-import net.minecraft.potion.Potions;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.Potion;
+import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.world.item.crafting.Ingredient;
 
 public final class TRMTPotions {
 
@@ -22,21 +20,21 @@ public final class TRMTPotions {
 
     public static void register() {
         LIGHTNESS = Registry.register(
-                Registries.POTION,
-                Identifier.of("trmt", "lightness"),
-                new Potion("trmt.lightness", new StatusEffectInstance(TRMTEffects.LIGHTNESS_ENTRY, 3600))
+                BuiltInRegistries.POTION,
+                Identifier.fromNamespaceAndPath("trmt", "lightness"),
+                new Potion("trmt.lightness", new MobEffectInstance(TRMTEffects.LIGHTNESS_ENTRY, 3600))
         );
         LONG_LIGHTNESS = Registry.register(
-                Registries.POTION,
-                Identifier.of("trmt", "long_lightness"),
-                new Potion("trmt.lightness", new StatusEffectInstance(TRMTEffects.LIGHTNESS_ENTRY, 9600))
+                BuiltInRegistries.POTION,
+                Identifier.fromNamespaceAndPath("trmt", "long_lightness"),
+                new Potion("trmt.lightness", new MobEffectInstance(TRMTEffects.LIGHTNESS_ENTRY, 9600))
         );
 
         FabricBrewingRecipeRegistryBuilder.BUILD.register(builder -> {
-            RegistryEntry<Potion> lightnessEntry = Registries.POTION.getEntry(LIGHTNESS);
-            RegistryEntry<Potion> longLightnessEntry = Registries.POTION.getEntry(LONG_LIGHTNESS);
-            builder.registerPotionRecipe(Potions.AWKWARD, Ingredient.ofItems(Items.FEATHER), lightnessEntry);
-            builder.registerPotionRecipe(lightnessEntry, Ingredient.ofItems(Items.REDSTONE), longLightnessEntry);
+            Holder<Potion> lightnessEntry = BuiltInRegistries.POTION.wrapAsHolder(LIGHTNESS);
+            Holder<Potion> longLightnessEntry = BuiltInRegistries.POTION.wrapAsHolder(LONG_LIGHTNESS);
+            builder.registerPotionRecipe(Potions.AWKWARD, Ingredient.of(Items.FEATHER), lightnessEntry);
+            builder.registerPotionRecipe(lightnessEntry, Ingredient.of(Items.REDSTONE), longLightnessEntry);
         });
     }
 }

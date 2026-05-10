@@ -1,12 +1,12 @@
 package milkucha.trmt.client.mixin;
 
 import milkucha.trmt.network.TRMTPackets;
-import net.minecraft.client.gui.Element;
-import net.minecraft.client.gui.screen.DisconnectedScreen;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.network.DisconnectionInfo;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.DisconnectionDetails;
+import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,11 +21,11 @@ import java.net.URI;
 @Mixin(DisconnectedScreen.class)
 public abstract class DisconnectedScreenMixin extends Screen {
 
-    @Final @Shadow private DisconnectionInfo info;
-    @Unique private ButtonWidget trmt$backButton;
-    @Unique private ButtonWidget trmt$downloadButton;
+    @Final @Shadow private DisconnectionDetails details;
+    @Unique private Button trmt$backButton;
+    @Unique private Button trmt$downloadButton;
 
-    protected DisconnectedScreenMixin(Text title) {
+    protected DisconnectedScreenMixin(Component title) {
         super(title);
     }
 
@@ -35,15 +35,15 @@ public abstract class DisconnectedScreenMixin extends Screen {
     private void trmt$addUpdateButton(CallbackInfo ci) {
         trmt$backButton = null;
         trmt$downloadButton = null;
-        if (this.info == null || !this.info.reason().getString().startsWith("The Roads More Travelled")) return;
-        for (Element child : this.children()) {
-            if (!(child instanceof ButtonWidget backBtn)) continue;
+        if (this.details == null || !this.details.reason().getString().startsWith("The Roads More Travelled")) return;
+        for (GuiEventListener child : this.children()) {
+            if (!(child instanceof Button backBtn)) continue;
             trmt$backButton = backBtn;
-            trmt$downloadButton = this.addDrawableChild(
-                ButtonWidget.builder(
-                    Text.literal("Download Mod Update"),
-                    btn -> Util.getOperatingSystem().open(URI.create(TRMTPackets.MODRINTH_URL))
-                ).dimensions(backBtn.getX(), backBtn.getY() + 25, backBtn.getWidth(), 20).build()
+            trmt$downloadButton = this.addRenderableWidget(
+                Button.builder(
+                    Component.literal("Download Mod Update"),
+                    btn -> Util.getPlatform().openUri(URI.create(TRMTPackets.MODRINTH_URL))
+                ).bounds(backBtn.getX(), backBtn.getY() + 25, backBtn.getWidth(), 20).build()
             );
             return;
         }
@@ -51,7 +51,7 @@ public abstract class DisconnectedScreenMixin extends Screen {
 
     // refreshWidgetPositions() is called after init() and after every resize (replaces initTabNavigation in 1.21.4).
     // By this point the layout has set final positions, so we correct our button here.
-    @Inject(method = "refreshWidgetPositions()V", at = @At("TAIL"))
+    @Inject(method = "repositionElements()V", at = @At("TAIL"))
     private void trmt$repositionUpdateButton(CallbackInfo ci) {
         if (trmt$downloadButton == null || trmt$backButton == null) return;
         trmt$downloadButton.setPosition(trmt$backButton.getX(), trmt$backButton.getY() + 25);

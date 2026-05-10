@@ -2,15 +2,14 @@ package milkucha.trmt.erosion;
 
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.LeavesBlock;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.World;
-
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LeavesBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -101,10 +100,10 @@ public final class BlockThresholds {
      * Returns true if none of the 12 slope-aware horizontal neighbours (4 directions × 3 heights)
      * are an eroded block — meaning this block is an isolated erosion patch and should de-erode faster.
      */
-    public static boolean isIsolated(World world, BlockPos pos, ErosionMapManager manager) {
+    public static boolean isIsolated(Level world, BlockPos pos, ErosionMapManager manager) {
         for (Direction dir : HORIZONTALS) {
             for (int dy = -1; dy <= 1; dy++) {
-                BlockPos neighbor = pos.offset(dir).up(dy);
+                BlockPos neighbor = pos.relative(dir).above(dy);
                 BlockState neighborState = world.getBlockState(neighbor);
                 Block neighborBlock = neighborState.getBlock();
                 if (neighborBlock == TRMTBlocks.ERODED_GRASS_BLOCK

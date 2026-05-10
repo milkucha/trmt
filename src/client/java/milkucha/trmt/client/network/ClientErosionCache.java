@@ -1,11 +1,10 @@
 package milkucha.trmt.client.network;
 
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ChunkPos;
 
 /**
  * Client-side cache of erosion data received from the server.
@@ -77,7 +76,7 @@ public final class ClientErosionCache {
             }
         } else {
             chunks.computeIfAbsent(chunkPos, k -> new ConcurrentHashMap<>())
-                  .put(pos.toImmutable(), new Entry(stage, walkedOnCount, threshold, lastTouchedGameTime));
+                  .put(pos.immutable(), new Entry(stage, walkedOnCount, threshold, lastTouchedGameTime));
         }
     }
 

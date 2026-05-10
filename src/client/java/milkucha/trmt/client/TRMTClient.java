@@ -15,10 +15,9 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.color.world.BiomeColors;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-
+import net.minecraft.client.renderer.BiomeColors;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ChunkPos;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,7 +37,7 @@ public class TRMTClient implements ClientModInitializer {
 		ErodedGrassBlockModels.register();
 		ColorProviderRegistry.BLOCK.register(
 				(state, world, pos, tintIndex) -> world != null && pos != null
-						? BiomeColors.getGrassColor(world, pos)
+						? BiomeColors.getAverageGrassColor(world, pos)
 						: 0x79C05A,
 				TRMTBlocks.ERODED_GRASS_BLOCK
 		);

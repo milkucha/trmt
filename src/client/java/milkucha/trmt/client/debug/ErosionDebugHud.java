@@ -1,6 +1,5 @@
 package milkucha.trmt.client.debug;
 
-import net.minecraft.client.gl.RenderPipelines;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.block.ErodedSandBlock;
@@ -8,21 +7,21 @@ import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.erosion.BlockThresholds;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.minecraft.client.render.RenderTickCounter;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.model.BakedQuad;
-import net.minecraft.client.render.model.BlockModelPart;
-import net.minecraft.client.render.model.BlockStateModel;
-import net.minecraft.client.texture.Sprite;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.random.Random;
-
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.model.BlockModelPart;
+import net.minecraft.client.renderer.block.model.BlockStateModel;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import java.util.List;
 
 
@@ -54,20 +53,20 @@ public class ErosionDebugHud {
         HudRenderCallback.EVENT.register(ErosionDebugHud::render);
     }
 
-    private static void render(DrawContext context, RenderTickCounter tickCounter) {
+    private static void render(GuiGraphics context, DeltaTracker tickCounter) {
         if (!TRMTClientConfig.get().debugHud) return;
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || client.world == null) return;
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null || client.level == null) return;
 
-        ClientWorld world = client.world;
-        BlockPos center = client.player.getBlockPos().down();
+        ClientLevel world = client.level;
+        BlockPos center = client.player.blockPosition().below();
 
-        TextRenderer tr = client.textRenderer;
-        int lineHeight = tr.fontHeight + 1;
+        Font tr = client.font;
+        int lineHeight = tr.lineHeight + 1;
 
         int totalHeight = 3 * CELL + 4 + lineHeight;
         int x0 = MARGIN;
-        int y0 = context.getScaledWindowHeight() - MARGIN - totalHeight;
+        int y0 = context.guiHeight() - MARGIN - totalHeight;
 
         renderCell(context, world, center.north(), x0 + CELL,     y0,            tr); // -z
         renderCell(context, world, center.west(),  x0,            y0 + CELL,     tr); // -x
@@ -76,18 +75,18 @@ public class ErosionDebugHud {
         renderCell(context, world, center.south(), x0 + CELL,     y0 + 2 * CELL, tr); // +z
 
         String coords = center.getX() + " " + center.getY() + " " + center.getZ();
-        context.drawText(tr, coords, x0, y0 + 3 * CELL + 4, TEXT_COLOR, true);
+        context.drawString(tr, coords, x0, y0 + 3 * CELL + 4, TEXT_COLOR, true);
     }
 
-    private static void renderCell(DrawContext context, ClientWorld world,
-                                   BlockPos pos, int x, int y, TextRenderer tr) {
-        MinecraftClient client = MinecraftClient.getInstance();
+    private static void renderCell(GuiGraphics context, ClientLevel world,
+                                   BlockPos pos, int x, int y, Font tr) {
+        Minecraft client = Minecraft.getInstance();
         BlockState state = world.getBlockState(pos);
 
         ClientErosionCache.Entry cellEntry = getEntry(pos);
-        BlockStateModel model = client.getBlockRenderManager().getModel(state);
-        Random rng = Random.create(0);
-        List<BlockModelPart> parts = model.getParts(rng);
+        BlockStateModel model = client.getBlockRenderer().getBlockModel(state);
+        RandomSource rng = RandomSource.create(0);
+        List<BlockModelPart> parts = model.collectParts(rng);
         for (BlockModelPart part : parts) {
             for (BakedQuad quad : part.getQuads(null)) {
                 drawQuad(context, client, state, world, pos, x, y, quad);
@@ -97,8 +96,8 @@ public class ErosionDebugHud {
             }
         }
 
-        long currentTime = client.world != null ? client.world.getTime() : 0L;
-        int lineH = tr.fontHeight + 1;
+        long currentTime = client.level != null ? client.level.getGameTime() : 0L;
+        int lineH = tr.lineHeight + 1;
 
         // Line 1: walkedOnCount / threshold
         String countLabel = cellEntry != null
@@ -125,48 +124,48 @@ public class ErosionDebugHud {
         drawCentered(context, tr, outLabel, x, y, lineH * 2, OUT_COLOR);
     }
 
-    private static void drawCentered(DrawContext context, TextRenderer tr,
+    private static void drawCentered(GuiGraphics context, Font tr,
                                      String text, int cellX, int cellY,
                                      int lineOffset, int color) {
-        int textWidth = tr.getWidth(text);
+        int textWidth = tr.width(text);
         int drawX = cellX + (CELL - textWidth) / 2;
         int drawY = cellY + 2 + lineOffset;
-        context.drawText(tr, text, drawX, drawY, color, true);
+        context.drawString(tr, text, drawX, drawY, color, true);
     }
 
     private static long resolveTimeout(BlockState state, ClientErosionCache.Entry entry) {
         Block block = state.getBlock();
         if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
-            return BlockThresholds.getGrassDeErosionTimeout(state.get(ErodedGrassBlock.STAGE) + 1);
+            return BlockThresholds.getGrassDeErosionTimeout(state.getValue(ErodedGrassBlock.STAGE) + 1);
         }
         if (block == TRMTBlocks.ERODED_DIRT
                 || block == TRMTBlocks.ERODED_COARSE_DIRT) {
             return BlockThresholds.getDirtDeErosionTimeout(block);
         }
         if (block == TRMTBlocks.ERODED_SAND) {
-            return BlockThresholds.getSandDeErosionTimeout(state.get(ErodedSandBlock.STAGE));
+            return BlockThresholds.getSandDeErosionTimeout(state.getValue(ErodedSandBlock.STAGE));
         }
         return -1;
     }
 
-    private static void drawQuad(DrawContext context, MinecraftClient client,
-                                  BlockState state, ClientWorld world, BlockPos pos,
+    private static void drawQuad(GuiGraphics context, Minecraft client,
+                                  BlockState state, ClientLevel world, BlockPos pos,
                                   int x, int y, BakedQuad quad) {
-        Sprite sprite = quad.sprite();
-        int color = quad.hasTint()
+        TextureAtlasSprite sprite = quad.sprite();
+        int color = quad.isTinted()
                 ? (0xFF000000 | client.getBlockColors().getColor(state, world, pos, quad.tintIndex()))
                 : 0xFFFFFFFF;
-        context.drawSpriteStretched(RenderPipelines.GUI_TEXTURED, sprite, x, y, CELL, CELL, color);
+        context.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x, y, CELL, CELL, color);
     }
 
     private static final Direction[] HORIZONTALS = {
         Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST
     };
 
-    private static boolean isIsolatedClient(ClientWorld world, BlockPos pos) {
+    private static boolean isIsolatedClient(ClientLevel world, BlockPos pos) {
         for (Direction dir : HORIZONTALS) {
             for (int dy = -1; dy <= 1; dy++) {
-                BlockPos neighbor = pos.offset(dir).up(dy);
+                BlockPos neighbor = pos.relative(dir).above(dy);
                 Block neighborBlock = world.getBlockState(neighbor).getBlock();
                 if (neighborBlock == TRMTBlocks.ERODED_GRASS_BLOCK
                         || neighborBlock == TRMTBlocks.ERODED_DIRT

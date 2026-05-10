@@ -12,7 +12,7 @@ public final class ErodedGrassBlockModels {
             pluginContext.modifyBlockModelAfterBake()
                 .register((model, context) -> {
                     if (context.state() != null
-                            && context.state().isOf(TRMTBlocks.ERODED_GRASS_BLOCK)) {
+                            && context.state().is(TRMTBlocks.ERODED_GRASS_BLOCK)) {
                         return new ErodedGrassBlockModel(model);
                     }
                     return model;
