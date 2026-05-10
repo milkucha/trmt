@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.command.DefaultPermissions;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.text.Text;
 import org.slf4j.Logger;
@@ -68,7 +69,7 @@ public class TRMT implements ModInitializer {
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
 				dispatcher.register(CommandManager.literal("trmt")
 						.then(CommandManager.literal("reloadconfig")
-								.requires(src -> src.hasPermissionLevel(2))
+								.requires(src -> src.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS))
 								.executes(ctx -> {
 									TRMTConfig.load();
 									ErosionMapManager.getInstance().revertDisabledBlocksAllLoaded(ctx.getSource().getServer());

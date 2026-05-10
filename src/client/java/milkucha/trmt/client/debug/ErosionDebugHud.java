@@ -1,6 +1,6 @@
 package milkucha.trmt.client.debug;
 
-import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.gl.RenderPipelines;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.block.ErodedSandBlock;
@@ -14,13 +14,16 @@ import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.model.BakedModel;
 import net.minecraft.client.render.model.BakedQuad;
+import net.minecraft.client.render.model.BlockModelPart;
+import net.minecraft.client.render.model.BlockStateModel;
 import net.minecraft.client.texture.Sprite;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.random.Random;
+
+import java.util.List;
 
 
 /**
@@ -40,10 +43,10 @@ import net.minecraft.util.math.random.Random;
  */
 public class ErosionDebugHud {
 
-    private static final int TEXT_COLOR  = 0xFFFFFF;
-    private static final int COUNT_COLOR = 0xFFFF55;
-    private static final int AGE_COLOR   = 0x55FFFF;
-    private static final int OUT_COLOR   = 0xFF5555;
+    private static final int TEXT_COLOR  = 0xFFFFFFFF;
+    private static final int COUNT_COLOR = 0xFFFFFF55;
+    private static final int AGE_COLOR   = 0xFF55FFFF;
+    private static final int OUT_COLOR   = 0xFFFF5555;
     private static final int MARGIN      = 4;
     private static final int CELL        = 32;
 
@@ -82,34 +85,32 @@ public class ErosionDebugHud {
         BlockState state = world.getBlockState(pos);
 
         ClientErosionCache.Entry cellEntry = getEntry(pos);
-        BakedModel model = client.getBlockRenderManager().getModel(state);
+        BlockStateModel model = client.getBlockRenderManager().getModel(state);
         Random rng = Random.create(0);
-        for (BakedQuad quad : model.getQuads(state, null, rng)) {
-            drawQuad(context, client, state, world, pos, x, y, quad);
+        List<BlockModelPart> parts = model.getParts(rng);
+        for (BlockModelPart part : parts) {
+            for (BakedQuad quad : part.getQuads(null)) {
+                drawQuad(context, client, state, world, pos, x, y, quad);
+            }
+            for (BakedQuad quad : part.getQuads(Direction.UP)) {
+                drawQuad(context, client, state, world, pos, x, y, quad);
+            }
         }
-        for (BakedQuad quad : model.getQuads(state, Direction.UP, rng)) {
-            drawQuad(context, client, state, world, pos, x, y, quad);
-        }
-
-        // Three text lines at 0.5× scale inside the 32×32 cell.
-        context.getMatrices().push();
-        context.getMatrices().translate(0, 0, 200);
-        context.getMatrices().scale(0.5f, 0.5f, 1f);
 
         long currentTime = client.world != null ? client.world.getTime() : 0L;
-        int lineH = tr.fontHeight + 1; // line height in scaled coords
+        int lineH = tr.fontHeight + 1;
 
         // Line 1: walkedOnCount / threshold
         String countLabel = cellEntry != null
                 ? String.format("%.1f/%.1f", cellEntry.walkedOnCount, cellEntry.threshold)
                 : "0.0/-";
-        drawCenteredScaled(context, tr, countLabel, x, y, 0, COUNT_COLOR);
+        drawCentered(context, tr, countLabel, x, y, 0, COUNT_COLOR);
 
         // Line 2: age — ticks since last touch
         String ageLabel = cellEntry != null
                 ? "age:" + (currentTime - cellEntry.lastTouchedGameTime)
                 : "age:-";
-        drawCenteredScaled(context, tr, ageLabel, x, y, lineH, AGE_COLOR);
+        drawCentered(context, tr, ageLabel, x, y, lineH, AGE_COLOR);
 
         // Line 3: de-erosion timeout for this block/stage (halved + "I" if isolated)
         long timeout = resolveTimeout(state, cellEntry);
@@ -121,18 +122,15 @@ public class ErosionDebugHud {
             if (isolated) timeout /= 2;
             outLabel = "out:" + timeout + (isolated ? " I" : "");
         }
-        drawCenteredScaled(context, tr, outLabel, x, y, lineH * 2, OUT_COLOR);
-
-        context.getMatrices().pop();
+        drawCentered(context, tr, outLabel, x, y, lineH * 2, OUT_COLOR);
     }
 
-    /** Draws text centered horizontally within the CELL column starting at screen x, at a given line offset (scaled coords). */
-    private static void drawCenteredScaled(DrawContext context, TextRenderer tr,
-                                           String text, int cellX, int cellY,
-                                           int lineOffset, int color) {
+    private static void drawCentered(DrawContext context, TextRenderer tr,
+                                     String text, int cellX, int cellY,
+                                     int lineOffset, int color) {
         int textWidth = tr.getWidth(text);
-        int drawX = (cellX * 2) + (CELL * 2 - textWidth) / 2;
-        int drawY = (cellY * 2) + 2 + lineOffset;
+        int drawX = cellX + (CELL - textWidth) / 2;
+        int drawY = cellY + 2 + lineOffset;
         context.drawText(tr, text, drawX, drawY, color, true);
     }
 
@@ -154,11 +152,11 @@ public class ErosionDebugHud {
     private static void drawQuad(DrawContext context, MinecraftClient client,
                                   BlockState state, ClientWorld world, BlockPos pos,
                                   int x, int y, BakedQuad quad) {
-        Sprite sprite = quad.getSprite();
+        Sprite sprite = quad.sprite();
         int color = quad.hasTint()
-                ? (0xFF000000 | client.getBlockColors().getColor(state, world, pos, quad.getTintIndex()))
+                ? (0xFF000000 | client.getBlockColors().getColor(state, world, pos, quad.tintIndex()))
                 : 0xFFFFFFFF;
-        context.drawSpriteStretched(RenderLayer::getGuiTextured, sprite, x, y, CELL, CELL, color);
+        context.drawSpriteStretched(RenderPipelines.GUI_TEXTURED, sprite, x, y, CELL, CELL, color);
     }
 
     private static final Direction[] HORIZONTALS = {

@@ -9,11 +9,11 @@ public final class ErodedGrassBlockModels {
 
     public static void register() {
         ModelLoadingPlugin.register(pluginContext ->
-            pluginContext.modifyBlockModelOnLoad()
+            pluginContext.modifyBlockModelAfterBake()
                 .register((model, context) -> {
                     if (context.state() != null
                             && context.state().isOf(TRMTBlocks.ERODED_GRASS_BLOCK)) {
-                        return new ErodedGrassBlockModelWrapper(model);
+                        return new ErodedGrassBlockModel(model);
                     }
                     return model;
                 })

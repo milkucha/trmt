@@ -10,14 +10,12 @@ import milkucha.trmt.network.UpdateStagePayload;
 import milkucha.trmt.network.VersionCheckPayload;
 import milkucha.trmt.network.VersionResponsePayload;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
 import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationNetworking;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.color.world.BiomeColors;
-import net.minecraft.client.render.RenderLayer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 
@@ -38,7 +36,6 @@ public class TRMTClient implements ClientModInitializer {
 		});
 
 		ErodedGrassBlockModels.register();
-		BlockRenderLayerMap.INSTANCE.putBlock(TRMTBlocks.ERODED_GRASS_BLOCK, RenderLayer.getCutoutMipped());
 		ColorProviderRegistry.BLOCK.register(
 				(state, world, pos, tintIndex) -> world != null && pos != null
 						? BiomeColors.getGrassColor(world, pos)
