@@ -145,7 +145,7 @@ public class ServerPlayerEntityMixin {
     @Unique
     private static void trmt$tryBreakVegetation(Level world, ErosionMapManager manager,
                                                  BlockPos pos, BlockState state) {
-        ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
+        ErosionEntry entry = manager.getChunkMap(ChunkPos.containing(pos)).getEntry(pos);
         if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
 
         // For double-height plants, remove the upper half first (no drops from upper half).
@@ -171,7 +171,7 @@ public class ServerPlayerEntityMixin {
     private static void trmt$tryTransform(Level world, ErosionMapManager manager, BlockPos pos) {
         BlockState state = world.getBlockState(pos);
 
-        ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
+        ErosionEntry entry = manager.getChunkMap(ChunkPos.containing(pos)).getEntry(pos);
         if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) {
             return;
         }

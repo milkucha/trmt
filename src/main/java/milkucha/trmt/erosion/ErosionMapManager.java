@@ -61,7 +61,7 @@ public class ErosionMapManager {
 
     public void onStep(BlockPos worldPos, Block block, float amount, long currentGameTime) {
         if (state == null) return;
-        ChunkPos chunkPos = new ChunkPos(worldPos);
+        ChunkPos chunkPos = ChunkPos.containing(worldPos);
         ChunkErosionMap map = state.computeChunkMap(chunkPos);
         map.recordStep(worldPos, block, amount, currentGameTime);
         state.setDirty();
@@ -69,7 +69,7 @@ public class ErosionMapManager {
 
     public void broadcastEntryUpdate(BlockPos pos, Block block) {
         if (state == null) return;
-        ChunkErosionMap map = state.getChunkMap(new ChunkPos(pos));
+        ChunkErosionMap map = state.getChunkMap(ChunkPos.containing(pos));
         if (map == null) return;
         ErosionEntry entry = map.getEntry(pos);
         if (entry == null) return;
@@ -81,7 +81,7 @@ public class ErosionMapManager {
 
     public void removeEntry(BlockPos worldPos) {
         if (state == null) return;
-        ChunkPos chunkPos = new ChunkPos(worldPos);
+        ChunkPos chunkPos = ChunkPos.containing(worldPos);
         ChunkErosionMap map = state.getChunkMap(chunkPos);
         if (map == null) return;
         map.removeEntry(worldPos);
@@ -92,7 +92,7 @@ public class ErosionMapManager {
 
     public void markForRerender(BlockPos pos) {
         if (state == null) return;
-        ChunkErosionMap map = state.getChunkMap(new ChunkPos(pos));
+        ChunkErosionMap map = state.getChunkMap(ChunkPos.containing(pos));
         if (map == null) return;
         ErosionEntry entry = map.getEntry(pos);
         if (entry == null) return;
@@ -106,7 +106,7 @@ public class ErosionMapManager {
 
     public void revertGrassStage(BlockPos worldPos, long currentGameTime) {
         if (state == null) return;
-        ChunkErosionMap map = state.getChunkMap(new ChunkPos(worldPos));
+        ChunkErosionMap map = state.getChunkMap(ChunkPos.containing(worldPos));
         if (map == null) return;
         ErosionEntry entry = map.getEntry(worldPos);
         if (entry == null) return;
@@ -116,7 +116,7 @@ public class ErosionMapManager {
 
     public void writeErodedGrassCooldownEntry(BlockPos worldPos, int stage, long currentGameTime) {
         if (state == null) return;
-        ChunkPos chunkPos = new ChunkPos(worldPos);
+        ChunkPos chunkPos = ChunkPos.containing(worldPos);
         ChunkErosionMap map = state.computeChunkMap(chunkPos);
         float threshold = BlockThresholds.randomThreshold(Blocks.GRASS_BLOCK);
         map.putEntry(worldPos.immutable(), new ErosionEntry(Blocks.GRASS_BLOCK, threshold, 0f, currentGameTime, stage));
@@ -125,7 +125,7 @@ public class ErosionMapManager {
 
     public void writeCooldownEntry(BlockPos worldPos, Block block, long currentGameTime) {
         if (state == null) return;
-        ChunkPos chunkPos = new ChunkPos(worldPos);
+        ChunkPos chunkPos = ChunkPos.containing(worldPos);
         ChunkErosionMap map = state.computeChunkMap(chunkPos);
         float threshold = BlockThresholds.randomThreshold(block);
         map.putEntry(worldPos.immutable(), new ErosionEntry(block, threshold, 0f, currentGameTime));
@@ -152,7 +152,7 @@ public class ErosionMapManager {
         long currentTime = world.getGameTime();
         int migrated = 0;
         for (BlockPos pos : candidates) {
-            ChunkErosionMap chunk = state.getChunkMap(new ChunkPos(pos));
+            ChunkErosionMap chunk = state.getChunkMap(ChunkPos.containing(pos));
             if (chunk == null) continue;
             ErosionEntry entry = chunk.getEntry(pos);
             if (entry == null) continue;
@@ -236,8 +236,8 @@ public class ErosionMapManager {
                 ChunkPos playerChunk = player.chunkPosition();
                 for (int dx = -viewDistance; dx <= viewDistance; dx++) {
                     for (int dz = -viewDistance; dz <= viewDistance; dz++) {
-                        ChunkPos cp = new ChunkPos(playerChunk.x + dx, playerChunk.z + dz);
-                        if (scanned.add(cp) && world.getChunk(cp.x, cp.z, ChunkStatus.FULL, false) != null) {
+                        ChunkPos cp = new ChunkPos(playerChunk.x() + dx, playerChunk.z() + dz);
+                        if (scanned.add(cp) && world.getChunk(cp.x(), cp.z(), ChunkStatus.FULL, false) != null) {
                             revertDisabledBlocks(world, cp);
                         }
                     }
@@ -270,7 +270,7 @@ public class ErosionMapManager {
                     e.getValue().getLastTouchedGameTime()
                 ));
             }
-            ServerPlayNetworking.send(player, new SyncChunkPayload(chunkPos.x, chunkPos.z, payloadEntries));
+            ServerPlayNetworking.send(player, new SyncChunkPayload(chunkPos.x(), chunkPos.z(), payloadEntries));
         }
     }
 

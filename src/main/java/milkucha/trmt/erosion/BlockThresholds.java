@@ -113,7 +113,7 @@ public final class BlockThresholds {
                     return false;
                 }
                 if (neighborBlock == Blocks.GRASS_BLOCK) {
-                    ChunkErosionMap map = manager.getChunkMap(new ChunkPos(neighbor));
+                    ChunkErosionMap map = manager.getChunkMap(ChunkPos.containing(neighbor));
                     if (map != null) {
                         ErosionEntry e = map.getEntry(neighbor);
                         if (e != null && e.getErosionStage() > 0) return false;

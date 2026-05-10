@@ -6,22 +6,24 @@ import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.erosion.BlockThresholds;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.block.model.BlockModelPart;
-import net.minecraft.client.renderer.block.model.BlockStateModel;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -50,10 +52,13 @@ public class ErosionDebugHud {
     private static final int CELL        = 32;
 
     public static void register() {
-        HudRenderCallback.EVENT.register(ErosionDebugHud::render);
+        HudElementRegistry.addLast(
+            Identifier.fromNamespaceAndPath("trmt", "erosion_debug_hud"),
+            ErosionDebugHud::extractRenderState
+        );
     }
 
-    private static void render(GuiGraphics context, DeltaTracker tickCounter) {
+    private static void extractRenderState(GuiGraphicsExtractor context, DeltaTracker tickCounter) {
         if (!TRMTClientConfig.get().debugHud) return;
         Minecraft client = Minecraft.getInstance();
         if (client.player == null || client.level == null) return;
@@ -75,19 +80,20 @@ public class ErosionDebugHud {
         renderCell(context, world, center.south(), x0 + CELL,     y0 + 2 * CELL, tr); // +z
 
         String coords = center.getX() + " " + center.getY() + " " + center.getZ();
-        context.drawString(tr, coords, x0, y0 + 3 * CELL + 4, TEXT_COLOR, true);
+        context.text(tr, coords, x0, y0 + 3 * CELL + 4, TEXT_COLOR, true);
     }
 
-    private static void renderCell(GuiGraphics context, ClientLevel world,
+    private static void renderCell(GuiGraphicsExtractor context, ClientLevel world,
                                    BlockPos pos, int x, int y, Font tr) {
         Minecraft client = Minecraft.getInstance();
         BlockState state = world.getBlockState(pos);
 
         ClientErosionCache.Entry cellEntry = getEntry(pos);
-        BlockStateModel model = client.getBlockRenderer().getBlockModel(state);
+        BlockStateModel model = client.getModelManager().getBlockStateModelSet().get(state);
         RandomSource rng = RandomSource.create(0);
-        List<BlockModelPart> parts = model.collectParts(rng);
-        for (BlockModelPart part : parts) {
+        List<BlockStateModelPart> parts = new ArrayList<>();
+        model.collectParts(rng, parts);
+        for (BlockStateModelPart part : parts) {
             for (BakedQuad quad : part.getQuads(null)) {
                 drawQuad(context, client, state, world, pos, x, y, quad);
             }
@@ -124,13 +130,13 @@ public class ErosionDebugHud {
         drawCentered(context, tr, outLabel, x, y, lineH * 2, OUT_COLOR);
     }
 
-    private static void drawCentered(GuiGraphics context, Font tr,
+    private static void drawCentered(GuiGraphicsExtractor context, Font tr,
                                      String text, int cellX, int cellY,
                                      int lineOffset, int color) {
         int textWidth = tr.width(text);
         int drawX = cellX + (CELL - textWidth) / 2;
         int drawY = cellY + 2 + lineOffset;
-        context.drawString(tr, text, drawX, drawY, color, true);
+        context.text(tr, text, drawX, drawY, color, true);
     }
 
     private static long resolveTimeout(BlockState state, ClientErosionCache.Entry entry) {
@@ -148,14 +154,20 @@ public class ErosionDebugHud {
         return -1;
     }
 
-    private static void drawQuad(GuiGraphics context, Minecraft client,
+    private static void drawQuad(GuiGraphicsExtractor context, Minecraft client,
                                   BlockState state, ClientLevel world, BlockPos pos,
                                   int x, int y, BakedQuad quad) {
-        TextureAtlasSprite sprite = quad.sprite();
-        int color = quad.isTinted()
-                ? (0xFF000000 | client.getBlockColors().getColor(state, world, pos, quad.tintIndex()))
-                : 0xFFFFFFFF;
-        context.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x, y, CELL, CELL, color);
+        var materialInfo = quad.materialInfo();
+        int color;
+        if (materialInfo.isTinted()) {
+            BlockTintSource tintSource = client.getBlockColors().getTintSource(state, materialInfo.tintIndex());
+            color = tintSource != null
+                    ? (0xFF000000 | tintSource.colorInWorld(state, world, pos))
+                    : 0xFFFFFFFF;
+        } else {
+            color = 0xFFFFFFFF;
+        }
+        context.blitSprite(RenderPipelines.GUI_TEXTURED, materialInfo.sprite(), x, y, CELL, CELL, color);
     }
 
     private static final Direction[] HORIZONTALS = {

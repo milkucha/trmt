@@ -31,10 +31,10 @@ public class TRMT implements ModInitializer {
 		TRMTPotions.register();
 		TRMTBlocks.register();
 
-		PayloadTypeRegistry.configurationS2C().register(VersionCheckPayload.ID, VersionCheckPayload.CODEC);
-		PayloadTypeRegistry.configurationC2S().register(VersionResponsePayload.ID, VersionResponsePayload.CODEC);
-		PayloadTypeRegistry.playS2C().register(SyncChunkPayload.ID, SyncChunkPayload.CODEC);
-		PayloadTypeRegistry.playS2C().register(UpdateStagePayload.ID, UpdateStagePayload.CODEC);
+		PayloadTypeRegistry.clientboundConfiguration().register(VersionCheckPayload.ID, VersionCheckPayload.CODEC);
+		PayloadTypeRegistry.serverboundConfiguration().register(VersionResponsePayload.ID, VersionResponsePayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(SyncChunkPayload.ID, SyncChunkPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(UpdateStagePayload.ID, UpdateStagePayload.CODEC);
 
 		// During configuration, send our version; client responds with its own version.
 		ServerConfigurationConnectionEvents.CONFIGURE.register((handler, server) -> {
@@ -47,7 +47,7 @@ public class TRMT implements ModInitializer {
 				String clientVer = payload.version();
 				String serverVer = getModVersion();
 				if (isClientOutdated(clientVer, serverVer)) {
-					context.networkHandler().disconnect(Component.literal(
+					context.packetListener().disconnect(Component.literal(
 						"The Roads More Travelled (TRMT) client version is outdated (v" + clientVer + ")!\n" +
 						"This server requires v" + serverVer + " or newer.\n" +
 						"Please download the update to join this server."

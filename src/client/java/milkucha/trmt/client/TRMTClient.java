@@ -13,12 +13,16 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationNetworking;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.BlockColorRegistry;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.client.renderer.BiomeColors;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.state.BlockState;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class TRMTClient implements ClientModInitializer {
@@ -35,10 +39,18 @@ public class TRMTClient implements ClientModInitializer {
 		});
 
 		ErodedGrassBlockModels.register();
-		ColorProviderRegistry.BLOCK.register(
-				(state, world, pos, tintIndex) -> world != null && pos != null
-						? BiomeColors.getAverageGrassColor(world, pos)
-						: 0x79C05A,
+		BlockColorRegistry.register(
+				List.of(new BlockTintSource() {
+					@Override
+					public int color(BlockState state) {
+						return 0x79C05A;
+					}
+
+					@Override
+					public int colorInWorld(BlockState state, BlockAndTintGetter world, BlockPos pos) {
+						return BiomeColors.getAverageGrassColor(world, pos);
+					}
+				}),
 				TRMTBlocks.ERODED_GRASS_BLOCK
 		);
 		ErosionDebugHud.register();

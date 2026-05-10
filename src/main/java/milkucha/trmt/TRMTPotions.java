@@ -1,6 +1,6 @@
 package milkucha.trmt;
 
-import net.fabricmc.fabric.api.registry.FabricBrewingRecipeRegistryBuilder;
+import net.fabricmc.fabric.api.registry.FabricPotionBrewingBuilder;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -30,7 +30,7 @@ public final class TRMTPotions {
                 new Potion("trmt.lightness", new MobEffectInstance(TRMTEffects.LIGHTNESS_ENTRY, 9600))
         );
 
-        FabricBrewingRecipeRegistryBuilder.BUILD.register(builder -> {
+        FabricPotionBrewingBuilder.BUILD.register(builder -> {
             Holder<Potion> lightnessEntry = BuiltInRegistries.POTION.wrapAsHolder(LIGHTNESS);
             Holder<Potion> longLightnessEntry = BuiltInRegistries.POTION.wrapAsHolder(LONG_LIGHTNESS);
             builder.registerPotionRecipe(Potions.AWKWARD, Ingredient.of(Items.FEATHER), lightnessEntry);
