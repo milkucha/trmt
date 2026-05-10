@@ -1,16 +1,16 @@
 package milkucha.trmt;
 
 import milkucha.trmt.effect.LightnessEffect;
-import net.minecraft.entity.effect.StatusEffect;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.effect.MobEffect;
 
 public final class TRMTEffects {
 
-    public static final StatusEffect LIGHTNESS = Registry.register(
-            Registries.STATUS_EFFECT,
-            new Identifier("trmt", "lightness"),
+    public static final MobEffect LIGHTNESS = Registry.register(
+            BuiltInRegistries.MOB_EFFECT,
+            Identifier.fromNamespaceAndPath("trmt", "lightness"),
             new LightnessEffect()
     );
 
