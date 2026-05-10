@@ -3,15 +3,15 @@
 	"id": "trmt",
 	"version": "${version}",
 	"name": "TRMT",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "An erosion mod for Minecraft",
 	"authors": [
-		"Me!"
+		"milkucha"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/milkucha/trmt",
+		"sources": "https://github.com/milkucha/trmt"
 	},
-	"license": "CC0-1.0",
+	"license": "CC-BY-NC-4.0",
 	"icon": "assets/trmt/icon.png",
 	"environment": "*",
 	"entrypoints": {
