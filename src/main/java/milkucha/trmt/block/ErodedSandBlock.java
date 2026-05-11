@@ -27,7 +27,7 @@ public class ErodedSandBlock extends Block {
     public static final IntProperty STAGE = IntProperty.of("stage", 0, 4);
 
     private static final VoxelShape[] SHAPES = {
-        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 0
+        Block.createCuboidShape(0, 0, 0, 16, 16, 16), // stage 0 — full height (matches model; allows sugarcane placement)
         Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 1
         Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 2
         Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 3
