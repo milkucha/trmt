@@ -8,7 +8,8 @@
 		"HoeItemMixin",
 		"SandBlockMixin",
 		"ServerPlayerEntityMixin",
-		"ShovelItemMixin"
+		"ShovelItemMixin",
+		"SugarCaneBlockMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

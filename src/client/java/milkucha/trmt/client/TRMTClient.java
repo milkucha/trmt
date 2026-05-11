@@ -9,6 +9,10 @@ import milkucha.trmt.network.TRMTPackets;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
 import net.fabricmc.fabric.api.client.networking.v1.ClientLoginNetworking;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.minecraft.item.BlockItem;
+import net.minecraft.util.ActionResult;
+import milkucha.trmt.block.ErodedSandBlock;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
@@ -42,9 +46,24 @@ public class TRMTClient implements ClientModInitializer {
 			return CompletableFuture.completedFuture(response);
 		});
 
+		// Suppress client-side prediction of block placement above sunken eroded sand (mirrors server rule).
+		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+			var placePos = hitResult.getBlockPos().offset(hitResult.getSide());
+			var below = world.getBlockState(placePos.down());
+			if (below.isOf(TRMTBlocks.ERODED_SAND)
+					&& below.get(ErodedSandBlock.STAGE) > 0
+					&& player.getStackInHand(hand).getItem() instanceof BlockItem) {
+				return ActionResult.FAIL;
+			}
+			return ActionResult.PASS;
+		});
+
 		ErodedGrassBlockModels.register();
 		// Eroded grass models have transparent overlay pixels — must use CUTOUT_MIPPED.
 		BlockRenderLayerMap.INSTANCE.putBlock(TRMTBlocks.ERODED_GRASS_BLOCK, RenderLayer.getCutoutMipped());
+		// Eroded sand is nonOpaque(); without an explicit render layer it defaults to SOLID,
+		// which causes the damage-overlay renderer to produce white pixels when breaking.
+		BlockRenderLayerMap.INSTANCE.putBlock(TRMTBlocks.ERODED_SAND, RenderLayer.getCutoutMipped());
 		// Apply biome grass tint (same as vanilla grass_block) so eroded grass is not gray.
 		ColorProviderRegistry.BLOCK.register(
 				(state, world, pos, tintIndex) -> world != null && pos != null
