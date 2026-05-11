@@ -4,12 +4,11 @@ import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.block.ErodedGrassBlock;
-import milkucha.trmt.network.TRMTPackets;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import milkucha.trmt.network.SyncChunkPayload;
+import milkucha.trmt.network.UpdateStagePayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
-import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -252,7 +251,9 @@ public class ErosionMapManager {
         int startX = chunkPos.getStartX();
         int startZ = chunkPos.getStartZ();
         int minY   = world.getBottomY();
-        int maxY   = world.getTopY();
+        // Scanning height: use the surounding height or a reasonable limit.
+        // For simplicity in this scan, we'll use 320 (common build limit).
+        int maxY   = 320; 
 
         BlockPos.Mutable mutable = new BlockPos.Mutable();
         for (int x = startX; x < startX + 16; x++) {
@@ -325,32 +326,16 @@ public class ErosionMapManager {
             Map<BlockPos, ErosionEntry> entries = chunkEntry.getValue().getEntries();
             if (entries.isEmpty()) continue;
 
-            PacketByteBuf buf = PacketByteBufs.create();
-            buf.writeInt(chunkPos.x);
-            buf.writeInt(chunkPos.z);
-            buf.writeInt(entries.size());
-            for (Map.Entry<BlockPos, ErosionEntry> e : entries.entrySet()) {
-                buf.writeBlockPos(e.getKey());
-                buf.writeInt(e.getValue().getErosionStage());
-                buf.writeFloat(e.getValue().getWalkedOnCount());
-                buf.writeFloat(e.getValue().getThreshold());
-                buf.writeLong(e.getValue().getLastTouchedGameTime());
-            }
-            ServerPlayNetworking.send(player, TRMTPackets.SYNC_CHUNK, buf);
+            ServerPlayNetworking.send(player, new SyncChunkPayload(chunkPos, entries));
         }
     }
 
     /** Broadcasts a single-block stage update to every connected player. */
     private void broadcastStageUpdate(BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {
         if (server == null) return;
+        UpdateStagePayload payload = new UpdateStagePayload(pos, stage, walkedOnCount, threshold, lastTouchedGameTime);
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            PacketByteBuf buf = PacketByteBufs.create();
-            buf.writeBlockPos(pos);
-            buf.writeInt(stage);
-            buf.writeFloat(walkedOnCount);
-            buf.writeFloat(threshold);
-            buf.writeLong(lastTouchedGameTime);
-            ServerPlayNetworking.send(player, TRMTPackets.UPDATE_STAGE, buf);
+            ServerPlayNetworking.send(player, payload);
         }
     }
 }

@@ -10,7 +10,7 @@ public final class TRMTEffects {
 
     public static final StatusEffect LIGHTNESS = Registry.register(
             Registries.STATUS_EFFECT,
-            new Identifier("trmt", "lightness"),
+            Identifier.of("trmt", "lightness"),
             new LightnessEffect()
     );
 

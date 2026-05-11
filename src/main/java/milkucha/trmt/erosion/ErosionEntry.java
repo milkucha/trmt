@@ -1,6 +1,9 @@
 package milkucha.trmt.erosion;
 
 import net.minecraft.block.Block;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.registry.Registries;
 
 /**
  * Holds erosion progress for a single block position inside a chunk.
@@ -21,6 +24,14 @@ public class ErosionEntry {
     /** Grass erosion visual stage: 0 = pristine, 1–5 = eroded_0 through eroded_4. */
     private int erosionStage;
 
+    public static final Codec<ErosionEntry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Registries.BLOCK.getCodec().fieldOf("block").forGetter(ErosionEntry::getTrackedBlock),
+            Codec.FLOAT.fieldOf("threshold").forGetter(ErosionEntry::getThreshold),
+            Codec.FLOAT.fieldOf("count").forGetter(ErosionEntry::getWalkedOnCount),
+            Codec.LONG.fieldOf("lastTime").forGetter(ErosionEntry::getLastTouchedGameTime),
+            Codec.INT.fieldOf("stage").forGetter(ErosionEntry::getErosionStage)
+    ).apply(instance, ErosionEntry::new));
+
     public ErosionEntry(Block trackedBlock, float threshold, float walkedOnCount, long lastTouchedGameTime) {
         this.trackedBlock = trackedBlock;
         this.threshold = threshold;
@@ -30,7 +41,7 @@ public class ErosionEntry {
     }
 
     /** Deserialization constructor — restores all fields including erosion stage. */
-    ErosionEntry(Block trackedBlock, float threshold, float walkedOnCount, long lastTouchedGameTime, int erosionStage) {
+    public ErosionEntry(Block trackedBlock, float threshold, float walkedOnCount, long lastTouchedGameTime, int erosionStage) {
         this.trackedBlock = trackedBlock;
         this.threshold = threshold;
         this.walkedOnCount = walkedOnCount;

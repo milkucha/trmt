@@ -14,6 +14,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.TallPlantBlock;
 import net.minecraft.block.enums.DoubleBlockHalf;
+import net.minecraft.registry.Registries;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import java.util.concurrent.ThreadLocalRandom;
@@ -53,12 +54,12 @@ public class ServerPlayerEntityMixin {
 
         // getBlockPos() returns the block at the entity's Y coordinate (feet level).
         // The block they are *standing on* is one below.
-        BlockPos groundPos = (mounted ? vehicle.getBlockPos() : player.getBlockPos()).down();
+        BlockPos groundPos = (mounted ? vehicle.getBlockPos() : player.getBlockPos()).down(); // vehicle non-null: guarded by `mounted`
 
         // Sunken blocks (e.g. ERODED_SAND stages 1–4) have a collision height < 1, so the
         // player's feet land inside the block space and getBlockPos().down() resolves one block
         // too low. Correct by checking one block up when groundPos yields nothing tracked.
-        World world = player.getWorld();
+        World world = player.getEntityWorld();
         BlockState groundUpState = world.getBlockState(groundPos.up());
         if (groundUpState.isOf(TRMTBlocks.ERODED_SAND) || groundUpState.isOf(Blocks.SAND)) {
             groundPos = groundPos.up();
@@ -72,9 +73,9 @@ public class ServerPlayerEntityMixin {
         trmt$lastGroundPos = groundPos.toImmutable();
 
         // Potion of Lightness suppresses erosion for the affected player or their mount.
-        if (!mounted && player.hasStatusEffect(TRMTEffects.LIGHTNESS)) return;
+        if (!mounted && player.hasStatusEffect(Registries.STATUS_EFFECT.getEntry(TRMTEffects.LIGHTNESS))) return;
         if (vehicle instanceof LivingEntity livingVehicle
-                && livingVehicle.hasStatusEffect(TRMTEffects.LIGHTNESS)) return;
+                && livingVehicle.hasStatusEffect(Registries.STATUS_EFFECT.getEntry(TRMTEffects.LIGHTNESS))) return;
 
         BlockState state = world.getBlockState(groundPos);
         Block block = state.getBlock();

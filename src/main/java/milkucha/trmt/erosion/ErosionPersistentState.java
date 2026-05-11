@@ -1,20 +1,19 @@
 package milkucha.trmt.erosion;
 
-import net.minecraft.block.Block;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.registry.Registries;
+import com.mojang.serialization.Codec;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.PersistentState;
+import net.minecraft.world.PersistentStateType;
 import net.minecraft.world.World;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
+// ChunkPos must be encoded as a plain string so that Codec.unboundedMap can use it as an
+// NBT compound key. ChunkPos.CODEC encodes to a long array which is NOT a string and causes
+// "IllegalStateException: Not a string" on every world save.
 
 /**
  * Persists the full erosion map to world/data/trmt_erosion.dat via Minecraft's PersistentState API.
@@ -24,21 +23,39 @@ public class ErosionPersistentState extends PersistentState {
 
     private static final String DATA_KEY = "trmt_erosion";
 
+    /** Encodes ChunkPos as the string "x,z" so it is a valid NBT compound key. */
+    private static final Codec<ChunkPos> CHUNK_POS_STRING_CODEC = Codec.STRING.xmap(
+            s -> { String[] p = s.split(","); return new ChunkPos(Integer.parseInt(p[0]), Integer.parseInt(p[1])); },
+            cp -> cp.x + "," + cp.z
+    );
+
+    public static final Codec<ErosionPersistentState> CODEC = Codec.unboundedMap(CHUNK_POS_STRING_CODEC, ChunkErosionMap.CODEC)
+            .xmap(ErosionPersistentState::new, state -> state.chunkMaps);
+
+    public static final PersistentStateType<ErosionPersistentState> TYPE = new PersistentStateType<>(
+            DATA_KEY,
+            ErosionPersistentState::new,
+            CODEC,
+            null
+    );
+
     private final Map<ChunkPos, ChunkErosionMap> chunkMaps;
 
     public ErosionPersistentState() {
         this.chunkMaps = new HashMap<>();
     }
 
-    private ErosionPersistentState(Map<ChunkPos, ChunkErosionMap> chunkMaps) {
-        this.chunkMaps = chunkMaps;
+    public ErosionPersistentState(Map<ChunkPos, ChunkErosionMap> chunkMaps) {
+        this.chunkMaps = new HashMap<>(chunkMaps);
     }
 
     /** Retrieves or creates the persistent state attached to the overworld. */
     public static ErosionPersistentState getOrCreate(MinecraftServer server) {
-        return server.getWorld(World.OVERWORLD)
-                .getPersistentStateManager()
-                .getOrCreate(ErosionPersistentState::fromNbt, ErosionPersistentState::new, DATA_KEY);
+        var world = server.getWorld(World.OVERWORLD);
+        if (world == null) {
+            return new ErosionPersistentState();
+        }
+        return world.getPersistentStateManager().getOrCreate(TYPE);
     }
 
     // --- Map access ---
@@ -60,75 +77,5 @@ public class ErosionPersistentState extends PersistentState {
 
     public Map<ChunkPos, ChunkErosionMap> getAllChunkMaps() {
         return Collections.unmodifiableMap(chunkMaps);
-    }
-
-    // --- NBT serialization ---
-
-    @Override
-    public NbtCompound writeNbt(NbtCompound nbt) {
-        NbtList chunkList = new NbtList();
-
-        for (Map.Entry<ChunkPos, ChunkErosionMap> chunkEntry : chunkMaps.entrySet()) {
-            ChunkPos chunkPos = chunkEntry.getKey();
-            ChunkErosionMap chunkMap = chunkEntry.getValue();
-
-            NbtList entryList = new NbtList();
-            for (Map.Entry<BlockPos, ErosionEntry> entry : chunkMap.getEntries().entrySet()) {
-                BlockPos pos = entry.getKey();
-                ErosionEntry erosion = entry.getValue();
-
-                NbtCompound entryNbt = new NbtCompound();
-                entryNbt.putInt("x", pos.getX());
-                entryNbt.putInt("y", pos.getY());
-                entryNbt.putInt("z", pos.getZ());
-                entryNbt.putString("block", Registries.BLOCK.getId(erosion.getTrackedBlock()).toString());
-                entryNbt.putFloat("count", erosion.getWalkedOnCount());
-                entryNbt.putFloat("threshold", erosion.getThreshold());
-                entryNbt.putLong("lastTime", erosion.getLastTouchedGameTime());
-                entryNbt.putInt("stage", erosion.getErosionStage());
-                entryList.add(entryNbt);
-            }
-
-            NbtCompound chunkNbt = new NbtCompound();
-            chunkNbt.putInt("cx", chunkPos.x);
-            chunkNbt.putInt("cz", chunkPos.z);
-            chunkNbt.put("entries", entryList);
-            chunkList.add(chunkNbt);
-        }
-
-        nbt.put("chunks", chunkList);
-        return nbt;
-    }
-
-    private static ErosionPersistentState fromNbt(NbtCompound nbt) {
-        Map<ChunkPos, ChunkErosionMap> chunkMaps = new HashMap<>();
-
-        NbtList chunkList = nbt.getList("chunks", NbtElement.COMPOUND_TYPE);
-        for (int i = 0; i < chunkList.size(); i++) {
-            NbtCompound chunkNbt = chunkList.getCompound(i);
-            ChunkPos chunkPos = new ChunkPos(chunkNbt.getInt("cx"), chunkNbt.getInt("cz"));
-            ChunkErosionMap chunkMap = new ChunkErosionMap();
-
-            NbtList entryList = chunkNbt.getList("entries", NbtElement.COMPOUND_TYPE);
-            for (int j = 0; j < entryList.size(); j++) {
-                NbtCompound entryNbt = entryList.getCompound(j);
-                BlockPos pos = new BlockPos(
-                        entryNbt.getInt("x"),
-                        entryNbt.getInt("y"),
-                        entryNbt.getInt("z")
-                );
-                Block block = Registries.BLOCK.get(new Identifier(entryNbt.getString("block")));
-                float count     = entryNbt.getFloat("count");
-                float threshold = entryNbt.getFloat("threshold");
-                long  lastTime  = entryNbt.getLong("lastTime");
-                int   stage     = entryNbt.getInt("stage");
-
-                chunkMap.putEntry(pos, new ErosionEntry(block, threshold, count, lastTime, stage));
-            }
-
-            chunkMaps.put(chunkPos, chunkMap);
-        }
-
-        return new ErosionPersistentState(chunkMaps);
     }
 }

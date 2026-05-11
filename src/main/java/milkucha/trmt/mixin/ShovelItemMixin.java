@@ -5,6 +5,7 @@ import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemUsageContext;
 import net.minecraft.item.ShovelItem;
@@ -33,14 +34,14 @@ public class ShovelItemMixin {
 
         PlayerEntity player = context.getPlayer();
         world.playSound(player, pos, SoundEvents.ITEM_SHOVEL_FLATTEN, SoundCategory.BLOCKS, 1.0f, 1.0f);
-        if (!world.isClient) {
+        if (!world.isClient()) {
             world.setBlockState(pos, Blocks.DIRT_PATH.getDefaultState(),
                     Block.NOTIFY_ALL | Block.REDRAW_ON_MAIN_THREAD);
             ErosionMapManager.getInstance().removeEntry(pos);
             if (player != null) {
-                context.getStack().damage(1, player, p -> p.sendToolBreakStatus(context.getHand()));
+                context.getStack().damage(1, player, EquipmentSlot.MAINHAND);
             }
         }
-        cir.setReturnValue(ActionResult.success(world.isClient));
+        cir.setReturnValue(ActionResult.SUCCESS);
     }
 }

@@ -2,6 +2,11 @@ package milkucha.trmt.erosion;
 
 import net.minecraft.block.Block;
 import net.minecraft.util.math.BlockPos;
+import com.mojang.serialization.Codec;
+
+// BlockPos must be encoded as a plain string so that Codec.unboundedMap can use it as an
+// NBT compound key. BlockPos.CODEC encodes to an int array which is NOT a string and causes
+// "IllegalStateException: Not a string" on every world save.
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -15,6 +20,21 @@ public class ChunkErosionMap {
 
     // Key: block position (world coordinates). Only positions with nonzero wear are present.
     private final Map<BlockPos, ErosionEntry> entries = new HashMap<>();
+
+    /** Encodes BlockPos as the string "x,y,z" so it is a valid NBT compound key. */
+    private static final Codec<BlockPos> BLOCK_POS_STRING_CODEC = Codec.STRING.xmap(
+            s -> { String[] p = s.split(","); return new BlockPos(Integer.parseInt(p[0]), Integer.parseInt(p[1]), Integer.parseInt(p[2])); },
+            bp -> bp.getX() + "," + bp.getY() + "," + bp.getZ()
+    );
+
+    public static final Codec<ChunkErosionMap> CODEC = Codec.unboundedMap(BLOCK_POS_STRING_CODEC, ErosionEntry.CODEC)
+            .xmap(ChunkErosionMap::new, ChunkErosionMap::getEntries);
+
+    public ChunkErosionMap() {}
+
+    public ChunkErosionMap(Map<BlockPos, ErosionEntry> entries) {
+        this.entries.putAll(entries);
+    }
 
     /**
      * Records one step at the given world block position for the given block type.

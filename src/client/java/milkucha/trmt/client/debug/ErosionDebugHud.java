@@ -1,6 +1,5 @@
 package milkucha.trmt.client.debug;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.block.ErodedSandBlock;
@@ -13,29 +12,20 @@ import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.model.BakedModel;
+import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.render.model.BlockModelPart;
+import net.minecraft.client.render.model.BlockStateModel;
 import net.minecraft.client.render.model.BakedQuad;
 import net.minecraft.client.texture.Sprite;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.random.Random;
-
+import net.minecraft.client.gl.RenderPipelines;
 
 /**
  * Debug HUD showing a compass-cross of erosion counts centred on the block under the player.
- *
- * Layout (bottom-left corner):
- *
- *       [-z]
- *  [-x] [*] [+x]
- *       [+z]
- *  <x> <y> <z>
- *
- * Each cell (32×32) renders the block's top-face texture with three lines of data:
- *   walkedOnCount/threshold
- *   age: <ticks since last touch>
- *   out: <de-erosion timeout>
+ * Fully updated for Minecraft 1.21.2+ (1.21.11) rendering and model APIs.
  */
 public class ErosionDebugHud {
 
@@ -46,19 +36,22 @@ public class ErosionDebugHud {
     private static final int MARGIN      = 4;
     private static final int CELL        = 32;
 
+    @SuppressWarnings("deprecation")
     public static void register() {
         HudRenderCallback.EVENT.register(ErosionDebugHud::render);
     }
 
-    private static void render(DrawContext context, float tickDelta) {
+    private static void render(DrawContext context, RenderTickCounter tickCounter) {
         if (!TRMTClientConfig.get().debugHud) return;
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || client.world == null) return;
+        var player = client.player;
+        var world = client.world;
+        if (player == null || world == null) return;
 
-        ClientWorld world = client.world;
-        BlockPos center = client.player.getBlockPos().down();
+        BlockPos center = player.getBlockPos().down();
 
         TextRenderer tr = client.textRenderer;
+        if (tr == null) return;
         int lineHeight = tr.fontHeight + 1;
 
         int totalHeight = 3 * CELL + 4 + lineHeight;
@@ -81,19 +74,24 @@ public class ErosionDebugHud {
         BlockState state = world.getBlockState(pos);
 
         ClientErosionCache.Entry cellEntry = getEntry(pos);
-        BakedModel model = client.getBlockRenderManager().getModel(state);
+        var renderManager = client.getBlockRenderManager();
+        if (renderManager == null) return;
+        
+        BlockStateModel model = renderManager.getModel(state);
         Random rng = Random.create(0);
-        for (BakedQuad quad : model.getQuads(state, null, rng)) {
-            drawQuad(context, client, state, world, pos, x, y, quad);
-        }
-        for (BakedQuad quad : model.getQuads(state, Direction.UP, rng)) {
-            drawQuad(context, client, state, world, pos, x, y, quad);
+        
+        for (BlockModelPart part : model.getParts(rng)) {
+            for (BakedQuad quad : part.getQuads(null)) {
+                drawQuad(context, client, state, world, pos, x, y, quad);
+            }
+            for (BakedQuad quad : part.getQuads(Direction.UP)) {
+                drawQuad(context, client, state, world, pos, x, y, quad);
+            }
         }
 
         // Three text lines at 0.5× scale inside the 32×32 cell.
-        context.getMatrices().push();
-        context.getMatrices().translate(0, 0, 200);
-        context.getMatrices().scale(0.5f, 0.5f, 1f);
+        context.getMatrices().pushMatrix();
+        context.getMatrices().scale(0.5f, 0.5f);
 
         long currentTime = client.world != null ? client.world.getTime() : 0L;
         int lineH = tr.fontHeight + 1; // line height in scaled coords
@@ -122,10 +120,9 @@ public class ErosionDebugHud {
         }
         drawCenteredScaled(context, tr, outLabel, x, y, lineH * 2, OUT_COLOR);
 
-        context.getMatrices().pop();
+        context.getMatrices().popMatrix();
     }
 
-    /** Draws text centered horizontally within the CELL column starting at screen x, at a given line offset (scaled coords). */
     private static void drawCenteredScaled(DrawContext context, TextRenderer tr,
                                            String text, int cellX, int cellY,
                                            int lineOffset, int color) {
@@ -153,16 +150,25 @@ public class ErosionDebugHud {
     private static void drawQuad(DrawContext context, MinecraftClient client,
                                   BlockState state, ClientWorld world, BlockPos pos,
                                   int x, int y, BakedQuad quad) {
-        Sprite sprite = quad.getSprite();
-        if (quad.hasColor()) {
-            int color = client.getBlockColors().getColor(state, world, pos, quad.getColorIndex());
-            float r = ((color >> 16) & 0xFF) / 255.0f;
-            float g = ((color >>  8) & 0xFF) / 255.0f;
-            float b = ( color        & 0xFF) / 255.0f;
-            RenderSystem.setShaderColor(r, g, b, 1.0f);
+        Sprite sprite = quad.sprite();
+        int packedColor = 0xFFFFFFFF; // Default white
+        if (quad.hasTint()) {
+            var blockColors = client.getBlockColors();
+            if (blockColors != null && world != null && pos != null) {
+                int color = blockColors.getColor(state, world, pos, quad.tintIndex());
+                float r = ((color >> 16) & 0xFF) / 255.0f;
+                float g = ((color >>  8) & 0xFF) / 255.0f;
+                float b = ( color        & 0xFF) / 255.0f;
+                packedColor = (255 << 24) | ((int)(r * 255) << 16) | ((int)(g * 255) << 8) | (int)(b * 255);
+            }
         }
-        context.drawSprite(x, y, 0, CELL, CELL, sprite);
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        
+        context.drawSpriteStretched(
+                RenderPipelines.GUI_TEXTURED,
+                sprite,
+                x, y, CELL, CELL,
+                packedColor
+        );
     }
 
     private static final Direction[] HORIZONTALS = {

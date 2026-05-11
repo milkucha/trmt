@@ -1,7 +1,7 @@
 package milkucha.trmt.client.render;
 
 import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
-import net.minecraft.client.util.ModelIdentifier;
+import milkucha.trmt.TRMTBlocks;
 
 public final class ErodedGrassBlockModels {
 
@@ -9,10 +9,8 @@ public final class ErodedGrassBlockModels {
 
     public static void register() {
         ModelLoadingPlugin.register(pluginContext ->
-            pluginContext.modifyModelAfterBake().register((model, context) -> {
-                if (context.id() instanceof ModelIdentifier mid
-                        && "trmt".equals(mid.getNamespace())
-                        && "eroded_grass_block".equals(mid.getPath())) {
+            pluginContext.modifyBlockModelAfterBake().register((model, context) -> {
+                if (context.state().isOf(TRMTBlocks.ERODED_GRASS_BLOCK)) {
                     return new ErodedGrassBlockModel(model);
                 }
                 return model;

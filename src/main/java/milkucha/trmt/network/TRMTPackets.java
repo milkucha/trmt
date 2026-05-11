@@ -6,13 +6,13 @@ import net.minecraft.util.Identifier;
 public final class TRMTPackets {
 
     /** Full erosion data for one chunk. Sent to each player on join. */
-    public static final Identifier SYNC_CHUNK   = new Identifier("trmt", "sync_chunk");
+    public static final Identifier SYNC_CHUNK   = Identifier.of("trmt", "sync_chunk");
 
     /** Single-block stage update. Sent to all players whenever a stage advances or resets. */
-    public static final Identifier UPDATE_STAGE = new Identifier("trmt", "update_stage");
+    public static final Identifier UPDATE_STAGE = Identifier.of("trmt", "update_stage");
 
     /** Login query: server sends its version, client responds with its own. */
-    public static final Identifier VERSION_CHECK = new Identifier("trmt", "version_check");
+    public static final Identifier VERSION_CHECK = Identifier.of("trmt", "version_check");
 
     public static final String MODRINTH_URL = "https://modrinth.com/mod/the-roads-more-travelled";
 

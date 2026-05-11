@@ -8,6 +8,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
+import net.minecraft.network.DisconnectionInfo;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -20,7 +21,7 @@ import java.net.URI;
 @Mixin(DisconnectedScreen.class)
 public abstract class DisconnectedScreenMixin extends Screen {
 
-    @Shadow private Text reason;
+    @Shadow private DisconnectionInfo info;
     @Unique private ButtonWidget trmt$downloadButton;
 
     protected DisconnectedScreenMixin(Text title) {
@@ -30,7 +31,7 @@ public abstract class DisconnectedScreenMixin extends Screen {
     @Inject(method = "init()V", at = @At("TAIL"))
     private void trmt$addUpdateButton(CallbackInfo ci) {
         trmt$downloadButton = null;
-        if (this.reason == null || !this.reason.getString().startsWith("The Roads More Travelled")) return;
+        if (this.info == null || !this.info.reason().getString().startsWith("The Roads More Travelled")) return;
         for (Element child : this.children()) {
             if (!(child instanceof ButtonWidget backBtn)) continue;
             trmt$downloadButton = this.addDrawableChild(

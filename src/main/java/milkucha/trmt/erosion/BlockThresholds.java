@@ -23,7 +23,7 @@ public final class BlockThresholds {
 
     /** All vegetation blocks that are subject to erosion trampling. */
     public static final Set<Block> VEGETATION = Set.of(
-            Blocks.GRASS, Blocks.TALL_GRASS,
+            Blocks.SHORT_GRASS, Blocks.TALL_GRASS,
             Blocks.DANDELION, Blocks.POPPY, Blocks.BLUE_ORCHID, Blocks.ALLIUM,
             Blocks.AZURE_BLUET, Blocks.RED_TULIP, Blocks.ORANGE_TULIP,
             Blocks.WHITE_TULIP, Blocks.PINK_TULIP, Blocks.OXEYE_DAISY,

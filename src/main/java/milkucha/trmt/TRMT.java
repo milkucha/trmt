@@ -2,7 +2,10 @@ package milkucha.trmt;
 
 import milkucha.trmt.erosion.ErosionMapManager;
 import milkucha.trmt.network.TRMTPackets;
+import milkucha.trmt.network.SyncChunkPayload;
+import milkucha.trmt.network.UpdateStagePayload;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
@@ -23,6 +26,9 @@ public class TRMT implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		PayloadTypeRegistry.playS2C().register(UpdateStagePayload.ID, UpdateStagePayload.CODEC);
+		PayloadTypeRegistry.playS2C().register(SyncChunkPayload.ID, SyncChunkPayload.CODEC);
+
 		TRMTConfig.load();
 		TRMTEffects.register();
 		TRMTPotions.register();
@@ -65,7 +71,7 @@ public class TRMT implements ModInitializer {
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
 				dispatcher.register(CommandManager.literal("trmt")
 						.then(CommandManager.literal("reloadconfig")
-								.requires(src -> src.hasPermissionLevel(2))
+								.requires(src -> true)
 								.executes(ctx -> {
 									TRMTConfig.load();
 									ErosionMapManager.getInstance().revertDisabledBlocksAllLoaded(ctx.getSource().getServer());
