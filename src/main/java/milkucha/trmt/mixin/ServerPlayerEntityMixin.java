@@ -155,6 +155,12 @@ public class ServerPlayerEntityMixin {
             if (world.getBlockState(upper).isOf(state.getBlock())) {
                 world.removeBlock(upper, false);
             }
+            // Tall grass degrades to short grass rather than breaking entirely.
+            if (state.isOf(Blocks.TALL_GRASS)) {
+                world.setBlockState(pos, Blocks.GRASS.getDefaultState(), Block.NOTIFY_ALL);
+                manager.removeEntry(pos);
+                return;
+            }
         }
 
         float dropChance = TRMTConfig.get().erosionThresholds.vegetation.dropChance;
