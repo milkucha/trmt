@@ -85,7 +85,6 @@ public class TRMT implements ModInitializer {
 								.requires(src -> src.hasPermissionLevel(2))
 								.executes(ctx -> {
 									TRMTConfig.load();
-									ErosionMapManager.getInstance().revertDisabledBlocksAllLoaded(ctx.getSource().getServer());
 									ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] Config reloaded."), true);
 									return 1;
 								}))));
