@@ -45,6 +45,9 @@ public class TRMTClient implements ClientModInitializer {
 		ErodedGrassBlockModels.register();
 		// Eroded grass models have transparent overlay pixels — must use CUTOUT_MIPPED.
 		BlockRenderLayerMap.INSTANCE.putBlock(TRMTBlocks.ERODED_GRASS_BLOCK, RenderLayer.getCutoutMipped());
+		// Eroded sand is nonOpaque(); without an explicit render layer it defaults to SOLID,
+		// which causes the damage-overlay renderer to produce white pixels when breaking.
+		BlockRenderLayerMap.INSTANCE.putBlock(TRMTBlocks.ERODED_SAND, RenderLayer.getCutoutMipped());
 		// Apply biome grass tint (same as vanilla grass_block) so eroded grass is not gray.
 		ColorProviderRegistry.BLOCK.register(
 				(state, world, pos, tintIndex) -> world != null && pos != null
