@@ -87,12 +87,19 @@ public final class TRMTConfig {
         public SandDeErosion  sand  = new SandDeErosion();
     }
 
+    public static class DeErosionToggles {
+        public boolean grassEnabled = true;
+        public boolean dirtEnabled  = true;
+        public boolean sandEnabled  = true;
+    }
+
     // ── top-level fields ───────────────────────────────────────────────────
 
     public ErosionToggles       erosion              = new ErosionToggles();
     public Multipliers          erosionMultipliers   = new Multipliers();
     public ErosionThresholds    erosionThresholds    = new ErosionThresholds();
     public DeErosionTimeoutDays deErosionTimeoutDays = new DeErosionTimeoutDays();
+    public DeErosionToggles     deErosion            = new DeErosionToggles();
 
     // ── singleton ──────────────────────────────────────────────────────────
     private static TRMTConfig instance = new TRMTConfig();
