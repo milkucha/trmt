@@ -6,6 +6,10 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.minecraft.item.BlockItem;
+import net.minecraft.util.ActionResult;
+import milkucha.trmt.block.ErodedSandBlock;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginNetworking;
@@ -41,6 +45,19 @@ public class TRMT implements ModInitializer {
 // Clear the erosion entry when any block is broken so a freshly placed block always starts from zero.
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) ->
 				ErosionMapManager.getInstance().removeEntry(pos));
+
+		// Prevent blocks from being placed above sunken eroded sand (stages 1-4) from any angle.
+		// Stage 0 is full-height and has no visual glitch, so it is not restricted.
+		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+			var placePos = hitResult.getBlockPos().offset(hitResult.getSide());
+			var below = world.getBlockState(placePos.down());
+			if (below.isOf(TRMTBlocks.ERODED_SAND)
+					&& below.get(ErodedSandBlock.STAGE) > 0
+					&& player.getStackInHand(hand).getItem() instanceof BlockItem) {
+				return ActionResult.FAIL;
+			}
+			return ActionResult.PASS;
+		});
 
 		// During login, send server version; disconnect client if its version is older.
 		ServerLoginConnectionEvents.QUERY_START.register((handler, server, sender, synchronizer) -> {
