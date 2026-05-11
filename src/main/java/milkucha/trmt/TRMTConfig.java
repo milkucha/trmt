@@ -27,6 +27,7 @@ public final class TRMTConfig {
     public static class Multipliers {
         public float player  = 0.5f;
         public float mounted = 1.5f;
+        public float leash   = 1.5f;
     }
 
     public static class MinMax {

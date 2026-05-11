@@ -6,6 +6,7 @@
 		"BoneMealItemMixin",
 		"GrassBlockMixin",
 		"HoeItemMixin",
+		"MobEntityMixin",
 		"SandBlockMixin",
 		"ServerPlayerEntityMixin",
 		"ShovelItemMixin",
