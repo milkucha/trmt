@@ -2,6 +2,7 @@ package milkucha.trmt.client;
 
 import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.debug.ErosionDebugHud;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.client.render.ErodedGrassBlockModels;
@@ -14,9 +15,12 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationNetworkin
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.renderer.BiomeColors;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.ChunkPos;
 import java.util.HashMap;
 import java.util.Map;
@@ -63,5 +67,17 @@ public class TRMTClient implements ClientModInitializer {
 		// Clear cached stages when disconnecting so stale data never leaks into the next session.
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
 				ClientErosionCache.getInstance().clear());
+
+		// Suppress client-side block-placement prediction above sunken eroded sand (stages 1–4).
+		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+			var placePos = hitResult.getBlockPos().relative(hitResult.getDirection());
+			var below = world.getBlockState(placePos.below());
+			if (below.is(TRMTBlocks.ERODED_SAND)
+					&& below.getValue(ErodedSandBlock.STAGE) > 0
+					&& player.getItemInHand(hand).getItem() instanceof BlockItem) {
+				return InteractionResult.FAIL;
+			}
+			return InteractionResult.PASS;
+		});
 	}
 }

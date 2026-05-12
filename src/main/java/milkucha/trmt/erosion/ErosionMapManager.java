@@ -188,6 +188,61 @@ public class ErosionMapManager {
         };
     }
 
+    public void convertAllErodedToVanilla(MinecraftServer server) {
+        if (state == null) return;
+        int viewDistance = server.getPlayerList().getViewDistance();
+        for (ServerLevel world : server.getAllLevels()) {
+            Set<ChunkPos> scanned = new HashSet<>();
+            for (ServerPlayer player : world.players()) {
+                ChunkPos playerChunk = player.chunkPosition();
+                for (int dx = -viewDistance; dx <= viewDistance; dx++) {
+                    for (int dz = -viewDistance; dz <= viewDistance; dz++) {
+                        ChunkPos cp = new ChunkPos(playerChunk.x + dx, playerChunk.z + dz);
+                        if (scanned.add(cp) && world.getChunk(cp.x, cp.z, ChunkStatus.FULL, false) != null) {
+                            convertChunkToVanilla(world, cp);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void convertChunkToVanilla(ServerLevel world, ChunkPos chunkPos) {
+        int startX = chunkPos.getMinBlockX();
+        int startZ = chunkPos.getMinBlockZ();
+        int minY   = world.getMinY();
+        int maxY   = world.getMinY() + world.getHeight();
+
+        BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
+        for (int x = startX; x < startX + 16; x++) {
+            for (int z = startZ; z < startZ + 16; z++) {
+                for (int y = minY; y < maxY; y++) {
+                    mutable.set(x, y, z);
+                    Block block = world.getBlockState(mutable).getBlock();
+                    BlockPos immutable = mutable.immutable();
+                    if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
+                        world.setBlock(immutable, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
+                        removeEntry(immutable);
+                    } else if (block == TRMTBlocks.ERODED_DIRT) {
+                        world.setBlock(immutable, Blocks.DIRT.defaultBlockState(), Block.UPDATE_ALL);
+                        removeEntry(immutable);
+                    } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
+                        world.setBlock(immutable, Blocks.COARSE_DIRT.defaultBlockState(), Block.UPDATE_ALL);
+                        removeEntry(immutable);
+                    } else if (block == TRMTBlocks.ERODED_SAND) {
+                        world.setBlock(immutable, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
+                        removeEntry(immutable);
+                    }
+                }
+            }
+        }
+    }
+
+    public Set<ChunkPos> getErodedChunkPositions() {
+        if (state == null) return Collections.emptySet();
+        return state.getAllChunkMaps().keySet();
+    }
+
     public void revertDisabledBlocks(ServerLevel world, ChunkPos chunkPos) {
         if (state == null) return;
         TRMTConfig.ErosionToggles t = TRMTConfig.get().erosion;

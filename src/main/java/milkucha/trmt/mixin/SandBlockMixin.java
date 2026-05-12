@@ -3,12 +3,13 @@ package milkucha.trmt.mixin;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.ColoredFallingBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.spongepowered.asm.mixin.Mixin;
 
-@Mixin(targets = "net.minecraft.world.level.block.SandBlock")
+@Mixin(ColoredFallingBlock.class)
 public abstract class SandBlockMixin extends Block {
 
     private static final VoxelShape SAND_COLLISION_SHAPE = Block.box(0, 0, 0, 16, 16, 16);

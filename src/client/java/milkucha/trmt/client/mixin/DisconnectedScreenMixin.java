@@ -7,6 +7,7 @@ import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.DisconnectionDetails;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.util.Util;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -35,13 +36,14 @@ public abstract class DisconnectedScreenMixin extends Screen {
     private void trmt$addUpdateButton(CallbackInfo ci) {
         trmt$backButton = null;
         trmt$downloadButton = null;
-        if (this.details == null || !this.details.reason().getString().startsWith("The Roads More Travelled")) return;
+        if (this.details == null || !(this.details.reason().getContents() instanceof TranslatableContents tc)
+                || !tc.getKey().equals("trmt.disconnect.outdated")) return;
         for (GuiEventListener child : this.children()) {
             if (!(child instanceof Button backBtn)) continue;
             trmt$backButton = backBtn;
             trmt$downloadButton = this.addRenderableWidget(
                 Button.builder(
-                    Component.literal("Download Mod Update"),
+                    Component.translatable("trmt.button.download_update"),
                     btn -> Util.getPlatform().openUri(URI.create(TRMTPackets.MODRINTH_URL))
                 ).bounds(backBtn.getX(), backBtn.getY() + 25, backBtn.getWidth(), 20).build()
             );

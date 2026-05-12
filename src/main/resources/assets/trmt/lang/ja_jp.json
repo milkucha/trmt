@@ -1,0 +1,15 @@
+{
+  "effect.trmt.lightness": "軽さ",
+  "item.minecraft.potion.effect.trmt.lightness": "軽さのポーション",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "軽さのスプラッシュポーション",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "軽さの残留ポーション",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "軽さの矢",
+
+  "block.trmt.eroded_grass_block": "侵食された草ブロック",
+  "block.trmt.eroded_dirt": "侵食された土",
+  "block.trmt.eroded_coarse_dirt": "侵食された砂利交じりの土",
+  "block.trmt.eroded_sand": "侵食された砂",
+
+  "trmt.button.download_update": "Modのアップデートをダウンロード",
+  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) のクライアントバージョンが古くなっています (v%s)！\nこのサーバーはv%s以上が必要です。\nアップデートをダウンロードしてサーバーに参加してください。"
+}

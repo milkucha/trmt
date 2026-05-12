@@ -2,5 +2,14 @@
   "effect.trmt.lightness": "Lightness",
   "item.minecraft.potion.effect.trmt.lightness": "Potion of Lightness",
   "item.minecraft.splash_potion.effect.trmt.lightness": "Splash Potion of Lightness",
-  "item.minecraft.lingering_potion.effect.trmt.lightness": "Lingering Potion of Lightness"
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "Lingering Potion of Lightness",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Arrow of Lightness",
+
+  "block.trmt.eroded_grass_block": "Eroded Grass Block",
+  "block.trmt.eroded_dirt": "Eroded Dirt",
+  "block.trmt.eroded_coarse_dirt": "Eroded Coarse Dirt",
+  "block.trmt.eroded_sand": "Eroded Sand",
+
+  "trmt.button.download_update": "Download Mod Update",
+  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) client version is outdated (v%s)!\nThis server requires v%s or newer.\nPlease download the update to join this server."
 }

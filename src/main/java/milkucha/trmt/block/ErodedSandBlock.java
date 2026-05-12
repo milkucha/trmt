@@ -1,6 +1,7 @@
 package milkucha.trmt.block;
 
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ChunkErosionMap;
 import milkucha.trmt.erosion.ErosionEntry;
@@ -26,11 +27,19 @@ public class ErodedSandBlock extends Block {
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final IntegerProperty STAGE = IntegerProperty.create("stage", 0, 4);
 
-    private static final VoxelShape[] SHAPES = {
-        Block.box(0, 0, 0, 16, 10, 16), // stage 0
+    private static final VoxelShape[] COLLISION_SHAPES = {
+        Block.box(0, 0, 0, 16, 16, 16), // stage 0 — full height
         Block.box(0, 0, 0, 16, 10, 16), // stage 1
         Block.box(0, 0, 0, 16, 10, 16), // stage 2
         Block.box(0, 0, 0, 16, 10, 16), // stage 3
+        Block.box(0, 0, 0, 16, 10, 16), // stage 4
+    };
+
+    private static final VoxelShape[] OUTLINE_SHAPES = {
+        Block.box(0, 0, 0, 16, 16, 16), // stage 0 — full height
+        Block.box(0, 0, 0, 16, 14, 16), // stage 1
+        Block.box(0, 0, 0, 16, 14, 16), // stage 2
+        Block.box(0, 0, 0, 16, 12, 16), // stage 3
         Block.box(0, 0, 0, 16, 10, 16), // stage 4
     };
 
@@ -46,6 +55,8 @@ public class ErodedSandBlock extends Block {
 
     @Override
     public void randomTick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
+        if (!TRMTConfig.get().deErosion.sandEnabled) return;
+
         ErosionMapManager manager = ErosionMapManager.getInstance();
         ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
@@ -68,11 +79,11 @@ public class ErodedSandBlock extends Block {
 
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
-        return SHAPES[state.getValue(STAGE)];
+        return OUTLINE_SHAPES[state.getValue(STAGE)];
     }
 
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
-        return SHAPES[state.getValue(STAGE)];
+        return COLLISION_SHAPES[state.getValue(STAGE)];
     }
 }

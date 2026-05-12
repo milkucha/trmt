@@ -1,0 +1,15 @@
+{
+  "effect.trmt.lightness": "轻盈",
+  "item.minecraft.potion.effect.trmt.lightness": "轻盈药水",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "喷溅型轻盈药水",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "滞留型轻盈药水",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "轻盈之箭",
+
+  "block.trmt.eroded_grass_block": "侵蚀草方块",
+  "block.trmt.eroded_dirt": "侵蚀泥土",
+  "block.trmt.eroded_coarse_dirt": "侵蚀粗泥土",
+  "block.trmt.eroded_sand": "侵蚀沙子",
+
+  "trmt.button.download_update": "下载模组更新",
+  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) 客户端版本已过时（v%s）！\n此服务器需要 v%s 或更新版本。\n请下载更新后再加入服务器。"
+}
