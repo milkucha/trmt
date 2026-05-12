@@ -4,11 +4,14 @@
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
 		"BoneMealItemMixin",
+		"BrushItemMixin",
 		"GrassBlockMixin",
 		"HoeItemMixin",
+		"MobEntityMixin",
 		"SandBlockMixin",
 		"ServerPlayerEntityMixin",
-		"ShovelItemMixin"
+		"ShovelItemMixin",
+		"SugarCaneBlockMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

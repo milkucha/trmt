@@ -1,0 +1,15 @@
+{
+  "effect.trmt.lightness": "Leichtigkeit",
+  "item.minecraft.potion.effect.trmt.lightness": "Trank der Leichtigkeit",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "Spritziger Trank der Leichtigkeit",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "Verweilender Trank der Leichtigkeit",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Pfeil der Leichtigkeit",
+
+  "block.trmt.eroded_grass_block": "Erodierter Grasblock",
+  "block.trmt.eroded_dirt": "Erodierte Erde",
+  "block.trmt.eroded_coarse_dirt": "Erodierte Schottererde",
+  "block.trmt.eroded_sand": "Erodierter Sand",
+
+  "trmt.button.download_update": "Mod-Update herunterladen",
+  "trmt.disconnect.outdated": "Die Client-Version von The Roads More Travelled (TRMT) ist veraltet (v%s)!\nDieser Server benötigt v%s oder neuer.\nBitte lade das Update herunter, um dem Server beizutreten."
+}

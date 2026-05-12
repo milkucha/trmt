@@ -1,6 +1,7 @@
 package milkucha.trmt.block;
 
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ChunkErosionMap;
 import milkucha.trmt.erosion.ErosionEntry;
@@ -47,6 +48,8 @@ public class ErodedGrassBlock extends Block {
 
     @Override
     public void randomTick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
+        if (!TRMTConfig.get().deErosion.grassEnabled) return;
+
         ErosionMapManager manager = ErosionMapManager.getInstance();
         ChunkErosionMap chunkMap = manager.getChunkMap(ChunkPos.containing(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
