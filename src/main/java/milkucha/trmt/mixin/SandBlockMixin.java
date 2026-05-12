@@ -2,13 +2,14 @@ package milkucha.trmt.mixin;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.ColoredFallingBlock;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.BlockView;
 import org.spongepowered.asm.mixin.Mixin;
 
-@Mixin(targets = "net.minecraft.block.SandBlock")
+@Mixin(ColoredFallingBlock.class)
 public abstract class SandBlockMixin extends Block {
 
     private static final VoxelShape SAND_COLLISION_SHAPE = Block.createCuboidShape(0, 0, 0, 16, 16, 16);

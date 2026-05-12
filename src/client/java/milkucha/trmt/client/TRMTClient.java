@@ -2,6 +2,7 @@ package milkucha.trmt.client;
 
 import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.debug.ErosionDebugHud;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.client.render.ErodedGrassBlockModels;
@@ -15,9 +16,12 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationNetworkin
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.color.world.BiomeColors;
 import net.minecraft.client.render.RenderLayer;
+import net.minecraft.item.BlockItem;
+import net.minecraft.util.ActionResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 
@@ -39,6 +43,19 @@ public class TRMTClient implements ClientModInitializer {
 
 		ErodedGrassBlockModels.register();
 		BlockRenderLayerMap.INSTANCE.putBlock(TRMTBlocks.ERODED_GRASS_BLOCK, RenderLayer.getCutoutMipped());
+		BlockRenderLayerMap.INSTANCE.putBlock(TRMTBlocks.ERODED_SAND, RenderLayer.getCutoutMipped());
+
+		// Suppress client-side block-placement prediction above sunken eroded sand (stages 1–4).
+		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+			var placePos = hitResult.getBlockPos().offset(hitResult.getSide());
+			var below = world.getBlockState(placePos.down());
+			if (below.isOf(TRMTBlocks.ERODED_SAND)
+					&& below.get(ErodedSandBlock.STAGE) > 0
+					&& player.getStackInHand(hand).getItem() instanceof BlockItem) {
+				return ActionResult.FAIL;
+			}
+			return ActionResult.PASS;
+		});
 		ColorProviderRegistry.BLOCK.register(
 				(state, world, pos, tintIndex) -> world != null && pos != null
 						? BiomeColors.getGrassColor(world, pos)

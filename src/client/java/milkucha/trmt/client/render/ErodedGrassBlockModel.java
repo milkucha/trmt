@@ -70,7 +70,15 @@ public class ErodedGrassBlockModel implements BakedModel {
     @Override
     public List<BakedQuad> getQuads(BlockState state, Direction face,
                                     net.minecraft.util.math.random.Random random) {
-        return wrapped.getQuads(state, face, random);
+        List<BakedQuad> quads = wrapped.getQuads(state, face, random);
+        // The UP face has two coplanar quads (dirt base + eroded_top overlay).
+        // The break-animation renderer uses getQuads() and bypasses FRAPI/CUTOUT,
+        // causing the two coincident faces to Z-fight and produce white pixels.
+        // Return only the first (dirt base) quad so the damage overlay renders cleanly.
+        if (face == Direction.UP && quads.size() > 1) {
+            return quads.subList(0, 1);
+        }
+        return quads;
     }
 
     @Override public boolean useAmbientOcclusion() { return true; }

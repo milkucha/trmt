@@ -43,6 +43,7 @@ replay_*.log
 
 .claude/
 AGENTS.md
+CHANGELOG.md
 CLAUDE.md
 LEARNINGS.md
 minecraft-erosion-mod-plan.md
