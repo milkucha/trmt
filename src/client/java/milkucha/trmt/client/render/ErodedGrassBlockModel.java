@@ -52,7 +52,8 @@ public class ErodedGrassBlockModel implements BakedModel, FabricBakedModel {
         Random random = randomSupplier.get();
         for (Direction face : Direction.values()) {
             if (cullTest.test(face)) continue;
-            for (BakedQuad quad : wrapped.getQuads(state, face, random)) {
+            List<BakedQuad> quads = wrapped.getQuads(state, face, random);
+            for (BakedQuad quad : quads) {
                 emitter.fromVanilla(quad, face == Direction.DOWN ? defaultMaterial() : cutoutMaterial(), face);
                 emitter.emit();
             }
@@ -77,7 +78,12 @@ public class ErodedGrassBlockModel implements BakedModel, FabricBakedModel {
 
     @Override
     public List<BakedQuad> getQuads(BlockState state, Direction face, Random random) {
-        return wrapped.getQuads(state, face, random);
+        List<BakedQuad> quads = wrapped.getQuads(state, face, random);
+        // Return only the first UP quad so the break-animation renderer doesn't Z-fight.
+        if (face == Direction.UP && quads.size() > 1) {
+            return quads.subList(0, 1);
+        }
+        return quads;
     }
 
     @Override public boolean useAmbientOcclusion() { return true; }
