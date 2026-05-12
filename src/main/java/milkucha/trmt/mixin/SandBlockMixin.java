@@ -8,7 +8,7 @@ import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.BlockView;
 import org.spongepowered.asm.mixin.Mixin;
 
-@Mixin(targets = "net.minecraft.block.SandBlock")
+@Mixin(targets = "net.minecraft.block.ColoredFallingBlock")
 public abstract class SandBlockMixin extends Block {
 
     private static final VoxelShape SAND_COLLISION_SHAPE = Block.createCuboidShape(0, 0, 0, 16, 16, 16);

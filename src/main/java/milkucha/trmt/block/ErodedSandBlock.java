@@ -1,6 +1,7 @@
 package milkucha.trmt.block;
 
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ChunkErosionMap;
 import milkucha.trmt.erosion.ErosionEntry;
@@ -26,12 +27,20 @@ public class ErodedSandBlock extends Block {
     public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;
     public static final IntProperty STAGE = IntProperty.of("stage", 0, 4);
 
-    private static final VoxelShape[] SHAPES = {
-        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 0
+    private static final VoxelShape[] COLLISION_SHAPES = {
+        Block.createCuboidShape(0, 0, 0, 16, 16, 16), // stage 0
         Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 1
         Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 2
         Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 3
         Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 4
+    };
+
+    private static final VoxelShape[] OUTLINE_SHAPES = {
+        Block.createCuboidShape(0, 0, 0, 16, 16, 16), // stage 0
+        Block.createCuboidShape(0, 0, 0, 16, 14, 16), // stage 1 — matches model height
+        Block.createCuboidShape(0, 0, 0, 16, 14, 16), // stage 2 — matches model height
+        Block.createCuboidShape(0, 0, 0, 16, 12, 16), // stage 3 — matches model height
+        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 4 — matches model height (same as collision)
     };
 
     public ErodedSandBlock(Settings settings) {
@@ -46,6 +55,7 @@ public class ErodedSandBlock extends Block {
 
     @Override
     public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
+        if (!TRMTConfig.get().deErosion.sandEnabled) return;
         ErosionMapManager manager = ErosionMapManager.getInstance();
         ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
@@ -68,11 +78,11 @@ public class ErodedSandBlock extends Block {
 
     @Override
     public VoxelShape getOutlineShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
-        return SHAPES[state.get(STAGE)];
+        return OUTLINE_SHAPES[state.get(STAGE)];
     }
 
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
-        return SHAPES[state.get(STAGE)];
+        return COLLISION_SHAPES[state.get(STAGE)];
     }
 }

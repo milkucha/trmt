@@ -4,11 +4,15 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.fabricmc.loader.api.FabricLoader;
 
+import milkucha.trmt.erosion.BlockThresholds;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Mod configuration loaded from {@code config/trmt.json}.
@@ -27,6 +31,7 @@ public final class TRMTConfig {
     public static class Multipliers {
         public float player  = 0.5f;
         public float mounted = 1.5f;
+        public float leash   = 1.5f;
     }
 
     public static class MinMax {
@@ -86,12 +91,27 @@ public final class TRMTConfig {
         public SandDeErosion  sand  = new SandDeErosion();
     }
 
+    public static class DeErosionToggles {
+        public boolean grassEnabled = true;
+        public boolean dirtEnabled  = true;
+        public boolean sandEnabled  = true;
+    }
+
     // ── top-level fields ───────────────────────────────────────────────────
 
     public ErosionToggles       erosion              = new ErosionToggles();
     public Multipliers          erosionMultipliers   = new Multipliers();
     public ErosionThresholds    erosionThresholds    = new ErosionThresholds();
     public DeErosionTimeoutDays deErosionTimeoutDays = new DeErosionTimeoutDays();
+    public DeErosionToggles     deErosion            = new DeErosionToggles();
+    public List<String> erodableVegetation = Arrays.asList(
+        "minecraft:grass", "minecraft:tall_grass",
+        "minecraft:dandelion", "minecraft:poppy", "minecraft:blue_orchid", "minecraft:allium",
+        "minecraft:azure_bluet", "minecraft:red_tulip", "minecraft:orange_tulip",
+        "minecraft:white_tulip", "minecraft:pink_tulip", "minecraft:oxeye_daisy",
+        "minecraft:cornflower", "minecraft:lily_of_the_valley", "minecraft:wither_rose",
+        "minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony"
+    );
 
     // ── singleton ──────────────────────────────────────────────────────────
     private static TRMTConfig instance = new TRMTConfig();
@@ -115,6 +135,7 @@ public final class TRMTConfig {
                 TRMTConfig loaded = GSON.fromJson(reader, TRMTConfig.class);
                 if (loaded != null) {
                     instance = loaded;
+                    BlockThresholds.invalidateVegetationCache();
                     // Save back immediately so any fields added since the last run
                     // are written to disk with their default values.
                     save();
