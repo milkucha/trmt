@@ -1,24 +1,31 @@
 package milkucha.trmt.mixin;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.ShapeContext;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.world.BlockView;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(targets = "net.minecraft.block.SandBlock")
-public abstract class SandBlockMixin extends Block {
+/**
+ * Full-cube collision for normal and red sand (1.21 uses {@code ColoredFallingBlock}, not {@code SandBlock}).
+ * Implemented at {@link BlockBehaviour} because sand types do not override {@code getCollisionShape}.
+ */
+@Mixin(BlockBehaviour.class)
+public class SandBlockMixin {
 
-    private static final VoxelShape SAND_COLLISION_SHAPE = Block.createCuboidShape(0, 0, 0, 16, 16, 16);
+	private static final VoxelShape SAND_COLLISION_SHAPE = Shapes.block();
 
-    protected SandBlockMixin(Settings settings) {
-        super(settings);
-    }
-
-    @Override
-    public VoxelShape getCollisionShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
-        return SAND_COLLISION_SHAPE;
-    }
+	@Inject(method = "getCollisionShape", at = @At("HEAD"), cancellable = true)
+	private void trmt$fullCubeSandCollision(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context, CallbackInfoReturnable<VoxelShape> cir) {
+		if (state.is(Blocks.SAND) || state.is(Blocks.RED_SAND)) {
+			cir.setReturnValue(SAND_COLLISION_SHAPE);
+		}
+	}
 }

@@ -2,87 +2,94 @@ package milkucha.trmt.block;
 
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
+import milkucha.trmt.TRMTFlags;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ChunkErosionMap;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.ShapeContext;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.state.StateManager;
-import net.minecraft.state.property.DirectionProperty;
-import net.minecraft.state.property.IntProperty;
-import net.minecraft.state.property.Properties;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.random.Random;
-import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.world.BlockView;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class ErodedSandBlock extends Block {
 
-    public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;
-    public static final IntProperty STAGE = IntProperty.of("stage", 0, 4);
+	public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
+	public static final IntegerProperty STAGE = IntegerProperty.create("stage", 0, 4);
 
-    private static final VoxelShape[] COLLISION_SHAPES = {
-        Block.createCuboidShape(0, 0, 0, 16, 16, 16), // stage 0
-        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 1
-        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 2
-        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 3
-        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 4
-    };
+	private static final VoxelShape[] COLLISION_SHAPES = {
+		Shapes.block(),
+		Shapes.box(0, 0, 0, 1, 10 / 16.0, 1),
+		Shapes.box(0, 0, 0, 1, 10 / 16.0, 1),
+		Shapes.box(0, 0, 0, 1, 10 / 16.0, 1),
+		Shapes.box(0, 0, 0, 1, 10 / 16.0, 1),
+	};
 
-    private static final VoxelShape[] OUTLINE_SHAPES = {
-        Block.createCuboidShape(0, 0, 0, 16, 16, 16), // stage 0
-        Block.createCuboidShape(0, 0, 0, 16, 14, 16), // stage 1 — matches model height
-        Block.createCuboidShape(0, 0, 0, 16, 14, 16), // stage 2 — matches model height
-        Block.createCuboidShape(0, 0, 0, 16, 12, 16), // stage 3 — matches model height
-        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 4 — matches model height (same as collision)
-    };
+	private static final VoxelShape[] OUTLINE_SHAPES = {
+		Shapes.block(),
+		Shapes.box(0, 0, 0, 1, 14 / 16.0, 1),
+		Shapes.box(0, 0, 0, 1, 14 / 16.0, 1),
+		Shapes.box(0, 0, 0, 1, 12 / 16.0, 1),
+		Shapes.box(0, 0, 0, 1, 10 / 16.0, 1),
+	};
 
-    public ErodedSandBlock(Settings settings) {
-        super(settings);
-        setDefaultState(getStateManager().getDefaultState().with(FACING, Direction.SOUTH).with(STAGE, 0));
-    }
+	public ErodedSandBlock(Properties settings) {
+		super(settings);
+		registerDefaultState(getStateDefinition().any().setValue(FACING, Direction.SOUTH).setValue(STAGE, 0));
+	}
 
-    @Override
-    protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
-        builder.add(FACING, STAGE);
-    }
+	@Override
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+		builder.add(FACING, STAGE);
+	}
 
-    @Override
-    public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
-        if (!TRMTConfig.get().deErosion.sandEnabled) return;
-        ErosionMapManager manager = ErosionMapManager.getInstance();
-        ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
-        ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
+	@Override
+	protected void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+		if (!TRMTConfig.get().deErosion.sandEnabled) return;
+		ErosionMapManager manager = ErosionMapManager.getInstance();
+		ChunkErosionMap chunkMap = manager.getChunkMap(new net.minecraft.world.level.ChunkPos(pos));
+		ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
 
-        int stage = state.get(STAGE);
-        long currentTime = world.getTime();
-        long timeout = BlockThresholds.getSandDeErosionTimeout(stage);
-        if (BlockThresholds.isIsolated(world, pos, manager)) timeout /= 2;
-        if (entry != null && currentTime - entry.getLastTouchedGameTime() <= timeout) return;
+		int stage = state.getValue(STAGE);
+		long currentTime = level.getGameTime();
+		long timeout = BlockThresholds.getSandDeErosionTimeout(stage);
+		if (BlockThresholds.isIsolated(level, pos, manager)) timeout /= 2;
+		if (entry != null && currentTime - entry.getLastTouchedGameTime() <= timeout) return;
 
-        if (stage > 0) {
-            world.setBlockState(pos, state.with(STAGE, stage - 1), Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, currentTime);
-        } else {
-            world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-        }
-    }
+		if (stage > 0) {
+			level.setBlock(pos, state.setValue(STAGE, stage - 1), TRMTFlags.BLOCK_UPDATE);
+			manager.removeEntry(pos);
+			manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND.get(), currentTime);
+		} else {
+			level.setBlock(pos, Blocks.SAND.defaultBlockState(), TRMTFlags.BLOCK_UPDATE);
+			manager.removeEntry(pos);
+		}
+	}
 
-    @Override
-    public VoxelShape getOutlineShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
-        return OUTLINE_SHAPES[state.get(STAGE)];
-    }
+	@Override
+	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return OUTLINE_SHAPES[state.getValue(STAGE)];
+	}
 
-    @Override
-    public VoxelShape getCollisionShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
-        return COLLISION_SHAPES[state.get(STAGE)];
-    }
+	@Override
+	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return COLLISION_SHAPES[state.getValue(STAGE)];
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	protected boolean isRandomlyTicking(BlockState state) {
+		return true;
+	}
 }

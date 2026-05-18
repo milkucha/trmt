@@ -1,19 +1,21 @@
 package milkucha.trmt.mixin;
 
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.TRMTFlags;
 import milkucha.trmt.erosion.ErosionMapManager;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.HoeItem;
-import net.minecraft.item.ItemUsageContext;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.HoeItem;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -22,39 +24,39 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(HoeItem.class)
 public class HoeItemMixin {
 
-    @Inject(method = "useOnBlock", at = @At("HEAD"), cancellable = true)
-    private void trmt$tillErodedBlocks(ItemUsageContext context, CallbackInfoReturnable<ActionResult> cir) {
-        BlockPos pos = context.getBlockPos();
-        World world = context.getWorld();
-        BlockState state = world.getBlockState(pos);
+	@Inject(method = "useOn", at = @At("HEAD"), cancellable = true)
+	private void trmt$tillErodedBlocks(UseOnContext context, CallbackInfoReturnable<InteractionResult> cir) {
+		BlockPos pos = context.getClickedPos();
+		Level level = context.getLevel();
+		BlockState state = level.getBlockState(pos);
 
-        if (!state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK) && !state.isOf(TRMTBlocks.ERODED_DIRT)) {
-            return;
-        }
+		if (!state.is(TRMTBlocks.ERODED_GRASS_BLOCK.get()) && !state.is(TRMTBlocks.ERODED_DIRT.get())) {
+			return;
+		}
 
-        // Hoes can only till if the block above is air or replaceable — same rule as vanilla.
-        BlockState above = world.getBlockState(pos.up());
-        if (!above.isAir() && !above.isReplaceable()) {
-            cir.setReturnValue(ActionResult.PASS);
-            return;
-        }
+		BlockState above = level.getBlockState(pos.above());
+		if (!above.isAir() && !above.canBeReplaced()) {
+			cir.setReturnValue(InteractionResult.PASS);
+			return;
+		}
 
-        // Don't till the bottom face (matches vanilla hoe behaviour).
-        if (context.getSide() == Direction.DOWN) {
-            cir.setReturnValue(ActionResult.PASS);
-            return;
-        }
+		if (context.getClickedFace() == Direction.DOWN) {
+			cir.setReturnValue(InteractionResult.PASS);
+			return;
+		}
 
-        PlayerEntity player = context.getPlayer();
-        world.playSound(player, pos, SoundEvents.ITEM_HOE_TILL, SoundCategory.BLOCKS, 1.0f, 1.0f);
-        if (!world.isClient) {
-            world.setBlockState(pos, Blocks.FARMLAND.getDefaultState(),
-                    Block.NOTIFY_ALL | Block.REDRAW_ON_MAIN_THREAD);
-            ErosionMapManager.getInstance().removeEntry(pos);
-            if (player != null) {
-                context.getStack().damage(1, player, p -> p.sendToolBreakStatus(context.getHand()));
-            }
-        }
-        cir.setReturnValue(ActionResult.success(world.isClient));
-    }
+		Player player = context.getPlayer();
+		level.playSound(player, pos, SoundEvents.HOE_TILL, SoundSource.BLOCKS, 1.0f, 1.0f);
+		if (!level.isClientSide()) {
+			level.setBlock(pos, Blocks.FARMLAND.defaultBlockState(), TRMTFlags.BLOCK_UPDATE);
+			ErosionMapManager.getInstance().removeEntry(pos);
+			if (player != null) {
+				EquipmentSlot equipmentSlot = context.getHand() == InteractionHand.MAIN_HAND
+					? EquipmentSlot.MAINHAND
+					: EquipmentSlot.OFFHAND;
+				context.getItemInHand().hurtAndBreak(1, player, equipmentSlot);
+			}
+		}
+		cir.setReturnValue(InteractionResult.sidedSuccess(level.isClientSide()));
+	}
 }

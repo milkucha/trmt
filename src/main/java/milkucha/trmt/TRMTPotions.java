@@ -1,35 +1,36 @@
 package milkucha.trmt;
 
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.item.Items;
-import net.minecraft.potion.Potion;
-import net.minecraft.potion.Potions;
-import net.minecraft.recipe.BrewingRecipeRegistry;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.item.alchemy.Potion;
+import net.minecraft.world.item.alchemy.Potions;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.event.brewing.RegisterBrewingRecipesEvent;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.minecraft.world.item.Items;
 
 public final class TRMTPotions {
 
-    public static final Potion LIGHTNESS = Registry.register(
-            Registries.POTION,
-            new Identifier("trmt", "lightness"),
-            new Potion("trmt.lightness", new StatusEffectInstance(TRMTEffects.LIGHTNESS, 3600))
-    );
+	public static final DeferredRegister<Potion> POTIONS = DeferredRegister.create(
+		BuiltInRegistries.POTION.key(),
+		TRMT.MOD_ID);
 
-    public static final Potion LONG_LIGHTNESS = Registry.register(
-            Registries.POTION,
-            new Identifier("trmt", "long_lightness"),
-            new Potion("trmt.lightness", new StatusEffectInstance(TRMTEffects.LIGHTNESS, 9600))
-    );
+	public static final DeferredHolder<Potion, Potion> LIGHTNESS = POTIONS.register("lightness",
+		() -> new Potion(new MobEffectInstance(TRMTEffects.LIGHTNESS, 3600)));
 
-    private TRMTPotions() {}
+	public static final DeferredHolder<Potion, Potion> LONG_LIGHTNESS = POTIONS.register("long_lightness",
+		() -> new Potion(new MobEffectInstance(TRMTEffects.LIGHTNESS, 9600)));
 
-    public static void register() {
-        // Awkward Potion + Feather → Potion of Lightness (3 min)
-        BrewingRecipeRegistry.registerPotionRecipe(Potions.AWKWARD, Items.FEATHER, LIGHTNESS);
-        // Potion of Lightness + Redstone → Long Potion of Lightness (8 min)
-        BrewingRecipeRegistry.registerPotionRecipe(LIGHTNESS, Items.REDSTONE, LONG_LIGHTNESS);
-        // Splash conversion (Potion + Gunpowder → Splash Potion) is handled by vanilla globally.
-    }
+	private TRMTPotions() {}
+
+	public static void register(IEventBus modBus) {
+		POTIONS.register(modBus);
+	}
+
+	public static void registerBrewingRecipes(RegisterBrewingRecipesEvent event) {
+		var builder = event.getBuilder();
+		builder.addMix(Potions.AWKWARD, Items.FEATHER, LIGHTNESS);
+		builder.addMix(LIGHTNESS, Items.REDSTONE, LONG_LIGHTNESS);
+	}
 }

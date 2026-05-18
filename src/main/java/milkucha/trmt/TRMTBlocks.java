@@ -3,62 +3,40 @@ package milkucha.trmt;
 import milkucha.trmt.block.ErodedDirtBlock;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.block.ErodedSandBlock;
-import net.minecraft.block.AbstractBlock;
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.MapColor;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.util.Identifier;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.MapColor;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredBlock;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**
- * Registry for all custom TRMT blocks.
+ * All mod blocks registered via {@link DeferredRegister}.
  */
 public final class TRMTBlocks {
 
-    /**
-     * Dirt produced by the final grass erosion stage. Stores the rotation of the preceding
-     * grass stage. Never obtainable as an item.
-     */
-    public static final Block ERODED_DIRT = Registry.register(
-            Registries.BLOCK,
-            new Identifier("trmt", "eroded_dirt"),
-            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.DIRT).ticksRandomly())
-    );
+	public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(TRMT.MOD_ID);
 
-    /**
-     * Coarse dirt produced by erosion. Visually identical to vanilla coarse dirt.
-     * Never obtainable as an item.
-     */
-    public static final Block ERODED_COARSE_DIRT = Registry.register(
-            Registries.BLOCK,
-            new Identifier("trmt", "eroded_coarse_dirt"),
-            new ErodedDirtBlock(AbstractBlock.Settings.copy(Blocks.COARSE_DIRT).ticksRandomly())
-    );
+	public static final DeferredBlock<ErodedDirtBlock> ERODED_DIRT = BLOCKS.registerBlock("eroded_dirt",
+		ErodedDirtBlock::new,
+		BlockBehaviour.Properties.ofFullCopy(Blocks.DIRT).randomTicks());
 
-    /**
-     * Eroded grass block produced by foot-traffic erosion.
-     * Stores FACING (UV rotation) and STAGE (0–4, matching eroded_grass_block_s0–s4 models).
-     * Never obtainable as an item.
-     */
-    public static final Block ERODED_GRASS_BLOCK = Registry.register(
-            Registries.BLOCK,
-            new Identifier("trmt", "eroded_grass_block"),
-            new ErodedGrassBlock(AbstractBlock.Settings.copy(Blocks.GRASS_BLOCK).mapColor(MapColor.DIRT_BROWN).ticksRandomly())
-    );
+	public static final DeferredBlock<ErodedDirtBlock> ERODED_COARSE_DIRT = BLOCKS.registerBlock("eroded_coarse_dirt",
+		ErodedDirtBlock::new,
+		BlockBehaviour.Properties.ofFullCopy(Blocks.COARSE_DIRT).randomTicks());
 
-    /**
-     * Sand produced by foot-traffic erosion. Full block, sandstone_bottom top face,
-     * sand texture on all other faces. Never obtainable as an item.
-     */
-    public static final Block ERODED_SAND = Registry.register(
-            Registries.BLOCK,
-            new Identifier("trmt", "eroded_sand"),
-            new ErodedSandBlock(AbstractBlock.Settings.copy(Blocks.SAND).mapColor(MapColor.TERRACOTTA_YELLOW).nonOpaque().ticksRandomly())
-    );
+	public static final DeferredBlock<ErodedGrassBlock> ERODED_GRASS_BLOCK = BLOCKS.registerBlock("eroded_grass_block",
+		ErodedGrassBlock::new,
+		BlockBehaviour.Properties.ofFullCopy(Blocks.GRASS_BLOCK).mapColor(MapColor.DIRT).randomTicks());
 
-    private TRMTBlocks() {}
+	public static final DeferredBlock<ErodedSandBlock> ERODED_SAND = BLOCKS.registerBlock("eroded_sand",
+		ErodedSandBlock::new,
+		BlockBehaviour.Properties.ofFullCopy(Blocks.SAND).mapColor(MapColor.SAND).randomTicks().noOcclusion());
 
-    /** Called from TRMT.onInitialize() to force static initialisation. */
-    public static void register() {}
+	private TRMTBlocks() {}
+
+	public static void register(IEventBus modBus) {
+		BLOCKS.register(modBus);
+	}
 }
