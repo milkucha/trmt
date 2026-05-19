@@ -1,28 +1,21 @@
 package milkucha.trmt.block;
 
-import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.erosion.BlockThresholds;
-import milkucha.trmt.erosion.ChunkErosionMap;
-import milkucha.trmt.erosion.ErosionEntry;
-import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.ShapeContext;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.DirectionProperty;
 import net.minecraft.state.property.IntProperty;
 import net.minecraft.state.property.Properties;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.random.Random;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.BlockView;
 
-public class ErodedSandBlock extends Block {
+public class ErodedSandBlock extends ErodedBlock {
 
     public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;
     public static final IntProperty STAGE = IntProperty.of("stage", 0, 4);
@@ -47,37 +40,22 @@ public class ErodedSandBlock extends Block {
     };
 
     public ErodedSandBlock(Settings settings) {
-        super(settings);
+        super(settings,
+                () -> TRMTConfig.get().deErosion.sandEnabled,
+                state -> BlockThresholds.getSandDeErosionTimeout(state.get(STAGE)),
+                state -> {
+                    int stage = state.get(STAGE);
+                    if (stage > 0) {
+                        return new DeErosionResult(state.with(STAGE, stage - 1), true);
+                    }
+                    return new DeErosionResult(Blocks.SAND.getDefaultState(), false);
+                });
         setDefaultState(getStateManager().getDefaultState().with(FACING, Direction.SOUTH).with(STAGE, 0));
     }
 
     @Override
     protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
         builder.add(FACING, STAGE);
-    }
-
-    @Override
-    public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
-        if (!TRMTConfig.get().deErosion.sandEnabled) return;
-
-        ErosionMapManager manager = ErosionMapManager.getInstance();
-        ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
-        ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
-
-        int stage = state.get(STAGE);
-        long currentTime = world.getTime();
-        long timeout = BlockThresholds.getSandDeErosionTimeout(stage);
-        if (BlockThresholds.isIsolated(world, pos, manager)) timeout /= 2;
-        if (entry != null && currentTime - entry.getLastTouchedGameTime() <= timeout) return;
-
-        if (stage > 0) {
-            world.setBlockState(pos, state.with(STAGE, stage - 1), Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, currentTime);
-        } else {
-            world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-        }
     }
 
     @Override

@@ -30,6 +30,13 @@ public final class ErosionLogic {
                 || (erosion.leavesEnabled && BlockThresholds.isLeaves(block));
     }
 
+    public static boolean isErodedBlock(Block block) {
+        return block == TRMTBlocks.ERODED_GRASS_BLOCK
+                || block == TRMTBlocks.ERODED_DIRT
+                || block == TRMTBlocks.ERODED_COARSE_DIRT
+                || block == TRMTBlocks.ERODED_SAND;
+    }
+
     public static BlockPos getGroundPos(Entity entity) {
         BlockPos groundPos = entity.getBlockPos().down();
         World world = entity.getWorld();
@@ -113,13 +120,14 @@ public final class ErosionLogic {
         if (state.isOf(Blocks.SAND)) {
             if (!world.getBlockState(pos.up()).isAir()) return;
             Direction erodedFacing = rotationToFacing(BlockThresholds.posRotation(pos));
+            var history = manager.getHistoryWithCurrent(pos, state);
             world.setBlockState(pos,
                     TRMTBlocks.ERODED_SAND.getDefaultState()
                             .with(ErodedSandBlock.FACING, erodedFacing)
                             .with(ErodedSandBlock.STAGE, 0),
                     Block.NOTIFY_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime());
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime(), history);
             return;
         }
 
@@ -127,10 +135,15 @@ public final class ErosionLogic {
             if (!world.getBlockState(pos.up()).isAir()) return;
             int stage = state.get(ErodedSandBlock.STAGE);
             if (stage < 4) {
+                var history = manager.getHistoryWithCurrent(pos, state);
                 world.setBlockState(pos, state.with(ErodedSandBlock.STAGE, stage + 1), Block.NOTIFY_ALL);
+                manager.removeEntry(pos);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime(), history);
+                return;
             }
+            var history = manager.getHistory(pos);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime());
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime(), history);
             return;
         }
 
@@ -144,61 +157,63 @@ public final class ErosionLogic {
 
         if (state.isOf(Blocks.GRASS_BLOCK)) {
             Direction erodedFacing = rotationToFacing(BlockThresholds.posRotation(pos));
+            var history = manager.getHistoryWithCurrent(pos, state);
             world.setBlockState(pos,
                     TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
                             .with(ErodedGrassBlock.FACING, erodedFacing)
                             .with(ErodedGrassBlock.STAGE, 0),
                     Block.NOTIFY_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, world.getTime());
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, world.getTime(), history);
             return;
         }
 
         if (state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)) {
             Direction facing = state.get(ErodedGrassBlock.FACING);
             int currentStage = state.get(ErodedGrassBlock.STAGE);
-            Block originalBlock = manager.getOriginalBlock(pos, Blocks.GRASS_BLOCK);
+            var history = manager.getHistoryWithCurrent(pos, state);
             if (currentStage < 4) {
                 world.setBlockState(pos, state.with(ErodedGrassBlock.STAGE, currentStage + 1), Block.NOTIFY_ALL);
                 manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, world.getTime(), originalBlock);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, world.getTime(), history);
                 return;
             }
             world.setBlockState(pos,
                     TRMTBlocks.ERODED_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
                     Block.NOTIFY_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getTime(), originalBlock);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getTime(), history);
             return;
         }
 
         if (state.isOf(TRMTBlocks.ERODED_DIRT)) {
             Direction facing = state.get(ErodedDirtBlock.FACING);
             int currentStage = state.get(ErodedDirtBlock.STAGE);
-            Block originalBlock = manager.getOriginalBlock(pos, Blocks.GRASS_BLOCK);
+            var history = manager.getHistoryWithCurrent(pos, state);
             if (currentStage < 3) {
                 world.setBlockState(pos, state.with(ErodedDirtBlock.STAGE, currentStage + 1), Block.NOTIFY_ALL);
                 manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getTime(), originalBlock);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getTime(), history);
                 return;
             }
             world.setBlockState(pos,
                     TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
                     Block.NOTIFY_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_COARSE_DIRT, world.getTime(), originalBlock);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_COARSE_DIRT, world.getTime(), history);
             return;
         }
 
         if (!state.isOf(Blocks.DIRT)) return;
         Direction erodedFacing = rotationToFacing(BlockThresholds.posRotation(pos));
+        var history = manager.getHistoryWithCurrent(pos, state);
         world.setBlockState(pos,
                 TRMTBlocks.ERODED_DIRT.getDefaultState()
                         .with(ErodedDirtBlock.FACING, erodedFacing)
                         .with(ErodedDirtBlock.STAGE, 1),
                 Block.NOTIFY_ALL);
         manager.removeEntry(pos);
-        manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getTime(), Blocks.DIRT);
+        manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getTime(), history);
     }
 
     private static Direction rotationToFacing(int rotation) {

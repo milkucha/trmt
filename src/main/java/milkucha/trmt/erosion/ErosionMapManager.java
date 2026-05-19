@@ -125,24 +125,30 @@ public class ErosionMapManager {
     }
 
     public void writeCooldownEntry(BlockPos worldPos, Block block, long currentGameTime) {
-        writeCooldownEntry(worldPos, block, currentGameTime, getOriginalBlock(worldPos, block));
+        writeCooldownEntry(worldPos, block, currentGameTime, getHistory(worldPos));
     }
 
-    public void writeCooldownEntry(BlockPos worldPos, Block block, long currentGameTime, Block originalBlock) {
+    public void writeCooldownEntry(BlockPos worldPos, Block block, long currentGameTime, List<ErosionHistoryState> history) {
         if (state == null) return;
         ChunkPos chunkPos = new ChunkPos(worldPos);
         ChunkErosionMap map = state.computeChunkMap(chunkPos);
         float threshold = BlockThresholds.randomThreshold(block);
-        map.putEntry(worldPos.toImmutable(), new ErosionEntry(block, originalBlock, threshold, 0f, currentGameTime));
+        map.putEntry(worldPos.toImmutable(), new ErosionEntry(block, history, threshold, 0f, currentGameTime, 0));
         state.markDirty();
     }
 
-    public Block getOriginalBlock(BlockPos worldPos, Block fallback) {
-        if (state == null) return fallback;
+    public List<ErosionHistoryState> getHistory(BlockPos worldPos) {
+        if (state == null) return List.of();
         ChunkErosionMap map = state.getChunkMap(new ChunkPos(worldPos));
-        if (map == null) return fallback;
+        if (map == null) return List.of();
         ErosionEntry entry = map.getEntry(worldPos);
-        return entry != null ? entry.getOriginalBlock() : fallback;
+        return entry != null ? entry.getHistory() : List.of();
+    }
+
+    public List<ErosionHistoryState> getHistoryWithCurrent(BlockPos worldPos, net.minecraft.block.BlockState currentState) {
+        List<ErosionHistoryState> history = new ArrayList<>(getHistory(worldPos));
+        history.add(ErosionHistoryState.from(currentState));
+        return history;
     }
 
     public void migrateGrassEntries(MinecraftServer server) {

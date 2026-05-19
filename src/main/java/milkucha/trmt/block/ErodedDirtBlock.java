@@ -1,23 +1,17 @@
 package milkucha.trmt.block;
 
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.erosion.BlockThresholds;
-import milkucha.trmt.erosion.ChunkErosionMap;
-import milkucha.trmt.erosion.ErosionEntry;
-import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
 import net.minecraft.block.ShapeContext;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.DirectionProperty;
 import net.minecraft.state.property.IntProperty;
 import net.minecraft.state.property.Properties;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.random.Random;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.BlockView;
 
@@ -27,7 +21,7 @@ import net.minecraft.world.BlockView;
  * was established when the preceding grass stage was eroded.
  * Never placed by players or generated naturally — only set by the erosion system.
  */
-public class ErodedDirtBlock extends Block {
+public class ErodedDirtBlock extends ErodedBlock {
 
     private static final VoxelShape SHAPE = Block.createCuboidShape(0, 0, 0, 16, 16, 16);
 
@@ -42,7 +36,10 @@ public class ErodedDirtBlock extends Block {
     public static final IntProperty STAGE = IntProperty.of("stage", 0, 3);
 
     public ErodedDirtBlock(Settings settings) {
-        super(settings);
+        super(settings,
+                () -> TRMTConfig.get().deErosion.dirtEnabled,
+                state -> BlockThresholds.getDirtDeErosionTimeout(state.getBlock()),
+                ErodedDirtBlock::fallbackDeErosion);
         setDefaultState(getStateManager().getDefaultState().with(FACING, Direction.SOUTH).with(STAGE, 0));
     }
 
@@ -51,54 +48,26 @@ public class ErodedDirtBlock extends Block {
         builder.add(FACING, STAGE);
     }
 
-    @Override
-    public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
-        if (!milkucha.trmt.TRMTConfig.get().deErosion.dirtEnabled) return;
-
-        ErosionMapManager manager = ErosionMapManager.getInstance();
-        ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
-        ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
-
-        long currentTime = world.getTime();
-        long timeout = BlockThresholds.getDirtDeErosionTimeout(state.getBlock());
-        if (BlockThresholds.isIsolated(world, pos, manager)) timeout /= 2;
-        if (entry != null && currentTime - entry.getLastTouchedGameTime() <= timeout) return;
-
+    private static DeErosionResult fallbackDeErosion(BlockState state) {
         Direction facing = state.get(FACING);
         Block block = state.getBlock();
-        Block originalBlock = entry != null ? entry.getOriginalBlock() : null;
 
         if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
-            // De-erode to the most eroded dirt stage.
-            world.setBlockState(pos, TRMTBlocks.ERODED_DIRT.getDefaultState().with(FACING, facing).with(STAGE, 3), Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime,
-                    originalBlock != null ? originalBlock : Blocks.GRASS_BLOCK);
-        } else if (block == TRMTBlocks.ERODED_DIRT) {
-            int stage = state.get(STAGE);
-            if (stage > 0) {
-                // Step down one visual stage.
-                world.setBlockState(pos, state.with(STAGE, stage - 1), Block.NOTIFY_ALL);
-                manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime,
-                        originalBlock != null ? originalBlock : Blocks.GRASS_BLOCK);
-            } else {
-                if (originalBlock == Blocks.DIRT || originalBlock == Blocks.COARSE_DIRT) {
-                    world.setBlockState(pos, originalBlock.getDefaultState(), Block.NOTIFY_ALL);
-                    manager.removeEntry(pos);
-                    return;
-                }
-
-                // Stage 0 → revert to eroded grass block at its most-eroded stage, preserving rotation.
-                world.setBlockState(pos,
-                        TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
-                                .with(ErodedGrassBlock.FACING, facing)
-                                .with(ErodedGrassBlock.STAGE, 4),
-                        Block.NOTIFY_ALL);
-                manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, currentTime);
-            }
+            return new DeErosionResult(
+                    TRMTBlocks.ERODED_DIRT.getDefaultState().with(FACING, facing).with(STAGE, 3),
+                    true);
         }
+
+        int stage = state.get(STAGE);
+        if (stage > 0) {
+            return new DeErosionResult(state.with(STAGE, stage - 1), true);
+        }
+
+        return new DeErosionResult(
+                TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
+                        .with(ErodedGrassBlock.FACING, facing)
+                        .with(ErodedGrassBlock.STAGE, 4),
+                true);
     }
 
     @Override
