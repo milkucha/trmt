@@ -7,6 +7,7 @@ import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.StateManager;
@@ -65,20 +66,29 @@ public class ErodedDirtBlock extends Block {
 
         Direction facing = state.get(FACING);
         Block block = state.getBlock();
+        Block originalBlock = entry != null ? entry.getOriginalBlock() : null;
 
         if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
             // De-erode to the most eroded dirt stage.
             world.setBlockState(pos, TRMTBlocks.ERODED_DIRT.getDefaultState().with(FACING, facing).with(STAGE, 3), Block.NOTIFY_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime,
+                    originalBlock != null ? originalBlock : Blocks.GRASS_BLOCK);
         } else if (block == TRMTBlocks.ERODED_DIRT) {
             int stage = state.get(STAGE);
             if (stage > 0) {
                 // Step down one visual stage.
                 world.setBlockState(pos, state.with(STAGE, stage - 1), Block.NOTIFY_ALL);
                 manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime,
+                        originalBlock != null ? originalBlock : Blocks.GRASS_BLOCK);
             } else {
+                if (originalBlock == Blocks.DIRT || originalBlock == Blocks.COARSE_DIRT) {
+                    world.setBlockState(pos, originalBlock.getDefaultState(), Block.NOTIFY_ALL);
+                    manager.removeEntry(pos);
+                    return;
+                }
+
                 // Stage 0 → revert to eroded grass block at its most-eroded stage, preserving rotation.
                 world.setBlockState(pos,
                         TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()

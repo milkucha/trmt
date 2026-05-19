@@ -231,10 +231,11 @@ public class ServerPlayerEntityMixin {
         if (state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)) {
             Direction facing = state.get(ErodedGrassBlock.FACING);
             int currentStage = state.get(ErodedGrassBlock.STAGE);
+            Block originalBlock = manager.getOriginalBlock(pos, Blocks.GRASS_BLOCK);
             if (currentStage < 4) {
                 world.setBlockState(pos, state.with(ErodedGrassBlock.STAGE, currentStage + 1), Block.NOTIFY_ALL);
                 manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, world.getTime());
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, world.getTime(), originalBlock);
                 return;
             }
             // Stage 4 reached — convert to eroded_dirt, carrying FACING forward.
@@ -242,18 +243,21 @@ public class ServerPlayerEntityMixin {
                     TRMTBlocks.ERODED_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
                     Block.NOTIFY_ALL);
             manager.removeEntry(pos);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getTime(), originalBlock);
             return;
         }
 
         if (state.isOf(TRMTBlocks.ERODED_DIRT)) {
             Direction facing = state.get(ErodedDirtBlock.FACING);
             int currentStage = state.get(ErodedDirtBlock.STAGE);
+            Block originalBlock = manager.getOriginalBlock(pos, Blocks.GRASS_BLOCK);
             if (currentStage < 3) {
                 // Advance to the next visual stage, preserving facing.
                 world.setBlockState(pos,
                         state.with(ErodedDirtBlock.STAGE, currentStage + 1),
                         Block.NOTIFY_ALL);
                 manager.removeEntry(pos);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getTime(), originalBlock);
                 return;
             }
             // Stage 3 reached — carry rotation forward to eroded_coarse_dirt.
@@ -261,6 +265,7 @@ public class ServerPlayerEntityMixin {
                     TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
                     Block.NOTIFY_ALL);
             manager.removeEntry(pos);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_COARSE_DIRT, world.getTime(), originalBlock);
             return;
         }
 
@@ -272,6 +277,7 @@ public class ServerPlayerEntityMixin {
                         .with(ErodedDirtBlock.STAGE, 1),
                 Block.NOTIFY_ALL);
         manager.removeEntry(pos);
+        manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getTime(), Blocks.DIRT);
     }
 
     /**

@@ -81,6 +81,7 @@ public class ErosionPersistentState extends PersistentState {
                 entryNbt.putInt("y", pos.getY());
                 entryNbt.putInt("z", pos.getZ());
                 entryNbt.putString("block", Registries.BLOCK.getId(erosion.getTrackedBlock()).toString());
+                entryNbt.putString("originalBlock", Registries.BLOCK.getId(erosion.getOriginalBlock()).toString());
                 entryNbt.putFloat("count", erosion.getWalkedOnCount());
                 entryNbt.putFloat("threshold", erosion.getThreshold());
                 entryNbt.putLong("lastTime", erosion.getLastTouchedGameTime());
@@ -117,12 +118,15 @@ public class ErosionPersistentState extends PersistentState {
                         entryNbt.getInt("z")
                 );
                 Block block = Registries.BLOCK.get(Identifier.of(entryNbt.getString("block")));
+                Block originalBlock = entryNbt.contains("originalBlock")
+                        ? Registries.BLOCK.get(Identifier.of(entryNbt.getString("originalBlock")))
+                        : block;
                 float count     = entryNbt.getFloat("count");
                 float threshold = entryNbt.getFloat("threshold");
                 long  lastTime  = entryNbt.getLong("lastTime");
                 int   stage     = entryNbt.getInt("stage");
 
-                chunkMap.putEntry(pos, new ErosionEntry(block, threshold, count, lastTime, stage));
+                chunkMap.putEntry(pos, new ErosionEntry(block, originalBlock, threshold, count, lastTime, stage));
             }
 
             chunkMaps.put(chunkPos, chunkMap);

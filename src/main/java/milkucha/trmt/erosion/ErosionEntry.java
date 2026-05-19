@@ -14,6 +14,7 @@ import net.minecraft.block.Block;
 public class ErosionEntry {
 
     private final Block trackedBlock;
+    private final Block originalBlock;
     /** Randomly-determined erosion threshold for this specific position and stage. */
     private float threshold;
     private float walkedOnCount;
@@ -22,16 +23,22 @@ public class ErosionEntry {
     private int erosionStage;
 
     public ErosionEntry(Block trackedBlock, float threshold, float walkedOnCount, long lastTouchedGameTime) {
-        this.trackedBlock = trackedBlock;
-        this.threshold = threshold;
-        this.walkedOnCount = walkedOnCount;
-        this.lastTouchedGameTime = lastTouchedGameTime;
-        this.erosionStage = 0;
+        this(trackedBlock, trackedBlock, threshold, walkedOnCount, lastTouchedGameTime, 0);
+    }
+
+    public ErosionEntry(Block trackedBlock, Block originalBlock, float threshold, float walkedOnCount, long lastTouchedGameTime) {
+        this(trackedBlock, originalBlock, threshold, walkedOnCount, lastTouchedGameTime, 0);
     }
 
     /** Deserialization constructor — restores all fields including erosion stage. */
     ErosionEntry(Block trackedBlock, float threshold, float walkedOnCount, long lastTouchedGameTime, int erosionStage) {
+        this(trackedBlock, trackedBlock, threshold, walkedOnCount, lastTouchedGameTime, erosionStage);
+    }
+
+    /** Deserialization constructor — restores all fields including original block and erosion stage. */
+    ErosionEntry(Block trackedBlock, Block originalBlock, float threshold, float walkedOnCount, long lastTouchedGameTime, int erosionStage) {
         this.trackedBlock = trackedBlock;
+        this.originalBlock = originalBlock;
         this.threshold = threshold;
         this.walkedOnCount = walkedOnCount;
         this.lastTouchedGameTime = lastTouchedGameTime;
@@ -40,6 +47,10 @@ public class ErosionEntry {
 
     public Block getTrackedBlock() {
         return trackedBlock;
+    }
+
+    public Block getOriginalBlock() {
+        return originalBlock;
     }
 
     public float getThreshold() {

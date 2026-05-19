@@ -125,12 +125,24 @@ public class ErosionMapManager {
     }
 
     public void writeCooldownEntry(BlockPos worldPos, Block block, long currentGameTime) {
+        writeCooldownEntry(worldPos, block, currentGameTime, getOriginalBlock(worldPos, block));
+    }
+
+    public void writeCooldownEntry(BlockPos worldPos, Block block, long currentGameTime, Block originalBlock) {
         if (state == null) return;
         ChunkPos chunkPos = new ChunkPos(worldPos);
         ChunkErosionMap map = state.computeChunkMap(chunkPos);
         float threshold = BlockThresholds.randomThreshold(block);
-        map.putEntry(worldPos.toImmutable(), new ErosionEntry(block, threshold, 0f, currentGameTime));
+        map.putEntry(worldPos.toImmutable(), new ErosionEntry(block, originalBlock, threshold, 0f, currentGameTime));
         state.markDirty();
+    }
+
+    public Block getOriginalBlock(BlockPos worldPos, Block fallback) {
+        if (state == null) return fallback;
+        ChunkErosionMap map = state.getChunkMap(new ChunkPos(worldPos));
+        if (map == null) return fallback;
+        ErosionEntry entry = map.getEntry(worldPos);
+        return entry != null ? entry.getOriginalBlock() : fallback;
     }
 
     public void migrateGrassEntries(MinecraftServer server) {
