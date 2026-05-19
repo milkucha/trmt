@@ -18,10 +18,6 @@ public final class ErosionTransformSupport {
     private ErosionTransformSupport() {
     }
 
-    public static void clearEntry(ErosionMapManager manager, BlockPos pos) {
-        manager.removeEntry(pos);
-    }
-
     public static void clearEntry(ErosionMapManager manager, BlockPos pos, BlockState state,
                                   boolean continueTracking, long gameTime) {
         var history = manager.getHistory(pos);
@@ -48,16 +44,11 @@ public final class ErosionTransformSupport {
 
     public static Identifier toBlockIdentifier(String identifier) {
         String normalized = identifier.toLowerCase();
-        if (normalized.indexOf(':') >= 0) {
-            Identifier id = Identifier.tryParse(normalized);
-            if (id == null) {
-                throw new IllegalArgumentException("Invalid erosion block identifier: " + identifier);
-            }
-            return id;
+        Identifier id = Identifier.tryParse(normalized);
+        if (id == null) {
+            throw new IllegalArgumentException("Invalid erosion block identifier: " + identifier);
         }
-
-        String namespace = normalized.startsWith("eroded_") ? "trmt" : "minecraft";
-        return Identifier.of(namespace, normalized);
+        return id;
     }
 
     public static IntProperty getStageProperty(BlockState state) {

@@ -3,11 +3,10 @@ package milkucha.trmt.erosion.operation;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
-public final class BreakLeavesOperation implements ErosionOperation {
-
+public final class BreakBlockOperation implements ErosionOperation {
     private final Float dropChance;
 
-    public BreakLeavesOperation(Float dropChance) {
+    public BreakBlockOperation(Float dropChance) {
         this.dropChance = dropChance;
     }
 

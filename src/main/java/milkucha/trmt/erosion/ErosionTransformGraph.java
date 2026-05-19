@@ -1,7 +1,6 @@
 package milkucha.trmt.erosion;
 
 import milkucha.trmt.TRMT;
-import milkucha.trmt.erosion.operation.ErosionTransformSupport;
 import milkucha.trmt.erosion.operation.OperationSpec;
 import milkucha.trmt.erosion.operation.RuleSpec;
 
@@ -39,7 +38,7 @@ public final class ErosionTransformGraph {
     private static Map<String, List<String>> buildEdges(List<RuleSpec> specs) {
         Map<String, List<String>> edges = new LinkedHashMap<>();
         for (RuleSpec spec : specs) {
-            String source = normalizeIdentifier(spec.identifier());
+            String source = spec.identifier();
             for (OperationSpec operation : spec.operations()) {
                 if (!"next_state".equals(operation.name())) {
                     continue;
@@ -48,7 +47,7 @@ public final class ErosionTransformGraph {
                 Object id = operation.params().get("id");
                 if (id instanceof String target) {
                     edges.computeIfAbsent(source, ignored -> new ArrayList<>())
-                            .add(normalizeIdentifier(target));
+                            .add(target);
                 }
             }
             edges.computeIfAbsent(source, ignored -> new ArrayList<>());
@@ -158,13 +157,6 @@ public final class ErosionTransformGraph {
         List<String> cyclePath = new ArrayList<>(path);
         cyclePath.add(repeatedNode);
         logged.add(String.join(" -> ", cyclePath) + " (cycle)");
-    }
-
-    private static String normalizeIdentifier(String identifier) {
-        if ("leaves".equals(identifier)) {
-            return identifier;
-        }
-        return ErosionTransformSupport.toBlockIdentifier(identifier).toString();
     }
 
     public record Report(List<String> paths, List<String> cycles) {

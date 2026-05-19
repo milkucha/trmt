@@ -1,13 +1,13 @@
 [
   {
-    "identifier": "leaves",
+    "identifier": "#minecraft:leaves",
     "threshold": {
       "min": 2.0,
       "max": 3.0
     },
     "operations": [
       {
-        "name": "break_leaves",
+        "name": "break_block",
         "drop_chance": 0.1
       }
     ]

@@ -3,11 +3,13 @@ package milkucha.trmt.erosion.operation;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ErosionThresholdRange;
 import milkucha.trmt.erosion.ErosionTransformData;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.tag.TagKey;
+import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,14 +30,6 @@ public final class ErosionOperationFactory {
                         Optional.ofNullable(spec.threshold()),
                         spec.operations().stream().map(ErosionOperationFactory::buildOperation).toList()))
                 .toList();
-    }
-
-    public static List<TransformRule> buildRulesFromJson(JsonArray jsonRules) {
-        List<RuleSpec> specs = new ArrayList<>();
-        for (JsonElement rule : jsonRules) {
-            specs.add(parseRuleSpec(rule.getAsJsonObject()));
-        }
-        return buildRules(specs);
     }
 
     public static ErosionTransformData buildDataFromJson(JsonArray jsonRules) {
@@ -80,7 +74,7 @@ public final class ErosionOperationFactory {
             case "clear_if_no_state" -> new ClearIfNoStateOperation();
             case "stop_tracking" -> new StopTrackingOperation();
             case "apply_state" -> new ApplyStateOperation();
-            case "break_leaves" -> new BreakLeavesOperation(getOptionalFloat(spec, "drop_chance"));
+            case "break_block" -> new BreakBlockOperation(getOptionalFloat(spec, "drop_chance"));
             default -> throw new IllegalArgumentException("Unknown erosion operation: " + spec.name());
         };
     }
@@ -96,8 +90,8 @@ public final class ErosionOperationFactory {
     }
 
     private static Predicate<BlockState> buildMatcher(String identifier) {
-        if ("leaves".equals(identifier)) {
-            return state -> BlockThresholds.isLeaves(state.getBlock());
+        if (identifier.startsWith("#")) {
+            return state -> state.isIn(TagKey.of(RegistryKeys.BLOCK, Identifier.tryParse(identifier.substring(1))));
         }
 
         Block block = ErosionTransformSupport.resolveBlock(identifier);
