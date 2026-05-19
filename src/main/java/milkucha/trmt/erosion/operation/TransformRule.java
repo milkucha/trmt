@@ -17,6 +17,13 @@ public record TransformRule(
         return matcher.test(state);
     }
 
+    public boolean tracks(BlockState state) {
+        return matches(state) && operations.stream()
+                .filter(TrackingConditionOperation.class::isInstance)
+                .map(TrackingConditionOperation.class::cast)
+                .allMatch(TrackingConditionOperation::allowsTracking);
+    }
+
     public void apply(TransformContext context) {
         Optional<TransformContext> current = Optional.of(context);
         for (ErosionOperation operation : operations) {

@@ -7,6 +7,10 @@
     },
     "operations": [
       {
+        "name": "requires_config",
+        "key": "erosion.grassEnabled"
+      },
+      {
         "name": "next_state",
         "id": "trmt:eroded_grass_block",
         "stage": 0,
@@ -24,6 +28,10 @@
       "max": 4.0
     },
     "operations": [
+      {
+        "name": "requires_config",
+        "key": "erosion.grassEnabled"
+      },
       {
         "name": "next_stage",
         "max": 4

@@ -6,7 +6,6 @@ import milkucha.trmt.TRMTConfig;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.block.LeavesBlock;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
@@ -58,10 +57,6 @@ public final class BlockThresholds {
 
     public static boolean isVegetation(Block block) {
         return getVegetationSet().contains(block);
-    }
-
-    public static boolean isLeaves(Block block) {
-        return block instanceof LeavesBlock;
     }
 
     /**

@@ -7,6 +7,10 @@
     },
     "operations": [
       {
+        "name": "requires_config",
+        "key": "erosion.leavesEnabled"
+      },
+      {
         "name": "break_block",
         "drop_chance": 0.1
       }

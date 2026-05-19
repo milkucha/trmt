@@ -7,6 +7,10 @@
     },
     "operations": [
       {
+        "name": "requires_config",
+        "key": "erosion.sandEnabled"
+      },
+      {
         "name": "requires_air",
         "side": "top"
       },
@@ -28,6 +32,10 @@
       "max": 3.0
     },
     "operations": [
+      {
+        "name": "requires_config",
+        "key": "erosion.sandEnabled"
+      },
       {
         "name": "requires_air",
         "side": "top"

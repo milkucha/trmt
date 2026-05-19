@@ -25,26 +25,12 @@ public final class ErosionLogic {
 
     private ErosionLogic() {}
 
-    public static boolean isTracked(BlockState state, TRMTConfig.ErosionToggles erosion) {
+    public static boolean isTracked(BlockState state) {
         if (!transformRulesEnabled) {
             return false;
         }
 
-        Block block = state.getBlock();
-        if (state.isOf(Blocks.GRASS_BLOCK) || state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)) {
-            return erosion.grassEnabled;
-        }
-        if (state.isOf(Blocks.DIRT) || state.isOf(TRMTBlocks.ERODED_DIRT)) {
-            return erosion.dirtEnabled;
-        }
-        if (state.isOf(Blocks.SAND) || state.isOf(TRMTBlocks.ERODED_SAND)) {
-            return erosion.sandEnabled;
-        }
-        if (BlockThresholds.isLeaves(block)) {
-            return erosion.leavesEnabled;
-        }
-
-        return getTransformRules().stream().anyMatch(rule -> rule.matches(state));
+        return getTransformRules().stream().anyMatch(rule -> rule.tracks(state));
     }
 
     public static boolean isErodedBlock(Block block) {
@@ -83,7 +69,7 @@ public final class ErosionLogic {
         stepVegetation(world, manager, groundPos, amount, gameTime);
 
         BlockState state = world.getBlockState(groundPos);
-        if (!isTracked(state, TRMTConfig.get().erosion)) {
+        if (!isTracked(state)) {
             return false;
         }
 
@@ -94,15 +80,13 @@ public final class ErosionLogic {
         return true;
     }
 
-    public static void stepIfTracked(World world, ErosionMapManager manager,
-                                     BlockPos pos, float amount, long gameTime) {
+    public static void stepIfTracked(World world, ErosionMapManager manager, BlockPos pos, float amount, long gameTime) {
         BlockState state = world.getBlockState(pos);
-        if (!isTracked(state, TRMTConfig.get().erosion)) {
-            return;
-        }
 
-        manager.onStep(pos, state.getBlock(), amount, gameTime);
-        tryTransform(world, manager, pos);
+        if (isTracked(state)) {
+            manager.onStep(pos, state.getBlock(), amount, gameTime);
+            tryTransform(world, manager, pos);
+        }
     }
 
     public static void tryBreakVegetation(World world, ErosionMapManager manager,
@@ -151,10 +135,6 @@ public final class ErosionLogic {
         return transformRules;
     }
 
-    public static void replaceTransformRules(List<TransformRule> rules) {
-        replaceTransformRules(rules, true);
-    }
-
     public static void replaceTransformRules(List<TransformRule> rules, boolean enabled) {
         transformRules = List.copyOf(rules);
         transformRulesEnabled = enabled;
@@ -172,7 +152,7 @@ public final class ErosionLogic {
         BlockState defaultState = block.getDefaultState();
         return getTransformRules().stream()
                 .filter(rule -> rule.threshold().isPresent())
-                .filter(rule -> rule.matches(defaultState))
+                .filter(rule -> rule.tracks(defaultState))
                 .map(rule -> rule.threshold().get())
                 .findFirst();
     }

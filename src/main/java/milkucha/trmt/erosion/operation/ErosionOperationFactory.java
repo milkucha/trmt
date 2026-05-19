@@ -65,6 +65,7 @@ public final class ErosionOperationFactory {
 
     public static ErosionOperation buildOperation(OperationSpec spec) {
         return switch (spec.name()) {
+            case "requires_config" -> new RequiresConfigOperation(getString(spec, "key"));
             case "requires_air" -> new RequiresAirOperation(getString(spec, "side", "top"));
             case "next_stage" -> new NextStageOperation(getInt(spec, "max"));
             case "next_state" -> new NextStateOperation(
