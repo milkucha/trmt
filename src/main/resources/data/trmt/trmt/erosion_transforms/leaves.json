@@ -1,0 +1,15 @@
+[
+  {
+    "identifier": "leaves",
+    "threshold": {
+      "min": 2.0,
+      "max": 3.0
+    },
+    "operations": [
+      {
+        "name": "break_leaves",
+        "drop_chance": 0.1
+      }
+    ]
+  }
+]

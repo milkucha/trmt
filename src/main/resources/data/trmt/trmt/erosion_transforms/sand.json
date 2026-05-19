@@ -1,0 +1,47 @@
+[
+  {
+    "identifier": "minecraft:sand",
+    "threshold": {
+      "min": 1.5,
+      "max": 3.0
+    },
+    "operations": [
+      {
+        "name": "requires_air",
+        "side": "top"
+      },
+      {
+        "name": "next_state",
+        "id": "trmt:eroded_sand",
+        "stage": 0,
+        "facing": "position"
+      },
+      {
+        "name": "apply_state"
+      }
+    ]
+  },
+  {
+    "identifier": "trmt:eroded_sand",
+    "threshold": {
+      "min": 1.5,
+      "max": 3.0
+    },
+    "operations": [
+      {
+        "name": "requires_air",
+        "side": "top"
+      },
+      {
+        "name": "next_stage",
+        "max": 4
+      },
+      {
+        "name": "clear_if_no_state"
+      },
+      {
+        "name": "apply_state"
+      }
+    ]
+  }
+]

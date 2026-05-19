@@ -2,6 +2,9 @@ package milkucha.trmt;
 
 import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.ErosionMapManager;
+import milkucha.trmt.erosion.ErosionLogic;
+import milkucha.trmt.erosion.ErosionTransformGraph;
+import milkucha.trmt.erosion.ErosionTransformReloadListener;
 import milkucha.trmt.network.SyncChunkPayload;
 import milkucha.trmt.network.UpdateStagePayload;
 import milkucha.trmt.network.VersionCheckPayload;
@@ -15,8 +18,10 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.item.BlockItem;
+import net.minecraft.resource.ResourceType;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.ClickEvent;
@@ -43,6 +48,7 @@ public class TRMT implements ModInitializer {
 		TRMTEffects.register();
 		TRMTPotions.register();
 		TRMTBlocks.register();
+		ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(ErosionTransformReloadListener.INSTANCE);
 
 		PayloadTypeRegistry.configurationS2C().register(VersionCheckPayload.ID, VersionCheckPayload.CODEC);
 		PayloadTypeRegistry.configurationC2S().register(VersionResponsePayload.ID, VersionResponsePayload.CODEC);
@@ -71,8 +77,14 @@ public class TRMT implements ModInitializer {
 			manager.loadState(server);
 			manager.migrateGrassEntries(server);
 		});
-		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
-				ErosionMapManager.getInstance().sendFullSyncToPlayer(handler.player));
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+				ErosionMapManager.getInstance().sendFullSyncToPlayer(handler.player);
+				if (!ErosionLogic.areTransformRulesEnabled() && ErosionTransformGraph.latestReport().hasCycles()) {
+					handler.player.sendMessage(Text.literal(
+							"[TRMT] Erosion transform DAG contains a cycle. Erosion transforms are disabled; run /trmt erosion-dag for details."
+					), false);
+				}
+		});
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> ErosionMapManager.reset());
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) ->
 				ErosionMapManager.getInstance().removeEntry(pos));
@@ -96,6 +108,27 @@ public class TRMT implements ModInitializer {
 								.executes(ctx -> {
 									TRMTConfig.load();
 									ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] Config reloaded."), true);
+									return 1;
+								}))
+						.then(CommandManager.literal("erosion-dag")
+								.requires(src -> src.hasPermissionLevel(2))
+								.executes(ctx -> {
+									ErosionTransformGraph.Report report = ErosionTransformGraph.latestReport();
+									if (report.paths().isEmpty() && report.cycles().isEmpty()) {
+										ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] No erosion transform DAG is loaded."), false);
+										return 1;
+									}
+
+									ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] Erosion transform DAG:"), false);
+									for (String path : report.paths()) {
+										ctx.getSource().sendFeedback(() -> Text.literal("  " + path), false);
+									}
+									if (!report.cycles().isEmpty()) {
+										ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] Cycles:"), false);
+										for (String cycle : report.cycles()) {
+											ctx.getSource().sendFeedback(() -> Text.literal("  " + cycle), false);
+										}
+									}
 									return 1;
 								}))
 						.then(CommandManager.literal("convert-to-vanilla")

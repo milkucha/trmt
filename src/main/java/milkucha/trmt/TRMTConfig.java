@@ -15,8 +15,9 @@ import java.util.List;
 
 /**
  * Mod configuration loaded from {@code config/trmt.json}.
- * Each erodable block type has a min/max step-count range; a random
- * threshold is drawn from that range the first time a position is tracked.
+ * Most erosion transform thresholds are loaded from datapack data.
+ * Vegetation settings remain here because vegetation erosion is still a
+ * separate destructive mechanic.
  *
  * <p>Edit the JSON file and restart the server (or world) to apply changes.
  */
@@ -33,11 +34,6 @@ public final class TRMTConfig {
         public float leash   = 1.5f;
     }
 
-    public static class MinMax {
-        public float min, max;
-        MinMax(float min, float max) { this.min = min; this.max = max; }
-    }
-
     public static class ErosionToggles {
         public boolean grassEnabled      = true;
         public boolean dirtEnabled       = true;
@@ -52,20 +48,17 @@ public final class TRMTConfig {
         public boolean sandEnabled  = true;
     }
 
-    public static class VegetationThreshold extends MinMax {
+    public static class VegetationThreshold {
+        public float min, max;
         public float dropChance;
         VegetationThreshold(float min, float max, float dropChance) {
-            super(min, max);
+            this.min = min;
+            this.max = max;
             this.dropChance = dropChance;
         }
     }
 
     public static class ErosionThresholds {
-        public MinMax              grass      = new MinMax(2f, 4f);
-        public MinMax              dirt       = new MinMax(8f, 12f);
-        public MinMax              coarseDirt = new MinMax(12f, 20f);
-        public MinMax              sand       = new MinMax(1.5f, 3f);
-        public VegetationThreshold leaves     = new VegetationThreshold(2f, 3f, 0.1f);
         public VegetationThreshold vegetation = new VegetationThreshold(2f, 3f, 0.2f);
     }
 

@@ -79,39 +79,22 @@ public final class BlockThresholds {
      * configured range.  Call this once per block position when it first becomes tracked.
      */
     public static float randomThreshold(Block block) {
-        // Eroded variants use the same range as their vanilla counterpart.
-        if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
-            block = Blocks.GRASS_BLOCK;
-        } else if (block == TRMTBlocks.ERODED_DIRT) {
-            block = Blocks.DIRT;
-        } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
-            block = Blocks.COARSE_DIRT;
-        } else if (block == TRMTBlocks.ERODED_SAND) {
-            block = Blocks.SAND;
-        }
+        ErosionThresholdRange range = ErosionLogic.getThresholdRange(block)
+                .orElseGet(() -> getFallbackThresholdRange(block));
 
-        TRMTConfig cfg = TRMTConfig.get();
-        TRMTConfig.MinMax range;
-
-        if (block == Blocks.GRASS_BLOCK) {
-            range = cfg.erosionThresholds.grass;
-        } else if (block == Blocks.DIRT) {
-            range = cfg.erosionThresholds.dirt;
-        } else if (block == Blocks.COARSE_DIRT) {
-            range = cfg.erosionThresholds.coarseDirt;
-        } else if (block == Blocks.SAND) {
-            range = cfg.erosionThresholds.sand;
-        } else if (getVegetationSet().contains(block)) {
-            range = cfg.erosionThresholds.vegetation;
-        } else if (block instanceof LeavesBlock) {
-            range = cfg.erosionThresholds.leaves;
-        } else {
-            range = cfg.erosionThresholds.grass;
-        }
-        float min = range.min, max = range.max;
+        float min = range.min(), max = range.max();
 
         if (max <= min) return min;
         return min + ThreadLocalRandom.current().nextFloat() * (max - min);
+    }
+
+    private static ErosionThresholdRange getFallbackThresholdRange(Block block) {
+        if (getVegetationSet().contains(block)) {
+            TRMTConfig.VegetationThreshold range = TRMTConfig.get().erosionThresholds.vegetation;
+            return new ErosionThresholdRange(range.min, range.max);
+        }
+
+        return new ErosionThresholdRange(2.0f, 4.0f);
     }
 
     private static final long TICKS_PER_DAY = 24000L;

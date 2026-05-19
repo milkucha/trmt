@@ -12,6 +12,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
@@ -98,6 +99,13 @@ public class ErosionMapManager {
         ErosionEntry entry = map.getEntry(pos);
         if (entry == null) return;
         broadcastStageUpdate(pos, entry.getErosionStage(), entry.getWalkedOnCount(), entry.getThreshold(), entry.getLastTouchedGameTime());
+    }
+
+    public void broadcastMessage(Text message) {
+        if (server == null) return;
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            player.sendMessage(message, false);
+        }
     }
 
     public ChunkErosionMap getChunkMap(ChunkPos chunkPos) {

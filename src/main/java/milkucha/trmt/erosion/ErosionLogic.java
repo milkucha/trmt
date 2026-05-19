@@ -2,9 +2,8 @@ package milkucha.trmt.erosion;
 
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
-import milkucha.trmt.block.ErodedDirtBlock;
-import milkucha.trmt.block.ErodedGrassBlock;
-import milkucha.trmt.block.ErodedSandBlock;
+import milkucha.trmt.erosion.operation.TransformContext;
+import milkucha.trmt.erosion.operation.TransformRule;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -13,21 +12,39 @@ import net.minecraft.block.enums.DoubleBlockHalf;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
 public final class ErosionLogic {
 
+    private static List<TransformRule> transformRules = List.of();
+    private static boolean transformRulesEnabled = true;
+
     private ErosionLogic() {}
 
     public static boolean isTracked(BlockState state, TRMTConfig.ErosionToggles erosion) {
+        if (!transformRulesEnabled) {
+            return false;
+        }
+
         Block block = state.getBlock();
-        return (erosion.grassEnabled && (state.isOf(Blocks.GRASS_BLOCK) || state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)))
-                || (erosion.dirtEnabled && (state.isOf(Blocks.DIRT) || state.isOf(TRMTBlocks.ERODED_DIRT)))
-                || (erosion.sandEnabled && (state.isOf(Blocks.SAND) || state.isOf(TRMTBlocks.ERODED_SAND)))
-                || (erosion.leavesEnabled && BlockThresholds.isLeaves(block));
+        if (state.isOf(Blocks.GRASS_BLOCK) || state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)) {
+            return erosion.grassEnabled;
+        }
+        if (state.isOf(Blocks.DIRT) || state.isOf(TRMTBlocks.ERODED_DIRT)) {
+            return erosion.dirtEnabled;
+        }
+        if (state.isOf(Blocks.SAND) || state.isOf(TRMTBlocks.ERODED_SAND)) {
+            return erosion.sandEnabled;
+        }
+        if (BlockThresholds.isLeaves(block)) {
+            return erosion.leavesEnabled;
+        }
+
+        return getTransformRules().stream().anyMatch(rule -> rule.matches(state));
     }
 
     public static boolean isErodedBlock(Block block) {
@@ -113,115 +130,50 @@ public final class ErosionLogic {
     }
 
     public static void tryTransform(World world, ErosionMapManager manager, BlockPos pos) {
+        if (!transformRulesEnabled) {
+            return;
+        }
+
         BlockState state = world.getBlockState(pos);
         ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
         if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
 
-        if (state.isOf(Blocks.SAND)) {
-            if (!world.getBlockState(pos.up()).isAir()) return;
-            Direction erodedFacing = rotationToFacing(BlockThresholds.posRotation(pos));
-            var history = manager.getHistoryWithCurrent(pos, state);
-            world.setBlockState(pos,
-                    TRMTBlocks.ERODED_SAND.getDefaultState()
-                            .with(ErodedSandBlock.FACING, erodedFacing)
-                            .with(ErodedSandBlock.STAGE, 0),
-                    Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime(), history);
-            return;
-        }
-
-        if (state.isOf(TRMTBlocks.ERODED_SAND)) {
-            if (!world.getBlockState(pos.up()).isAir()) return;
-            int stage = state.get(ErodedSandBlock.STAGE);
-            if (stage < 4) {
-                var history = manager.getHistoryWithCurrent(pos, state);
-                world.setBlockState(pos, state.with(ErodedSandBlock.STAGE, stage + 1), Block.NOTIFY_ALL);
-                manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime(), history);
+        TransformContext context = new TransformContext(world, manager, pos, state);
+        for (TransformRule rule : getTransformRules()) {
+            if (rule.matches(state)) {
+                rule.apply(context);
                 return;
             }
-            var history = manager.getHistory(pos);
-            manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime(), history);
-            return;
         }
-
-        if (BlockThresholds.isLeaves(state.getBlock())) {
-            float dropChance = TRMTConfig.get().erosionThresholds.leaves.dropChance;
-            boolean drops = dropChance >= 1.0f || (dropChance > 0.0f && ThreadLocalRandom.current().nextFloat() < dropChance);
-            world.breakBlock(pos, drops);
-            manager.removeEntry(pos);
-            return;
-        }
-
-        if (state.isOf(Blocks.GRASS_BLOCK)) {
-            Direction erodedFacing = rotationToFacing(BlockThresholds.posRotation(pos));
-            var history = manager.getHistoryWithCurrent(pos, state);
-            world.setBlockState(pos,
-                    TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
-                            .with(ErodedGrassBlock.FACING, erodedFacing)
-                            .with(ErodedGrassBlock.STAGE, 0),
-                    Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, world.getTime(), history);
-            return;
-        }
-
-        if (state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)) {
-            Direction facing = state.get(ErodedGrassBlock.FACING);
-            int currentStage = state.get(ErodedGrassBlock.STAGE);
-            var history = manager.getHistoryWithCurrent(pos, state);
-            if (currentStage < 4) {
-                world.setBlockState(pos, state.with(ErodedGrassBlock.STAGE, currentStage + 1), Block.NOTIFY_ALL);
-                manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, world.getTime(), history);
-                return;
-            }
-            world.setBlockState(pos,
-                    TRMTBlocks.ERODED_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
-                    Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getTime(), history);
-            return;
-        }
-
-        if (state.isOf(TRMTBlocks.ERODED_DIRT)) {
-            Direction facing = state.get(ErodedDirtBlock.FACING);
-            int currentStage = state.get(ErodedDirtBlock.STAGE);
-            var history = manager.getHistoryWithCurrent(pos, state);
-            if (currentStage < 3) {
-                world.setBlockState(pos, state.with(ErodedDirtBlock.STAGE, currentStage + 1), Block.NOTIFY_ALL);
-                manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getTime(), history);
-                return;
-            }
-            world.setBlockState(pos,
-                    TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
-                    Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_COARSE_DIRT, world.getTime(), history);
-            return;
-        }
-
-        if (!state.isOf(Blocks.DIRT)) return;
-        Direction erodedFacing = rotationToFacing(BlockThresholds.posRotation(pos));
-        var history = manager.getHistoryWithCurrent(pos, state);
-        world.setBlockState(pos,
-                TRMTBlocks.ERODED_DIRT.getDefaultState()
-                        .with(ErodedDirtBlock.FACING, erodedFacing)
-                        .with(ErodedDirtBlock.STAGE, 1),
-                Block.NOTIFY_ALL);
-        manager.removeEntry(pos);
-        manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getTime(), history);
     }
 
-    private static Direction rotationToFacing(int rotation) {
-        return switch (rotation) {
-            case 1  -> Direction.WEST;
-            case 2  -> Direction.NORTH;
-            case 3  -> Direction.EAST;
-            default -> Direction.SOUTH;
-        };
+    private static List<TransformRule> getTransformRules() {
+        return transformRules;
+    }
+
+    public static void replaceTransformRules(List<TransformRule> rules) {
+        replaceTransformRules(rules, true);
+    }
+
+    public static void replaceTransformRules(List<TransformRule> rules, boolean enabled) {
+        transformRules = List.copyOf(rules);
+        transformRulesEnabled = enabled;
+    }
+
+    public static boolean areTransformRulesEnabled() {
+        return transformRulesEnabled;
+    }
+
+    public static Optional<ErosionThresholdRange> getThresholdRange(Block block) {
+        if (!transformRulesEnabled) {
+            return Optional.empty();
+        }
+
+        BlockState defaultState = block.getDefaultState();
+        return getTransformRules().stream()
+                .filter(rule -> rule.threshold().isPresent())
+                .filter(rule -> rule.matches(defaultState))
+                .map(rule -> rule.threshold().get())
+                .findFirst();
     }
 }

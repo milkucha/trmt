@@ -1,0 +1,41 @@
+[
+  {
+    "identifier": "trmt:eroded_dirt",
+    "threshold": {
+      "min": 8.0,
+      "max": 12.0
+    },
+    "operations": [
+      {
+        "name": "next_stage",
+        "max": 3
+      },
+      {
+        "name": "next_state",
+        "id": "trmt:eroded_coarse_dirt",
+        "facing": "carry"
+      },
+      {
+        "name": "apply_state"
+      }
+    ]
+  },
+  {
+    "identifier": "minecraft:dirt",
+    "threshold": {
+      "min": 8.0,
+      "max": 12.0
+    },
+    "operations": [
+      {
+        "name": "next_state",
+        "id": "trmt:eroded_dirt",
+        "stage": 1,
+        "facing": "position"
+      },
+      {
+        "name": "apply_state"
+      }
+    ]
+  }
+]
