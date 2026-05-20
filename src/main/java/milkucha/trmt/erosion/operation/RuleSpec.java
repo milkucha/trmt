@@ -4,5 +4,5 @@ import milkucha.trmt.erosion.ErosionThresholdRange;
 
 import java.util.List;
 
-public record RuleSpec(String identifier, ErosionThresholdRange threshold, List<OperationSpec> operations) {
+public record RuleSpec(List<String> identifiers, ErosionThresholdRange threshold, List<OperationSpec> operations) {
 }

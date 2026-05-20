@@ -1,0 +1,23 @@
+[
+  {
+    "identifiers": [
+      "minecraft:short_grass",
+      "minecraft:tall_grass",
+      "#minecraft:flowers"
+    ],
+    "threshold": {
+      "min": 2.0,
+      "max": 3.0
+    },
+    "operations": [
+      {
+        "name": "requires_config",
+        "key": "erosion.vegetationEnabled"
+      },
+      {
+        "name": "break_block",
+        "drop_chance": 1.0
+      }
+    ]
+  }
+]

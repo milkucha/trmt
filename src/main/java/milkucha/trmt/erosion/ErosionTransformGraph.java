@@ -38,19 +38,20 @@ public final class ErosionTransformGraph {
     private static Map<String, List<String>> buildEdges(List<RuleSpec> specs) {
         Map<String, List<String>> edges = new LinkedHashMap<>();
         for (RuleSpec spec : specs) {
-            String source = spec.identifier();
-            for (OperationSpec operation : spec.operations()) {
-                if (!"next_state".equals(operation.name())) {
-                    continue;
-                }
+            for (String source : spec.identifiers()) {
+                for (OperationSpec operation : spec.operations()) {
+                    if (!"next_state".equals(operation.name())) {
+                        continue;
+                    }
 
-                Object id = operation.params().get("id");
-                if (id instanceof String target) {
-                    edges.computeIfAbsent(source, ignored -> new ArrayList<>())
-                            .add(target);
+                    Object id = operation.params().get("id");
+                    if (id instanceof String target) {
+                        edges.computeIfAbsent(source, ignored -> new ArrayList<>())
+                                .add(target);
+                    }
                 }
+                edges.computeIfAbsent(source, ignored -> new ArrayList<>());
             }
-            edges.computeIfAbsent(source, ignored -> new ArrayList<>());
         }
         return edges;
     }

@@ -26,7 +26,7 @@ public final class ErosionOperationFactory {
     public static List<TransformRule> buildRules(List<RuleSpec> specs) {
         return specs.stream()
                 .map(spec -> new TransformRule(
-                        buildMatcher(spec.identifier()),
+                        buildMatcher(spec.identifiers()),
                         Optional.ofNullable(spec.threshold()),
                         spec.operations().stream().map(ErosionOperationFactory::buildOperation).toList()))
                 .toList();
@@ -47,7 +47,7 @@ public final class ErosionOperationFactory {
         }
 
         return new RuleSpec(
-                json.get("identifier").getAsString(),
+                parseIdentifiers(json),
                 parseThreshold(json),
                 operations
         );
@@ -90,6 +90,13 @@ public final class ErosionOperationFactory {
         return value.getAsString();
     }
 
+    private static Predicate<BlockState> buildMatcher(List<String> identifiers) {
+        List<Predicate<BlockState>> matchers = identifiers.stream()
+                .map(ErosionOperationFactory::buildMatcher)
+                .toList();
+        return state -> matchers.stream().anyMatch(matcher -> matcher.test(state));
+    }
+
     private static Predicate<BlockState> buildMatcher(String identifier) {
         if (identifier.startsWith("#")) {
             return state -> state.isIn(TagKey.of(RegistryKeys.BLOCK, Identifier.tryParse(identifier.substring(1))));
@@ -97,6 +104,28 @@ public final class ErosionOperationFactory {
 
         Block block = ErosionTransformSupport.resolveBlock(identifier);
         return state -> state.isOf(block);
+    }
+
+    private static List<String> parseIdentifiers(JsonObject json) {
+        boolean hasIdentifier = json.has("identifier");
+        boolean hasIdentifiers = json.has("identifiers");
+        if (hasIdentifier == hasIdentifiers) {
+            throw new IllegalArgumentException("Erosion rule must define exactly one of identifier or identifiers");
+        }
+
+        if (hasIdentifier) {
+            return List.of(json.get("identifier").getAsString());
+        }
+
+        JsonArray jsonIdentifiers = json.getAsJsonArray("identifiers");
+        List<String> identifiers = new ArrayList<>();
+        for (JsonElement identifier : jsonIdentifiers) {
+            identifiers.add(identifier.getAsString());
+        }
+        if (identifiers.isEmpty()) {
+            throw new IllegalArgumentException("Erosion rule identifiers list cannot be empty");
+        }
+        return identifiers;
     }
 
     private static ErosionThresholdRange parseThreshold(JsonObject json) {

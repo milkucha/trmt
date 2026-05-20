@@ -1,21 +1,15 @@
 package milkucha.trmt.erosion;
 
-import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -25,39 +19,7 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public final class BlockThresholds {
 
-    private static volatile Set<Block> resolvedVegetation = null;
-
-    public static void invalidateVegetationCache() {
-        resolvedVegetation = null;
-    }
-
-    public static Set<Block> getVegetationSet() {
-        if (resolvedVegetation == null) {
-            List<String> ids = TRMTConfig.get().erodableVegetation;
-            Set<Block> resolved = new HashSet<>();
-            if (ids != null) {
-                for (String id : ids) {
-                    Identifier identifier = Identifier.tryParse(id);
-                    if (identifier == null) {
-                        TRMT.LOGGER.warn("[TRMT] erodableVegetation: '{}' is not a valid identifier, skipping", id);
-                        continue;
-                    }
-                    Registries.BLOCK.getOrEmpty(identifier).ifPresentOrElse(
-                        resolved::add,
-                        () -> TRMT.LOGGER.warn("[TRMT] erodableVegetation: unknown block '{}', skipping", id)
-                    );
-                }
-            }
-            resolvedVegetation = Set.copyOf(resolved);
-        }
-        return resolvedVegetation;
-    }
-
     private BlockThresholds() {}
-
-    public static boolean isVegetation(Block block) {
-        return getVegetationSet().contains(block);
-    }
 
     /**
      * Deterministic rotation index (0–3) derived from block position, matching the UV
@@ -75,7 +37,7 @@ public final class BlockThresholds {
      */
     public static float randomThreshold(Block block) {
         ErosionThresholdRange range = ErosionLogic.getThresholdRange(block)
-                .orElseGet(() -> getFallbackThresholdRange(block));
+                .orElseGet(BlockThresholds::getFallbackThresholdRange);
 
         float min = range.min(), max = range.max();
 
@@ -83,12 +45,7 @@ public final class BlockThresholds {
         return min + ThreadLocalRandom.current().nextFloat() * (max - min);
     }
 
-    private static ErosionThresholdRange getFallbackThresholdRange(Block block) {
-        if (getVegetationSet().contains(block)) {
-            TRMTConfig.VegetationThreshold range = TRMTConfig.get().erosionThresholds.vegetation;
-            return new ErosionThresholdRange(range.min, range.max);
-        }
-
+    private static ErosionThresholdRange getFallbackThresholdRange() {
         return new ErosionThresholdRange(2.0f, 4.0f);
     }
 

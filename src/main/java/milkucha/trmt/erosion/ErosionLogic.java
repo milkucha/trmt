@@ -1,14 +1,11 @@
 package milkucha.trmt.erosion;
 
 import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.erosion.operation.TransformContext;
 import milkucha.trmt.erosion.operation.TransformRule;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.block.TallPlantBlock;
-import net.minecraft.block.enums.DoubleBlockHalf;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -16,7 +13,6 @@ import net.minecraft.world.World;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
 
 public final class ErosionLogic {
 
@@ -52,16 +48,7 @@ public final class ErosionLogic {
 
     public static void stepVegetation(World world, ErosionMapManager manager,
                                       BlockPos groundPos, float amount, long gameTime) {
-        TRMTConfig.ErosionToggles erosion = TRMTConfig.get().erosion;
-        BlockPos vegPos = groundPos.up();
-        BlockState vegState = world.getBlockState(vegPos);
-        if (!erosion.vegetationEnabled || !BlockThresholds.isVegetation(vegState.getBlock())) {
-            return;
-        }
-
-        manager.onStep(vegPos, vegState.getBlock(), amount, gameTime);
-        tryBreakVegetation(world, manager, vegPos, vegState);
-        manager.broadcastEntryUpdate(vegPos, vegState.getBlock());
+        stepIfTracked(world, manager, groundPos.up(), amount, gameTime);
     }
 
     public static boolean stepGround(World world, ErosionMapManager manager,
@@ -86,31 +73,8 @@ public final class ErosionLogic {
         if (isTracked(state)) {
             manager.onStep(pos, state.getBlock(), amount, gameTime);
             tryTransform(world, manager, pos);
+            manager.broadcastEntryUpdate(pos, state.getBlock());
         }
-    }
-
-    public static void tryBreakVegetation(World world, ErosionMapManager manager,
-                                          BlockPos pos, BlockState state) {
-        ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
-        if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
-
-        if (state.getBlock() instanceof TallPlantBlock
-                && state.get(TallPlantBlock.HALF) == DoubleBlockHalf.LOWER) {
-            BlockPos upper = pos.up();
-            if (world.getBlockState(upper).isOf(state.getBlock())) {
-                world.removeBlock(upper, false);
-            }
-            if (state.isOf(Blocks.TALL_GRASS)) {
-                world.setBlockState(pos, Blocks.SHORT_GRASS.getDefaultState(), Block.NOTIFY_ALL);
-                manager.removeEntry(pos);
-                return;
-            }
-        }
-
-        float dropChance = TRMTConfig.get().erosionThresholds.vegetation.dropChance;
-        boolean drops = dropChance >= 1.0f || (dropChance > 0.0f && ThreadLocalRandom.current().nextFloat() < dropChance);
-        world.breakBlock(pos, drops);
-        manager.removeEntry(pos);
     }
 
     public static void tryTransform(World world, ErosionMapManager manager, BlockPos pos) {

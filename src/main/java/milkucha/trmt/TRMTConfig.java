@@ -2,7 +2,6 @@ package milkucha.trmt;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import milkucha.trmt.erosion.BlockThresholds;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
@@ -10,14 +9,10 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * Mod configuration loaded from {@code config/trmt.json}.
- * Most erosion transform thresholds are loaded from datapack data.
- * Vegetation settings remain here because vegetation erosion is still a
- * separate destructive mechanic.
+ * Erosion transform rules and thresholds are loaded from datapack data.
  *
  * <p>Edit the JSON file and restart the server (or world) to apply changes.
  */
@@ -46,20 +41,6 @@ public final class TRMTConfig {
         public boolean grassEnabled = true;
         public boolean dirtEnabled  = true;
         public boolean sandEnabled  = true;
-    }
-
-    public static class VegetationThreshold {
-        public float min, max;
-        public float dropChance;
-        VegetationThreshold(float min, float max, float dropChance) {
-            this.min = min;
-            this.max = max;
-            this.dropChance = dropChance;
-        }
-    }
-
-    public static class ErosionThresholds {
-        public VegetationThreshold vegetation = new VegetationThreshold(2f, 3f, 0.2f);
     }
 
     public static class GrassDeErosion {
@@ -94,15 +75,6 @@ public final class TRMTConfig {
     public ErosionToggles       erosion              = new ErosionToggles();
     public DeErosionToggles     deErosion            = new DeErosionToggles();
     public Multipliers          erosionMultipliers   = new Multipliers();
-    public ErosionThresholds    erosionThresholds    = new ErosionThresholds();
-    public List<String> erodableVegetation = Arrays.asList(
-        "minecraft:short_grass", "minecraft:tall_grass",
-        "minecraft:dandelion", "minecraft:poppy", "minecraft:blue_orchid", "minecraft:allium",
-        "minecraft:azure_bluet", "minecraft:red_tulip", "minecraft:orange_tulip",
-        "minecraft:white_tulip", "minecraft:pink_tulip", "minecraft:oxeye_daisy",
-        "minecraft:cornflower", "minecraft:lily_of_the_valley", "minecraft:wither_rose",
-        "minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony"
-    );
     public DeErosionTimeoutDays deErosionTimeoutDays = new DeErosionTimeoutDays();
 
     // ── singleton ──────────────────────────────────────────────────────────
@@ -127,7 +99,6 @@ public final class TRMTConfig {
                 TRMTConfig loaded = GSON.fromJson(reader, TRMTConfig.class);
                 if (loaded != null) {
                     instance = loaded;
-                    BlockThresholds.invalidateVegetationCache();
                     // Save back immediately so any fields added since the last run
                     // are written to disk with their default values.
                     save();
