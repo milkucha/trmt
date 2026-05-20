@@ -29,13 +29,6 @@ public final class ErosionLogic {
         return getTransformRules().stream().anyMatch(rule -> rule.tracks(state));
     }
 
-    public static boolean isErodedBlock(Block block) {
-        return block == TRMTBlocks.ERODED_GRASS_BLOCK
-                || block == TRMTBlocks.ERODED_DIRT
-                || block == TRMTBlocks.ERODED_COARSE_DIRT
-                || block == TRMTBlocks.ERODED_SAND;
-    }
-
     public static BlockPos getGroundPos(Entity entity) {
         BlockPos groundPos = entity.getBlockPos().down();
         World world = entity.getWorld();
@@ -83,7 +76,10 @@ public final class ErosionLogic {
         }
 
         BlockState state = world.getBlockState(pos);
-        ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
+        ChunkErosionMap map = manager.getChunkMap(new ChunkPos(pos));
+        if (map == null) return;
+
+        ErosionEntry entry = map.getEntry(pos);
         if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
 
         TransformContext context = new TransformContext(world, manager, pos, state);

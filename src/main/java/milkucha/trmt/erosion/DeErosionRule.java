@@ -3,6 +3,7 @@ package milkucha.trmt.erosion;
 import milkucha.trmt.erosion.operation.ErosionTransformSupport;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.item.Item;
 import net.minecraft.state.property.Property;
 import net.minecraft.util.math.BlockPos;
 
@@ -13,14 +14,24 @@ import java.util.function.Predicate;
 public record DeErosionRule(
         Predicate<BlockState> matcher,
         Optional<String> naturalConfig,
-        Optional<String> bonemealConfig,
+        Map<Item, ItemTrigger> itemTriggers,
         long timeoutTicks,
         Map<String, Map<String, Long>> timeoutTicksByProperty,
         Optional<FallbackState> fallback
 ) {
+    public DeErosionRule {
+        itemTriggers = Map.copyOf(itemTriggers);
+    }
 
     public boolean matches(BlockState state) {
         return matcher.test(state);
+    }
+
+    public Optional<ItemTrigger> itemTrigger(Item item) {
+        return Optional.ofNullable(itemTriggers.get(item));
+    }
+
+    public record ItemTrigger(Optional<String> config, String mode, int consume, int damage, int ticks, int worldEvent) {
     }
 
     public long timeoutTicks(BlockState state) {

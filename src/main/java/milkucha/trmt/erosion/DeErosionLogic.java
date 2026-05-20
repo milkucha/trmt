@@ -3,6 +3,7 @@ package milkucha.trmt.erosion;
 import milkucha.trmt.TRMTConfig;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.item.Item;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 
@@ -22,11 +23,11 @@ public final class DeErosionLogic {
         rules = List.copyOf(newRules);
     }
 
-    public static boolean tryNaturallyDeErode(ServerWorld world, ErosionMapManager manager,
+    public static void tryNaturallyDeErode(ServerWorld world, ErosionMapManager manager,
                                               BlockPos pos, BlockState state, ErosionEntry entry) {
         Optional<DeErosionRule> rule = findRule(state);
         if (rule.isEmpty() || !allows(rule.get().naturalConfig())) {
-            return false;
+            return;
         }
 
         long timeout = rule.get().timeoutTicks(state);
@@ -35,27 +36,34 @@ public final class DeErosionLogic {
         }
 
         if (world.getTime() - entry.getLastTouchedGameTime() <= timeout) {
-            return false;
+            return;
         }
 
-        return stepBack(world, manager, pos, state, entry.getHistory(), rule.get());
+        stepBack(world, manager, pos, state, entry.getHistory(), rule.get());
     }
 
-    public static boolean tryBonemealDeErode(ServerWorld world, ErosionMapManager manager,
-                                             BlockPos pos, BlockState state) {
+    public static boolean tryItemDeErode(ServerWorld world, ErosionMapManager manager,
+                                         BlockPos pos, BlockState state, Item item, String mode) {
         Optional<DeErosionRule> rule = findRule(state);
-        if (rule.isEmpty() || !allows(rule.get().bonemealConfig())) {
+        Optional<DeErosionRule.ItemTrigger> trigger = rule.flatMap(value -> value.itemTrigger(item));
+        if (rule.isEmpty() || trigger.isEmpty() || !trigger.get().mode().equals(mode) || !allows(trigger.get().config())) {
             return false;
         }
 
         return stepBack(world, manager, pos, state, manager.getHistory(pos), rule.get());
     }
 
+    public static Optional<DeErosionRule.ItemTrigger> getItemTrigger(BlockState state, Item item, String mode) {
+        Optional<DeErosionRule> rule = findRule(state);
+        Optional<DeErosionRule.ItemTrigger> trigger = rule.flatMap(value -> value.itemTrigger(item));
+        return trigger.filter(value -> value.mode().equals(mode) && allows(value.config()));
+    }
+
     public static OptionalLong getTimeoutTicks(BlockState state) {
         Optional<DeErosionRule> rule = findRule(state);
-        return rule.isPresent()
-                ? OptionalLong.of(rule.get().timeoutTicks(state))
-                : OptionalLong.empty();
+        return rule
+                .map(deErosionRule -> OptionalLong.of(deErosionRule.timeoutTicks(state)))
+                .orElseGet(OptionalLong::empty);
     }
 
     private static Optional<DeErosionRule> findRule(BlockState state) {

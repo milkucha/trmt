@@ -2,7 +2,14 @@
   {
     "identifier": "trmt:eroded_grass_block",
     "natural_config": "deErosion.grassEnabled",
-    "bonemeal_config": "bonemealDeErosion.grassEnabled",
+    "item_triggers": {
+      "minecraft:bone_meal": {
+        "config": "bonemealDeErosion.grassEnabled",
+        "mode": "instant",
+        "consume": 1,
+        "world_event": 2005
+      }
+    },
     "timeout_days_by_property": {
       "stage": {
         "0": 5.0,

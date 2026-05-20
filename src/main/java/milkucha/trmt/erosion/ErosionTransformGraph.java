@@ -144,10 +144,7 @@ public final class ErosionTransformGraph {
             return;
         }
 
-        String rendered = String.join(" -> ", path);
-        if (logged.add(rendered)) {
-            TRMT.LOGGER.info("[TRMT] Erosion path: {}", rendered);
-        }
+        logged.add(String.join(" -> ", path));
     }
 
     private static void logCyclePath(List<String> path, String repeatedNode, Set<String> logged) {

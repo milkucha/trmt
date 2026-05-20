@@ -1,6 +1,9 @@
 package milkucha.trmt;
 
 import milkucha.trmt.block.ErodedSandBlock;
+import milkucha.trmt.erosion.DeErosionItemTriggerHandler;
+import milkucha.trmt.erosion.DeErosionLogic;
+import milkucha.trmt.erosion.DeErosionRule;
 import milkucha.trmt.erosion.DeErosionTransformReloadListener;
 import milkucha.trmt.erosion.ErosionMapManager;
 import milkucha.trmt.erosion.ErosionLogic;
@@ -38,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public class TRMT implements ModInitializer {
@@ -106,6 +110,18 @@ public class TRMT implements ModInitializer {
 
 		// Prevent blocks from being placed above sunken eroded sand (stages 1–4) from any angle.
 		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+			if (world instanceof ServerWorld serverWorld) {
+				var pos = hitResult.getBlockPos();
+				var state = world.getBlockState(pos);
+				var stack = player.getStackInHand(hand);
+				Optional<DeErosionRule.ItemTrigger> trigger = DeErosionLogic.getItemTrigger(state, stack.getItem(), "instant");
+				if (trigger.isPresent()
+						&& DeErosionLogic.tryItemDeErode(serverWorld, ErosionMapManager.getInstance(), pos, state, stack.getItem(), "instant")) {
+					DeErosionItemTriggerHandler.apply(serverWorld, pos, player, stack, trigger.get());
+					return ActionResult.SUCCESS;
+				}
+			}
+
 			var placePos = hitResult.getBlockPos().offset(hitResult.getSide());
 			var below = world.getBlockState(placePos.down());
 			if (below.isOf(TRMTBlocks.ERODED_SAND)

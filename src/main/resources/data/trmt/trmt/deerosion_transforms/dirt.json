@@ -2,7 +2,14 @@
   {
     "identifier": "trmt:eroded_dirt",
     "natural_config": "deErosion.dirtEnabled",
-    "bonemeal_config": "bonemealDeErosion.dirtEnabled",
+    "item_triggers": {
+      "minecraft:bone_meal": {
+        "config": "bonemealDeErosion.dirtEnabled",
+        "mode": "instant",
+        "consume": 1,
+        "world_event": 2005
+      }
+    },
     "timeout_days": 8.0,
     "fallback": {
       "id": "minecraft:dirt"
@@ -11,7 +18,14 @@
   {
     "identifier": "trmt:eroded_coarse_dirt",
     "natural_config": "deErosion.dirtEnabled",
-    "bonemeal_config": "bonemealDeErosion.dirtEnabled",
+    "item_triggers": {
+      "minecraft:bone_meal": {
+        "config": "bonemealDeErosion.dirtEnabled",
+        "mode": "instant",
+        "consume": 1,
+        "world_event": 2005
+      }
+    },
     "timeout_days": 13.0,
     "fallback": {
       "id": "trmt:eroded_dirt",

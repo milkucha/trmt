@@ -106,7 +106,11 @@ public final class ErosionOperationFactory {
 
     private static Predicate<BlockState> buildMatcher(String identifier) {
         if (identifier.startsWith("#")) {
-            return state -> state.isIn(TagKey.of(RegistryKeys.BLOCK, Identifier.tryParse(identifier.substring(1))));
+            Identifier id = Identifier.tryParse(identifier.substring(1).toLowerCase());
+            if (id == null) {
+                throw new IllegalArgumentException("Invalid erosion block tag identifier: " + identifier);
+            }
+            return state -> state.isIn(TagKey.of(RegistryKeys.BLOCK, id));
         }
 
         Block block = ErosionTransformSupport.resolveBlock(identifier);

@@ -5,6 +5,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import milkucha.trmt.erosion.operation.ErosionOperationFactory;
 import milkucha.trmt.erosion.operation.ErosionTransformSupport;
+import net.minecraft.item.Item;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,7 +35,7 @@ public final class DeErosionOperationFactory {
         return new DeErosionRule(
                 ErosionOperationFactory.buildMatcher(identifiers),
                 getOptionalString(json, "natural_config"),
-                getOptionalString(json, "bonemeal_config"),
+                parseItemTriggers(json),
                 daysToTicks(getFloat(json, "timeout_days", 0.0f)),
                 parseTimeoutsByProperty(json),
                 parseFallback(json)
@@ -54,6 +57,45 @@ public final class DeErosionOperationFactory {
             result.put(property.getKey(), Map.copyOf(values));
         }
         return Map.copyOf(result);
+    }
+
+    private static Map<Item, DeErosionRule.ItemTrigger> parseItemTriggers(JsonObject json) {
+        if (!json.has("item_triggers")) {
+            return Map.of();
+        }
+
+        Map<Item, DeErosionRule.ItemTrigger> triggers = new HashMap<>();
+        JsonObject itemTriggers = json.getAsJsonObject("item_triggers");
+        for (Map.Entry<String, JsonElement> trigger : itemTriggers.entrySet()) {
+            Item item = resolveItem(trigger.getKey());
+            JsonObject triggerSpec = trigger.getValue().getAsJsonObject();
+            String mode = getString(triggerSpec, "mode", "instant");
+            if (!mode.equals("instant") && !mode.equals("hold")) {
+                throw new IllegalArgumentException("Unsupported de-erosion item trigger mode: " + mode);
+            }
+
+            int consume = getNonNegativeInt(triggerSpec, "consume", 0);
+            int damage = getNonNegativeInt(triggerSpec, "damage", 0);
+            int ticks = getNonNegativeInt(triggerSpec, "ticks", 20);
+            triggers.put(item, new DeErosionRule.ItemTrigger(
+                    getOptionalString(triggerSpec, "config"),
+                    mode,
+                    consume,
+                    damage,
+                    ticks,
+                    getInt(triggerSpec, "world_event", 0)
+            ));
+        }
+        return Map.copyOf(triggers);
+    }
+
+    private static Item resolveItem(String identifier) {
+        Identifier id = Identifier.tryParse(identifier.toLowerCase());
+        if (id == null) {
+            throw new IllegalArgumentException("Invalid de-erosion item identifier: " + identifier);
+        }
+        return Registries.ITEM.getOrEmpty(id)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown de-erosion item identifier: " + identifier));
     }
 
     private static Optional<DeErosionRule.FallbackState> parseFallback(JsonObject json) {
@@ -95,6 +137,22 @@ public final class DeErosionOperationFactory {
 
     private static Optional<String> getOptionalString(JsonObject json, String key) {
         return json.has(key) ? Optional.of(json.get(key).getAsString()) : Optional.empty();
+    }
+
+    private static String getString(JsonObject json, String key, String fallback) {
+        return json.has(key) ? json.get(key).getAsString() : fallback;
+    }
+
+    private static int getInt(JsonObject json, String key, int fallback) {
+        return json.has(key) ? json.get(key).getAsInt() : fallback;
+    }
+
+    private static int getNonNegativeInt(JsonObject json, String key, int fallback) {
+        int value = getInt(json, key, fallback);
+        if (value < 0) {
+            throw new IllegalArgumentException("De-erosion item trigger parameter must be non-negative: " + key);
+        }
+        return value;
     }
 
     private static float getFloat(JsonObject json, String key, float fallback) {

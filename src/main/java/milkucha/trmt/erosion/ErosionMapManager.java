@@ -2,13 +2,12 @@ package milkucha.trmt.erosion;
 
 import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.network.SyncChunkPayload;
 import milkucha.trmt.network.UpdateStagePayload;
-import net.minecraft.block.BlockState;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -133,25 +132,6 @@ public class ErosionMapManager {
         return state.getChunkMap(chunkPos);
     }
 
-    public void revertGrassStage(BlockPos worldPos, long currentGameTime) {
-        if (state == null) return;
-        ChunkErosionMap map = state.getChunkMap(new ChunkPos(worldPos));
-        if (map == null) return;
-        ErosionEntry entry = map.getEntry(worldPos);
-        if (entry == null) return;
-        entry.revertGrassStage(BlockThresholds.randomThreshold(Blocks.GRASS_BLOCK), currentGameTime);
-        state.markDirty();
-    }
-
-    public void writeErodedGrassCooldownEntry(BlockPos worldPos, int stage, long currentGameTime) {
-        if (state == null) return;
-        ChunkPos chunkPos = new ChunkPos(worldPos);
-        ChunkErosionMap map = state.computeChunkMap(chunkPos);
-        float threshold = BlockThresholds.randomThreshold(Blocks.GRASS_BLOCK);
-        map.putEntry(worldPos.toImmutable(), new ErosionEntry(Blocks.GRASS_BLOCK, threshold, 0f, currentGameTime, stage));
-        state.markDirty();
-    }
-
     public void writeCooldownEntry(BlockPos worldPos, Block block, long currentGameTime) {
         writeCooldownEntry(worldPos, block, currentGameTime, getHistory(worldPos));
     }
@@ -173,7 +153,7 @@ public class ErosionMapManager {
         return entry != null ? entry.getHistory() : List.of();
     }
 
-    public List<ErosionHistoryState> getHistoryWithCurrent(BlockPos worldPos, net.minecraft.block.BlockState currentState) {
+    public List<ErosionHistoryState> getHistoryWithCurrent(BlockPos worldPos, BlockState currentState) {
         List<ErosionHistoryState> history = new ArrayList<>(getHistory(worldPos));
         history.add(ErosionHistoryState.from(currentState));
         return history;
