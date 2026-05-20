@@ -2,16 +2,17 @@ package milkucha.trmt.erosion;
 
 import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.network.SyncChunkPayload;
 import milkucha.trmt.network.UpdateStagePayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
@@ -100,37 +101,62 @@ public class ErosionMapManager {
         broadcastStageUpdate(pos, entry.getErosionStage(), entry.getWalkedOnCount(), entry.getThreshold(), entry.getLastTouchedGameTime());
     }
 
+    public void broadcastMessage(Text message) {
+        if (server == null) return;
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            player.sendMessage(message, false);
+        }
+    }
+
+    public void tickNaturalDeErosion(MinecraftServer server) {
+        if (state == null) return;
+        ServerWorld world = server.getWorld(World.OVERWORLD);
+        if (world == null) return;
+
+        for (Map.Entry<ChunkPos, ChunkErosionMap> chunkEntry : List.copyOf(state.getAllChunkMaps().entrySet())) {
+            ChunkPos chunkPos = chunkEntry.getKey();
+            if (world.getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FULL, false) == null) {
+                continue;
+            }
+
+            for (Map.Entry<BlockPos, ErosionEntry> entry : List.copyOf(chunkEntry.getValue().getEntries().entrySet())) {
+                BlockPos pos = entry.getKey();
+                BlockState blockState = world.getBlockState(pos);
+                DeErosionLogic.tryNaturallyDeErode(world, this, pos, blockState, entry.getValue());
+            }
+        }
+    }
+
     public ChunkErosionMap getChunkMap(ChunkPos chunkPos) {
         if (state == null) return null;
         return state.getChunkMap(chunkPos);
     }
 
-    public void revertGrassStage(BlockPos worldPos, long currentGameTime) {
-        if (state == null) return;
-        ChunkErosionMap map = state.getChunkMap(new ChunkPos(worldPos));
-        if (map == null) return;
-        ErosionEntry entry = map.getEntry(worldPos);
-        if (entry == null) return;
-        entry.revertGrassStage(BlockThresholds.randomThreshold(Blocks.GRASS_BLOCK), currentGameTime);
-        state.markDirty();
-    }
-
-    public void writeErodedGrassCooldownEntry(BlockPos worldPos, int stage, long currentGameTime) {
-        if (state == null) return;
-        ChunkPos chunkPos = new ChunkPos(worldPos);
-        ChunkErosionMap map = state.computeChunkMap(chunkPos);
-        float threshold = BlockThresholds.randomThreshold(Blocks.GRASS_BLOCK);
-        map.putEntry(worldPos.toImmutable(), new ErosionEntry(Blocks.GRASS_BLOCK, threshold, 0f, currentGameTime, stage));
-        state.markDirty();
-    }
-
     public void writeCooldownEntry(BlockPos worldPos, Block block, long currentGameTime) {
+        writeCooldownEntry(worldPos, block, currentGameTime, getHistory(worldPos));
+    }
+
+    public void writeCooldownEntry(BlockPos worldPos, Block block, long currentGameTime, List<ErosionHistoryState> history) {
         if (state == null) return;
         ChunkPos chunkPos = new ChunkPos(worldPos);
         ChunkErosionMap map = state.computeChunkMap(chunkPos);
         float threshold = BlockThresholds.randomThreshold(block);
-        map.putEntry(worldPos.toImmutable(), new ErosionEntry(block, threshold, 0f, currentGameTime));
+        map.putEntry(worldPos.toImmutable(), new ErosionEntry(block, history, threshold, 0f, currentGameTime, 0));
         state.markDirty();
+    }
+
+    public List<ErosionHistoryState> getHistory(BlockPos worldPos) {
+        if (state == null) return List.of();
+        ChunkErosionMap map = state.getChunkMap(new ChunkPos(worldPos));
+        if (map == null) return List.of();
+        ErosionEntry entry = map.getEntry(worldPos);
+        return entry != null ? entry.getHistory() : List.of();
+    }
+
+    public List<ErosionHistoryState> getHistoryWithCurrent(BlockPos worldPos, BlockState currentState) {
+        List<ErosionHistoryState> history = new ArrayList<>(getHistory(worldPos));
+        history.add(ErosionHistoryState.from(currentState));
+        return history;
     }
 
     public void migrateGrassEntries(MinecraftServer server) {

@@ -2,6 +2,8 @@ package milkucha.trmt.erosion;
 
 import net.minecraft.block.Block;
 
+import java.util.List;
+
 /**
  * Holds erosion progress for a single block position inside a chunk.
  * Stores the block type it was created for so stale entries (e.g. dirt that
@@ -14,6 +16,7 @@ import net.minecraft.block.Block;
 public class ErosionEntry {
 
     private final Block trackedBlock;
+    private final List<ErosionHistoryState> history;
     /** Randomly-determined erosion threshold for this specific position and stage. */
     private float threshold;
     private float walkedOnCount;
@@ -22,16 +25,18 @@ public class ErosionEntry {
     private int erosionStage;
 
     public ErosionEntry(Block trackedBlock, float threshold, float walkedOnCount, long lastTouchedGameTime) {
-        this.trackedBlock = trackedBlock;
-        this.threshold = threshold;
-        this.walkedOnCount = walkedOnCount;
-        this.lastTouchedGameTime = lastTouchedGameTime;
-        this.erosionStage = 0;
+        this(trackedBlock, List.of(), threshold, walkedOnCount, lastTouchedGameTime, 0);
     }
 
     /** Deserialization constructor — restores all fields including erosion stage. */
     ErosionEntry(Block trackedBlock, float threshold, float walkedOnCount, long lastTouchedGameTime, int erosionStage) {
+        this(trackedBlock, List.of(), threshold, walkedOnCount, lastTouchedGameTime, erosionStage);
+    }
+
+    ErosionEntry(Block trackedBlock, List<ErosionHistoryState> history, float threshold,
+                 float walkedOnCount, long lastTouchedGameTime, int erosionStage) {
         this.trackedBlock = trackedBlock;
+        this.history = List.copyOf(history);
         this.threshold = threshold;
         this.walkedOnCount = walkedOnCount;
         this.lastTouchedGameTime = lastTouchedGameTime;
@@ -40,6 +45,10 @@ public class ErosionEntry {
 
     public Block getTrackedBlock() {
         return trackedBlock;
+    }
+
+    public List<ErosionHistoryState> getHistory() {
+        return history;
     }
 
     public float getThreshold() {

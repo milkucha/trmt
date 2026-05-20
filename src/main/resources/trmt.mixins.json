@@ -3,10 +3,10 @@
 	"package": "milkucha.trmt.mixin",
 	"compatibilityLevel": "JAVA_17",
 	"mixins": [
-		"BoneMealItemMixin",
-		"BrushItemMixin",
+		"EntityMixin",
 		"GrassBlockMixin",
 		"HoeItemMixin",
+		"LivingEntityMixin",
 		"MobEntityMixin",
 		"SandBlockMixin",
 		"ServerPlayerEntityMixin",

@@ -1,7 +1,14 @@
 package milkucha.trmt;
 
 import milkucha.trmt.block.ErodedSandBlock;
+import milkucha.trmt.erosion.DeErosionItemTriggerHandler;
+import milkucha.trmt.erosion.DeErosionLogic;
+import milkucha.trmt.erosion.DeErosionRule;
+import milkucha.trmt.erosion.DeErosionTransformReloadListener;
 import milkucha.trmt.erosion.ErosionMapManager;
+import milkucha.trmt.erosion.ErosionLogic;
+import milkucha.trmt.erosion.ErosionTransformGraph;
+import milkucha.trmt.erosion.ErosionTransformReloadListener;
 import milkucha.trmt.network.SyncChunkPayload;
 import milkucha.trmt.network.UpdateStagePayload;
 import milkucha.trmt.network.VersionCheckPayload;
@@ -9,14 +16,17 @@ import milkucha.trmt.network.VersionResponsePayload;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.item.BlockItem;
+import net.minecraft.resource.ResourceType;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.ClickEvent;
@@ -31,11 +41,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public class TRMT implements ModInitializer {
 	public static final String MOD_ID = "trmt";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+	private static final int DE_EROSION_SCAN_INTERVAL_TICKS = 200;
+	private static int deErosionScanTicks = 0;
 
 	@Override
 	public void onInitialize() {
@@ -43,6 +56,8 @@ public class TRMT implements ModInitializer {
 		TRMTEffects.register();
 		TRMTPotions.register();
 		TRMTBlocks.register();
+		ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(ErosionTransformReloadListener.INSTANCE);
+		ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(DeErosionTransformReloadListener.INSTANCE);
 
 		PayloadTypeRegistry.configurationS2C().register(VersionCheckPayload.ID, VersionCheckPayload.CODEC);
 		PayloadTypeRegistry.configurationC2S().register(VersionResponsePayload.ID, VersionResponsePayload.CODEC);
@@ -71,14 +86,42 @@ public class TRMT implements ModInitializer {
 			manager.loadState(server);
 			manager.migrateGrassEntries(server);
 		});
-		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
-				ErosionMapManager.getInstance().sendFullSyncToPlayer(handler.player));
-		ServerLifecycleEvents.SERVER_STOPPED.register(server -> ErosionMapManager.reset());
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+				ErosionMapManager.getInstance().sendFullSyncToPlayer(handler.player);
+				if (!ErosionLogic.areTransformRulesEnabled() && ErosionTransformGraph.latestReport().hasCycles()) {
+					handler.player.sendMessage(Text.literal(
+							"[TRMT] Erosion transform DAG contains a cycle. Erosion transforms are disabled; run /trmt erosion-dag for details."
+					), false);
+				}
+		});
+		ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+			deErosionScanTicks = 0;
+			ErosionMapManager.reset();
+		});
+		ServerTickEvents.END_SERVER_TICK.register(server -> {
+			deErosionScanTicks++;
+			if (deErosionScanTicks >= DE_EROSION_SCAN_INTERVAL_TICKS) {
+				deErosionScanTicks = 0;
+				ErosionMapManager.getInstance().tickNaturalDeErosion(server);
+			}
+		});
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) ->
 				ErosionMapManager.getInstance().removeEntry(pos));
 
 		// Prevent blocks from being placed above sunken eroded sand (stages 1–4) from any angle.
 		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+			if (world instanceof ServerWorld serverWorld) {
+				var pos = hitResult.getBlockPos();
+				var state = world.getBlockState(pos);
+				var stack = player.getStackInHand(hand);
+				Optional<DeErosionRule.ItemTrigger> trigger = DeErosionLogic.getItemTrigger(state, stack.getItem(), "instant");
+				if (trigger.isPresent()
+						&& DeErosionLogic.tryItemDeErode(serverWorld, ErosionMapManager.getInstance(), pos, state, stack.getItem(), "instant")) {
+					DeErosionItemTriggerHandler.apply(serverWorld, pos, player, stack, trigger.get());
+					return ActionResult.SUCCESS;
+				}
+			}
+
 			var placePos = hitResult.getBlockPos().offset(hitResult.getSide());
 			var below = world.getBlockState(placePos.down());
 			if (below.isOf(TRMTBlocks.ERODED_SAND)
@@ -96,6 +139,27 @@ public class TRMT implements ModInitializer {
 								.executes(ctx -> {
 									TRMTConfig.load();
 									ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] Config reloaded."), true);
+									return 1;
+								}))
+						.then(CommandManager.literal("erosion-dag")
+								.requires(src -> src.hasPermissionLevel(2))
+								.executes(ctx -> {
+									ErosionTransformGraph.Report report = ErosionTransformGraph.latestReport();
+									if (report.paths().isEmpty() && report.cycles().isEmpty()) {
+										ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] No erosion transform DAG is loaded."), false);
+										return 1;
+									}
+
+									ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] Erosion transform DAG:"), false);
+									for (String path : report.paths()) {
+										ctx.getSource().sendFeedback(() -> Text.literal("  " + path), false);
+									}
+									if (!report.cycles().isEmpty()) {
+										ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] Cycles:"), false);
+										for (String cycle : report.cycles()) {
+											ctx.getSource().sendFeedback(() -> Text.literal("  " + cycle), false);
+										}
+									}
 									return 1;
 								}))
 						.then(CommandManager.literal("convert-to-vanilla")

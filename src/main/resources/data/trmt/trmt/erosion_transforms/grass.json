@@ -1,0 +1,55 @@
+[
+  {
+    "identifier": "minecraft:grass_block",
+    "threshold": {
+      "min": 2.0,
+      "max": 4.0
+    },
+    "operations": [
+      {
+        "name": "requires_config",
+        "key": "erosion.grassEnabled"
+      },
+      {
+        "name": "next_state",
+        "id": "trmt:eroded_grass_block",
+        "properties": {
+          "stage": "0"
+        },
+        "property_sources": {
+          "facing": "position"
+        }
+      },
+      {
+        "name": "apply_state"
+      }
+    ]
+  },
+  {
+    "identifier": "trmt:eroded_grass_block",
+    "threshold": {
+      "min": 2.0,
+      "max": 4.0
+    },
+    "operations": [
+      {
+        "name": "requires_config",
+        "key": "erosion.grassEnabled"
+      },
+      {
+        "name": "next_stage",
+        "max": 4
+      },
+      {
+        "name": "next_state",
+        "id": "trmt:eroded_dirt",
+        "property_sources": {
+          "facing": "carry"
+        }
+      },
+      {
+        "name": "apply_state"
+      }
+    ]
+  }
+]

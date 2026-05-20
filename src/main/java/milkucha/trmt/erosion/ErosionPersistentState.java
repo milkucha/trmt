@@ -13,8 +13,10 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.PersistentState;
 import net.minecraft.world.World;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ErosionPersistentState extends PersistentState {
@@ -85,6 +87,7 @@ public class ErosionPersistentState extends PersistentState {
                 entryNbt.putFloat("threshold", erosion.getThreshold());
                 entryNbt.putLong("lastTime", erosion.getLastTouchedGameTime());
                 entryNbt.putInt("stage", erosion.getErosionStage());
+                entryNbt.put("history", writeHistory(erosion.getHistory()));
                 entryList.add(entryNbt);
             }
 
@@ -121,13 +124,46 @@ public class ErosionPersistentState extends PersistentState {
                 float threshold = entryNbt.getFloat("threshold");
                 long  lastTime  = entryNbt.getLong("lastTime");
                 int   stage     = entryNbt.getInt("stage");
+                List<ErosionHistoryState> history = readHistory(entryNbt.getList("history", NbtElement.COMPOUND_TYPE));
 
-                chunkMap.putEntry(pos, new ErosionEntry(block, threshold, count, lastTime, stage));
+                chunkMap.putEntry(pos, new ErosionEntry(block, history, threshold, count, lastTime, stage));
             }
 
             chunkMaps.put(chunkPos, chunkMap);
         }
 
         return new ErosionPersistentState(chunkMaps);
+    }
+
+    private static NbtList writeHistory(List<ErosionHistoryState> history) {
+        NbtList list = new NbtList();
+        for (ErosionHistoryState state : history) {
+            NbtCompound stateNbt = new NbtCompound();
+            stateNbt.putString("block", state.blockId());
+            NbtCompound propertiesNbt = new NbtCompound();
+            for (Map.Entry<String, String> property : state.properties().entrySet()) {
+                propertiesNbt.putString(property.getKey(), property.getValue());
+            }
+            stateNbt.put("properties", propertiesNbt);
+            list.add(stateNbt);
+        }
+        return list;
+    }
+
+    private static List<ErosionHistoryState> readHistory(NbtList historyNbt) {
+        List<ErosionHistoryState> history = new ArrayList<>(historyNbt.size());
+        for (int i = 0; i < historyNbt.size(); i++) {
+            NbtCompound stateNbt = historyNbt.getCompound(i);
+            Block block = Registries.BLOCK.get(Identifier.of(stateNbt.getString("block")));
+            Map<String, String> properties = new HashMap<>();
+            if (stateNbt.contains("properties", NbtElement.COMPOUND_TYPE)) {
+                NbtCompound propertiesNbt = stateNbt.getCompound("properties");
+                for (String key : propertiesNbt.getKeys()) {
+                    properties.put(key, propertiesNbt.getString(key));
+                }
+            }
+            history.add(new ErosionHistoryState(block, properties));
+        }
+        return history;
     }
 }

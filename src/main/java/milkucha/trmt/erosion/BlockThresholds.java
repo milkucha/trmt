@@ -1,68 +1,23 @@
 package milkucha.trmt.erosion;
 
-import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.TRMTConfig;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.block.LeavesBlock;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Per-block-type threshold ranges for the erosion transformation chain.
- * Ranges are read from {@link TRMTConfig} so they can be tuned via
- * {@code config/trmt.json} without recompiling.
+ * Ranges are read from datapack erosion transforms when available.
  */
 public final class BlockThresholds {
 
-    private static volatile Set<Block> resolvedVegetation = null;
-
-    public static void invalidateVegetationCache() {
-        resolvedVegetation = null;
-    }
-
-    public static Set<Block> getVegetationSet() {
-        if (resolvedVegetation == null) {
-            List<String> ids = TRMTConfig.get().erodableVegetation;
-            Set<Block> resolved = new HashSet<>();
-            if (ids != null) {
-                for (String id : ids) {
-                    Identifier identifier = Identifier.tryParse(id);
-                    if (identifier == null) {
-                        TRMT.LOGGER.warn("[TRMT] erodableVegetation: '{}' is not a valid identifier, skipping", id);
-                        continue;
-                    }
-                    Registries.BLOCK.getOrEmpty(identifier).ifPresentOrElse(
-                        resolved::add,
-                        () -> TRMT.LOGGER.warn("[TRMT] erodableVegetation: unknown block '{}', skipping", id)
-                    );
-                }
-            }
-            resolvedVegetation = Set.copyOf(resolved);
-        }
-        return resolvedVegetation;
-    }
-
     private BlockThresholds() {}
-
-    public static boolean isVegetation(Block block) {
-        return getVegetationSet().contains(block);
-    }
-
-    public static boolean isLeaves(Block block) {
-        return block instanceof LeavesBlock;
-    }
 
     /**
      * Deterministic rotation index (0–3) derived from block position, matching the UV
@@ -79,42 +34,18 @@ public final class BlockThresholds {
      * configured range.  Call this once per block position when it first becomes tracked.
      */
     public static float randomThreshold(Block block) {
-        // Eroded variants use the same range as their vanilla counterpart.
-        if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
-            block = Blocks.GRASS_BLOCK;
-        } else if (block == TRMTBlocks.ERODED_DIRT) {
-            block = Blocks.DIRT;
-        } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
-            block = Blocks.COARSE_DIRT;
-        } else if (block == TRMTBlocks.ERODED_SAND) {
-            block = Blocks.SAND;
-        }
+        ErosionThresholdRange range = ErosionLogic.getThresholdRange(block)
+                .orElseGet(BlockThresholds::getFallbackThresholdRange);
 
-        TRMTConfig cfg = TRMTConfig.get();
-        TRMTConfig.MinMax range;
-
-        if (block == Blocks.GRASS_BLOCK) {
-            range = cfg.erosionThresholds.grass;
-        } else if (block == Blocks.DIRT) {
-            range = cfg.erosionThresholds.dirt;
-        } else if (block == Blocks.COARSE_DIRT) {
-            range = cfg.erosionThresholds.coarseDirt;
-        } else if (block == Blocks.SAND) {
-            range = cfg.erosionThresholds.sand;
-        } else if (getVegetationSet().contains(block)) {
-            range = cfg.erosionThresholds.vegetation;
-        } else if (block instanceof LeavesBlock) {
-            range = cfg.erosionThresholds.leaves;
-        } else {
-            range = cfg.erosionThresholds.grass;
-        }
-        float min = range.min, max = range.max;
+        float min = range.min(), max = range.max();
 
         if (max <= min) return min;
         return min + ThreadLocalRandom.current().nextFloat() * (max - min);
     }
 
-    private static final long TICKS_PER_DAY = 24000L;
+    private static ErosionThresholdRange getFallbackThresholdRange() {
+        return new ErosionThresholdRange(2.0f, 4.0f);
+    }
 
     private static final Direction[] HORIZONTALS = {
         Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST
@@ -146,39 +77,5 @@ public final class BlockThresholds {
             }
         }
         return true;
-    }
-
-    /** Returns the de-erosion inactivity timeout (ticks) for the given grass erosion stage (1–5). */
-    public static long getGrassDeErosionTimeout(int stage) {
-        TRMTConfig cfg = TRMTConfig.get();
-        TRMTConfig.GrassDeErosion g = cfg.deErosionTimeoutDays.grass;
-        return switch (stage) {
-            case 1  -> (long)(g.stage1 * TICKS_PER_DAY);
-            case 2  -> (long)(g.stage2 * TICKS_PER_DAY);
-            case 3  -> (long)(g.stage3 * TICKS_PER_DAY);
-            case 4  -> (long)(g.stage4 * TICKS_PER_DAY);
-            default -> (long)(g.stage5 * TICKS_PER_DAY);
-        };
-    }
-
-    /** Returns the de-erosion inactivity timeout (ticks) for the given eroded sand stage (0–4). */
-    public static long getSandDeErosionTimeout(int stage) {
-        TRMTConfig cfg = TRMTConfig.get();
-        TRMTConfig.SandDeErosion s = cfg.deErosionTimeoutDays.sand;
-        return (long)((switch (stage) {
-            case 0  -> s.stage1;
-            case 1  -> s.stage2;
-            case 2  -> s.stage3;
-            case 3  -> s.stage4;
-            default -> s.stage5;
-        }) * TICKS_PER_DAY);
-    }
-
-    /** Returns the de-erosion inactivity timeout (ticks) for the given eroded dirt block type. */
-    public static long getDirtDeErosionTimeout(Block block) {
-        TRMTConfig cfg = TRMTConfig.get();
-        TRMTConfig.DirtDeErosion d = cfg.deErosionTimeoutDays.dirt;
-        if (block == TRMTBlocks.ERODED_DIRT) return (long)(d.erodedDirt       * TICKS_PER_DAY);
-        return (long)(d.erodedCoarseDirt * TICKS_PER_DAY);
     }
 }

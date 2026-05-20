@@ -1,0 +1,27 @@
+[
+  {
+    "identifier": "trmt:eroded_sand",
+    "natural_config": "deErosion.sandEnabled",
+    "item_triggers": {
+      "minecraft:brush": {
+        "config": "bonemealDeErosion.sandEnabled",
+        "mode": "hold",
+        "ticks": 20,
+        "damage": 1,
+        "world_event": 2005
+      }
+    },
+    "timeout_days_by_property": {
+      "stage": {
+        "0": 3.0,
+        "1": 5.0,
+        "2": 8.0,
+        "3": 13.0,
+        "4": 13.0
+      }
+    },
+    "fallback": {
+      "id": "minecraft:sand"
+    }
+  }
+]
