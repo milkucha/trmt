@@ -70,8 +70,8 @@ public final class ErosionOperationFactory {
             case "next_stage" -> new NextStageOperation(getInt(spec, "max"));
             case "next_state" -> new NextStateOperation(
                     ErosionTransformSupport.resolveBlock(getString(spec, "id")),
-                    getOptionalInt(spec, "stage"),
-                    getString(spec, "facing", "none"));
+                    getProperties(spec),
+                    getStringMap(spec, "property_sources"));
             case "clear_if_no_state" -> new ClearIfNoStateOperation();
             case "stop_tracking" -> new StopTrackingOperation();
             case "apply_state" -> new ApplyStateOperation();
@@ -86,6 +86,13 @@ public final class ErosionOperationFactory {
         }
         if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isBoolean()) {
             return value.getAsBoolean();
+        }
+        if (value.isJsonObject()) {
+            Map<String, Object> values = new HashMap<>();
+            for (Map.Entry<String, JsonElement> entry : value.getAsJsonObject().entrySet()) {
+                values.put(entry.getKey(), readJsonParam(entry.getValue()));
+            }
+            return values;
         }
         return value.getAsString();
     }
@@ -171,5 +178,42 @@ public final class ErosionOperationFactory {
         if (value == null) return null;
         if (value instanceof Number number) return number.floatValue();
         throw new IllegalArgumentException("Operation " + spec.name() + " needs number parameter: " + key);
+    }
+
+    private static Map<String, String> getProperties(OperationSpec spec) {
+        Map<String, String> properties = new HashMap<>();
+        Object propertyValue = spec.params().get("properties");
+        if (propertyValue != null) {
+            if (!(propertyValue instanceof Map<?, ?> rawProperties)) {
+                throw new IllegalArgumentException("Operation " + spec.name() + " needs object parameter: properties");
+            }
+            for (Map.Entry<?, ?> entry : rawProperties.entrySet()) {
+                if (!(entry.getKey() instanceof String key)) {
+                    throw new IllegalArgumentException("Operation " + spec.name() + " has non-string property key");
+                }
+                properties.put(key, String.valueOf(entry.getValue()));
+            }
+        }
+
+        return properties;
+    }
+
+    private static Map<String, String> getStringMap(OperationSpec spec, String key) {
+        Object value = spec.params().get(key);
+        if (value == null) {
+            return Map.of();
+        }
+        if (!(value instanceof Map<?, ?> rawValues)) {
+            throw new IllegalArgumentException("Operation " + spec.name() + " needs object parameter: " + key);
+        }
+
+        Map<String, String> values = new HashMap<>();
+        for (Map.Entry<?, ?> entry : rawValues.entrySet()) {
+            if (!(entry.getKey() instanceof String stringKey)) {
+                throw new IllegalArgumentException("Operation " + spec.name() + " has non-string key in " + key);
+            }
+            values.put(stringKey, String.valueOf(entry.getValue()));
+        }
+        return values;
     }
 }

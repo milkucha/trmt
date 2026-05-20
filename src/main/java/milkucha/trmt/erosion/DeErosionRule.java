@@ -5,7 +5,6 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.state.property.Property;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
 
 import java.util.Map;
 import java.util.Optional;
@@ -53,32 +52,15 @@ public record DeErosionRule(
         return property.name(value);
     }
 
-    public record FallbackState(Block block, Integer stage, String facingMode) {
-        public BlockState toBlockState(BlockState currentState, BlockPos pos) {
-            BlockState state = block.getDefaultState();
-            if (stage != null) {
-                state = ErosionTransformSupport.withStage(state, stage);
-            }
-
-            Direction facing = switch (facingMode) {
-                case "position" -> ErosionTransformSupport.facingFromPosition(pos);
-                case "carry" -> ErosionTransformSupport.getFacing(currentState);
-                case "none" -> null;
-                default -> parseFacing(facingMode);
-            };
-            if (facing != null) {
-                state = ErosionTransformSupport.withFacing(state, facing);
-            }
-
-            return state;
+    public record FallbackState(Block block, Map<String, String> properties, Map<String, String> propertySources) {
+        public FallbackState {
+            properties = Map.copyOf(properties);
+            propertySources = Map.copyOf(propertySources);
         }
 
-        private static Direction parseFacing(String value) {
-            Direction direction = Direction.byName(value);
-            if (direction == null) {
-                throw new IllegalArgumentException("Unsupported de-erosion fallback facing: " + value);
-            }
-            return direction;
+        public BlockState toBlockState(BlockState currentState, BlockPos pos) {
+            BlockState state = ErosionTransformSupport.withProperties(block.getDefaultState(), properties);
+            return ErosionTransformSupport.withPropertySources(state, propertySources, currentState, pos);
         }
     }
 }

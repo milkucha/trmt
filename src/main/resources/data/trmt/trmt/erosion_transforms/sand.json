@@ -17,8 +17,12 @@
       {
         "name": "next_state",
         "id": "trmt:eroded_sand",
-        "stage": 0,
-        "facing": "position"
+        "properties": {
+          "stage": "0"
+        },
+        "property_sources": {
+          "facing": "position"
+        }
       },
       {
         "name": "apply_state"

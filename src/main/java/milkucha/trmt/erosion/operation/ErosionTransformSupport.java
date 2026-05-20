@@ -1,17 +1,18 @@
 package milkucha.trmt.erosion.operation;
 
-import milkucha.trmt.block.ErodedDirtBlock;
-import milkucha.trmt.block.ErodedGrassBlock;
-import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
 import net.minecraft.state.property.IntProperty;
+import net.minecraft.state.property.Properties;
+import net.minecraft.state.property.Property;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+
+import java.util.Map;
 
 public final class ErosionTransformSupport {
 
@@ -52,31 +53,77 @@ public final class ErosionTransformSupport {
     }
 
     public static IntProperty getStageProperty(BlockState state) {
-        if (state.contains(ErodedSandBlock.STAGE)) return ErodedSandBlock.STAGE;
-        if (state.contains(ErodedGrassBlock.STAGE)) return ErodedGrassBlock.STAGE;
-        if (state.contains(ErodedDirtBlock.STAGE)) return ErodedDirtBlock.STAGE;
+        for (Property<?> property : state.getProperties()) {
+            if (property instanceof IntProperty intProperty && property.getName().equals("stage")) {
+                return intProperty;
+            }
+        }
         throw new IllegalArgumentException("Block state has no erosion stage: " + state);
     }
 
-    public static BlockState withStage(BlockState state, int stage) {
-        if (state.contains(ErodedSandBlock.STAGE)) return state.with(ErodedSandBlock.STAGE, stage);
-        if (state.contains(ErodedGrassBlock.STAGE)) return state.with(ErodedGrassBlock.STAGE, stage);
-        if (state.contains(ErodedDirtBlock.STAGE)) return state.with(ErodedDirtBlock.STAGE, stage);
-        throw new IllegalArgumentException("Cannot set erosion stage on block state: " + state);
+    public static BlockState withProperties(BlockState state, Map<String, String> properties) {
+        BlockState nextState = state;
+        for (Map.Entry<String, String> property : properties.entrySet()) {
+            nextState = withProperty(nextState, property.getKey(), property.getValue());
+        }
+        return nextState;
     }
 
-    public static Direction getFacing(BlockState state) {
-        if (state.contains(ErodedSandBlock.FACING)) return state.get(ErodedSandBlock.FACING);
-        if (state.contains(ErodedGrassBlock.FACING)) return state.get(ErodedGrassBlock.FACING);
-        if (state.contains(ErodedDirtBlock.FACING)) return state.get(ErodedDirtBlock.FACING);
-        return Direction.SOUTH;
+    public static BlockState withPropertySources(BlockState state, Map<String, String> propertySources,
+                                                 BlockState sourceState, BlockPos pos) {
+        BlockState nextState = state;
+        for (Map.Entry<String, String> propertySource : propertySources.entrySet()) {
+            nextState = withProperty(nextState, propertySource.getKey(),
+                    resolvePropertySource(propertySource.getKey(), propertySource.getValue(), sourceState, pos));
+        }
+        return nextState;
     }
 
-    public static BlockState withFacing(BlockState state, Direction facing) {
-        if (state.contains(ErodedSandBlock.FACING)) return state.with(ErodedSandBlock.FACING, facing);
-        if (state.contains(ErodedGrassBlock.FACING)) return state.with(ErodedGrassBlock.FACING, facing);
-        if (state.contains(ErodedDirtBlock.FACING)) return state.with(ErodedDirtBlock.FACING, facing);
-        return state;
+    private static String resolvePropertySource(String propertyName, String source, BlockState sourceState, BlockPos pos) {
+        return switch (source) {
+            case "position" -> {
+                if (!Properties.HORIZONTAL_FACING.getName().equals(propertyName)) {
+                    throw new IllegalArgumentException("Property source 'position' only supports horizontal facing");
+                }
+                yield facingFromPosition(pos).asString();
+            }
+            case "carry" -> propertyValue(sourceState, propertyName);
+            default -> throw new IllegalArgumentException("Unsupported property source: " + source);
+        };
+    }
+
+    public static String propertyValue(BlockState state, String propertyName) {
+        for (var entry : state.getEntries().entrySet()) {
+            if (entry.getKey().getName().equals(propertyName)) {
+                return propertyValue(entry.getKey(), entry.getValue());
+            }
+        }
+        throw new IllegalArgumentException("Block state has no property '" + propertyName + "': " + state);
+    }
+
+    public static BlockState withProperty(BlockState state, String propertyName, String propertyValue) {
+        for (Property<?> property : state.getProperties()) {
+            if (property.getName().equals(propertyName)) {
+                return withProperty(state, property, propertyValue);
+            }
+        }
+        throw new IllegalArgumentException("Block state has no property '" + propertyName + "': " + state);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static BlockState withProperty(BlockState state, Property property, String propertyValue) {
+        var value = property.parse(propertyValue);
+        if (value.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Invalid value '" + propertyValue + "' for property '" + property.getName() + "' on " + state);
+        }
+
+        return (BlockState) state.with(property, (Comparable) value.get());
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static String propertyValue(Property property, Comparable value) {
+        return property.name(value);
     }
 
     public static Direction rotationToFacing(int rotation) {

@@ -64,9 +64,33 @@ public final class DeErosionOperationFactory {
         JsonObject fallback = json.getAsJsonObject("fallback");
         return Optional.of(new DeErosionRule.FallbackState(
                 ErosionTransformSupport.resolveBlock(fallback.get("id").getAsString()),
-                fallback.has("stage") ? fallback.get("stage").getAsInt() : null,
-                fallback.has("facing") ? fallback.get("facing").getAsString() : "none"
+                parseProperties(fallback),
+                parseStringMap(fallback, "property_sources")
         ));
+    }
+
+    private static Map<String, String> parseProperties(JsonObject json) {
+        Map<String, String> properties = new HashMap<>();
+        if (json.has("properties")) {
+            JsonObject jsonProperties = json.getAsJsonObject("properties");
+            for (Map.Entry<String, JsonElement> property : jsonProperties.entrySet()) {
+                properties.put(property.getKey(), property.getValue().getAsString());
+            }
+        }
+        return properties;
+    }
+
+    private static Map<String, String> parseStringMap(JsonObject json, String key) {
+        if (!json.has(key)) {
+            return Map.of();
+        }
+
+        Map<String, String> values = new HashMap<>();
+        JsonObject jsonValues = json.getAsJsonObject(key);
+        for (Map.Entry<String, JsonElement> value : jsonValues.entrySet()) {
+            values.put(value.getKey(), value.getValue().getAsString());
+        }
+        return values;
     }
 
     private static Optional<String> getOptionalString(JsonObject json, String key) {

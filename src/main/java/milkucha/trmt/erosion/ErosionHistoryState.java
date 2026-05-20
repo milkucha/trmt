@@ -1,55 +1,31 @@
 package milkucha.trmt.erosion;
 
-import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.block.ErodedDirtBlock;
-import milkucha.trmt.block.ErodedGrassBlock;
-import milkucha.trmt.block.ErodedSandBlock;
+import milkucha.trmt.erosion.operation.ErosionTransformSupport;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
-import net.minecraft.state.property.Properties;
-import net.minecraft.util.math.Direction;
 
-public record ErosionHistoryState(Block block, int stage, Direction facing) {
+import java.util.HashMap;
+import java.util.Map;
+
+public record ErosionHistoryState(Block block, Map<String, String> properties) {
+
+    public ErosionHistoryState {
+        properties = Map.copyOf(properties);
+    }
 
     public static ErosionHistoryState from(BlockState state) {
-        Block block = state.getBlock();
-        int stage = -1;
-        Direction facing = null;
-
-        if (state.contains(Properties.HORIZONTAL_FACING)) {
-            facing = state.get(Properties.HORIZONTAL_FACING);
+        Map<String, String> properties = new HashMap<>();
+        for (var entry : state.getEntries().entrySet()) {
+            properties.put(entry.getKey().getName(),
+                    ErosionTransformSupport.propertyValue(entry.getKey(), entry.getValue()));
         }
 
-        if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
-            stage = state.get(ErodedGrassBlock.STAGE);
-        } else if (block == TRMTBlocks.ERODED_DIRT || block == TRMTBlocks.ERODED_COARSE_DIRT) {
-            stage = state.get(ErodedDirtBlock.STAGE);
-        } else if (block == TRMTBlocks.ERODED_SAND) {
-            stage = state.get(ErodedSandBlock.STAGE);
-        }
-
-        return new ErosionHistoryState(block, stage, facing);
+        return new ErosionHistoryState(state.getBlock(), properties);
     }
 
     public BlockState toBlockState() {
-        BlockState state = block.getDefaultState();
-
-        if (facing != null && state.contains(Properties.HORIZONTAL_FACING)) {
-            state = state.with(Properties.HORIZONTAL_FACING, facing);
-        }
-
-        if (stage >= 0) {
-            if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
-                state = state.with(ErodedGrassBlock.STAGE, stage);
-            } else if (block == TRMTBlocks.ERODED_DIRT || block == TRMTBlocks.ERODED_COARSE_DIRT) {
-                state = state.with(ErodedDirtBlock.STAGE, stage);
-            } else if (block == TRMTBlocks.ERODED_SAND) {
-                state = state.with(ErodedSandBlock.STAGE, stage);
-            }
-        }
-
-        return state;
+        return ErosionTransformSupport.withProperties(block.getDefaultState(), properties);
     }
 
     public String blockId() {

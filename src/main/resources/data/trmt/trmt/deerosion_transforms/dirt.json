@@ -15,8 +15,12 @@
     "timeout_days": 13.0,
     "fallback": {
       "id": "trmt:eroded_dirt",
-      "stage": 3,
-      "facing": "carry"
+      "properties": {
+        "stage": "3"
+      },
+      "property_sources": {
+        "facing": "carry"
+      }
     }
   }
 ]

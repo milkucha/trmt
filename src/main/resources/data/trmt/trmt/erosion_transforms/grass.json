@@ -13,8 +13,12 @@
       {
         "name": "next_state",
         "id": "trmt:eroded_grass_block",
-        "stage": 0,
-        "facing": "position"
+        "properties": {
+          "stage": "0"
+        },
+        "property_sources": {
+          "facing": "position"
+        }
       },
       {
         "name": "apply_state"
@@ -39,7 +43,9 @@
       {
         "name": "next_state",
         "id": "trmt:eroded_dirt",
-        "facing": "carry"
+        "property_sources": {
+          "facing": "carry"
+        }
       },
       {
         "name": "apply_state"

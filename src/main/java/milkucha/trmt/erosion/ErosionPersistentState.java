@@ -10,7 +10,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Direction;
 import net.minecraft.world.PersistentState;
 import net.minecraft.world.World;
 
@@ -141,12 +140,11 @@ public class ErosionPersistentState extends PersistentState {
         for (ErosionHistoryState state : history) {
             NbtCompound stateNbt = new NbtCompound();
             stateNbt.putString("block", state.blockId());
-            if (state.stage() >= 0) {
-                stateNbt.putInt("stage", state.stage());
+            NbtCompound propertiesNbt = new NbtCompound();
+            for (Map.Entry<String, String> property : state.properties().entrySet()) {
+                propertiesNbt.putString(property.getKey(), property.getValue());
             }
-            if (state.facing() != null) {
-                stateNbt.putString("facing", state.facing().asString());
-            }
+            stateNbt.put("properties", propertiesNbt);
             list.add(stateNbt);
         }
         return list;
@@ -157,11 +155,14 @@ public class ErosionPersistentState extends PersistentState {
         for (int i = 0; i < historyNbt.size(); i++) {
             NbtCompound stateNbt = historyNbt.getCompound(i);
             Block block = Registries.BLOCK.get(Identifier.of(stateNbt.getString("block")));
-            int stage = stateNbt.contains("stage") ? stateNbt.getInt("stage") : -1;
-            Direction facing = stateNbt.contains("facing")
-                    ? Direction.byName(stateNbt.getString("facing"))
-                    : null;
-            history.add(new ErosionHistoryState(block, stage, facing));
+            Map<String, String> properties = new HashMap<>();
+            if (stateNbt.contains("properties", NbtElement.COMPOUND_TYPE)) {
+                NbtCompound propertiesNbt = stateNbt.getCompound("properties");
+                for (String key : propertiesNbt.getKeys()) {
+                    properties.put(key, propertiesNbt.getString(key));
+                }
+            }
+            history.add(new ErosionHistoryState(block, properties));
         }
         return history;
     }
