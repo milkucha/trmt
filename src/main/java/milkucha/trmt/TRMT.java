@@ -1,6 +1,7 @@
 package milkucha.trmt;
 
 import milkucha.trmt.block.ErodedSandBlock;
+import milkucha.trmt.erosion.DeErosionTransformReloadListener;
 import milkucha.trmt.erosion.ErosionMapManager;
 import milkucha.trmt.erosion.ErosionLogic;
 import milkucha.trmt.erosion.ErosionTransformGraph;
@@ -12,6 +13,7 @@ import milkucha.trmt.network.VersionResponsePayload;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -41,6 +43,8 @@ import java.util.Set;
 public class TRMT implements ModInitializer {
 	public static final String MOD_ID = "trmt";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+	private static final int DE_EROSION_SCAN_INTERVAL_TICKS = 200;
+	private static int deErosionScanTicks = 0;
 
 	@Override
 	public void onInitialize() {
@@ -49,6 +53,7 @@ public class TRMT implements ModInitializer {
 		TRMTPotions.register();
 		TRMTBlocks.register();
 		ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(ErosionTransformReloadListener.INSTANCE);
+		ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(DeErosionTransformReloadListener.INSTANCE);
 
 		PayloadTypeRegistry.configurationS2C().register(VersionCheckPayload.ID, VersionCheckPayload.CODEC);
 		PayloadTypeRegistry.configurationC2S().register(VersionResponsePayload.ID, VersionResponsePayload.CODEC);
@@ -85,7 +90,17 @@ public class TRMT implements ModInitializer {
 					), false);
 				}
 		});
-		ServerLifecycleEvents.SERVER_STOPPED.register(server -> ErosionMapManager.reset());
+		ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+			deErosionScanTicks = 0;
+			ErosionMapManager.reset();
+		});
+		ServerTickEvents.END_SERVER_TICK.register(server -> {
+			deErosionScanTicks++;
+			if (deErosionScanTicks >= DE_EROSION_SCAN_INTERVAL_TICKS) {
+				deErosionScanTicks = 0;
+				ErosionMapManager.getInstance().tickNaturalDeErosion(server);
+			}
+		});
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) ->
 				ErosionMapManager.getInstance().removeEntry(pos));
 

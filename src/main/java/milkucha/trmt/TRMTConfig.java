@@ -43,39 +43,12 @@ public final class TRMTConfig {
         public boolean sandEnabled  = true;
     }
 
-    public static class GrassDeErosion {
-        public float stage1 = 5f;
-        public float stage2 = 5f;
-        public float stage3 = 5f;
-        public float stage4 = 5f;
-        public float stage5 = 5f;
-    }
-
-    public static class DirtDeErosion {
-        public float erodedDirt       = 8f;
-        public float erodedCoarseDirt = 13f;
-    }
-
-    public static class SandDeErosion {
-        public float stage1 =  3f;
-        public float stage2 =  5f;
-        public float stage3 =  8f;
-        public float stage4 = 13f;
-        public float stage5 = 13f;
-    }
-
-    public static class DeErosionTimeoutDays {
-        public GrassDeErosion grass = new GrassDeErosion();
-        public DirtDeErosion  dirt  = new DirtDeErosion();
-        public SandDeErosion  sand  = new SandDeErosion();
-    }
-
     // ── top-level fields ───────────────────────────────────────────────────
 
     public ErosionToggles       erosion              = new ErosionToggles();
     public DeErosionToggles     deErosion            = new DeErosionToggles();
+    public DeErosionToggles     bonemealDeErosion    = new DeErosionToggles();
     public Multipliers          erosionMultipliers   = new Multipliers();
-    public DeErosionTimeoutDays deErosionTimeoutDays = new DeErosionTimeoutDays();
 
     // ── singleton ──────────────────────────────────────────────────────────
     private static TRMTConfig instance = new TRMTConfig();

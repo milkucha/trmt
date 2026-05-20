@@ -2,11 +2,9 @@ package milkucha.trmt.client.debug;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.block.ErodedGrassBlock;
-import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
-import milkucha.trmt.erosion.BlockThresholds;
+import milkucha.trmt.erosion.DeErosionLogic;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.block.Block;
@@ -21,6 +19,8 @@ import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.random.Random;
+
+import java.util.OptionalLong;
 
 
 /**
@@ -137,18 +137,8 @@ public class ErosionDebugHud {
     }
 
     private static long resolveTimeout(BlockState state, ClientErosionCache.Entry entry) {
-        Block block = state.getBlock();
-        if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
-            return BlockThresholds.getGrassDeErosionTimeout(state.get(ErodedGrassBlock.STAGE) + 1);
-        }
-        if (block == TRMTBlocks.ERODED_DIRT
-                || block == TRMTBlocks.ERODED_COARSE_DIRT) {
-            return BlockThresholds.getDirtDeErosionTimeout(block);
-        }
-        if (block == TRMTBlocks.ERODED_SAND) {
-            return BlockThresholds.getSandDeErosionTimeout(state.get(ErodedSandBlock.STAGE));
-        }
-        return -1;
+        OptionalLong timeout = DeErosionLogic.getTimeoutTicks(state);
+        return timeout.orElse(-1);
     }
 
     private static void drawQuad(DrawContext context, MinecraftClient client,

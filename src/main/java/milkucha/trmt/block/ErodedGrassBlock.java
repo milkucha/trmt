@@ -1,10 +1,7 @@
 package milkucha.trmt.block;
 
-import milkucha.trmt.TRMTConfig;
-import milkucha.trmt.erosion.BlockThresholds;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.DirectionProperty;
 import net.minecraft.state.property.IntProperty;
@@ -29,16 +26,7 @@ public class ErodedGrassBlock extends ErodedBlock {
     public static final IntProperty STAGE = IntProperty.of("stage", 0, 4);
 
     public ErodedGrassBlock(Settings settings) {
-        super(settings,
-                () -> TRMTConfig.get().deErosion.grassEnabled,
-                state -> BlockThresholds.getGrassDeErosionTimeout(state.get(STAGE) + 1),
-                state -> {
-                    int stage = state.get(STAGE);
-                    if (stage > 0) {
-                        return new DeErosionResult(state.with(STAGE, stage - 1), true);
-                    }
-                    return new DeErosionResult(Blocks.GRASS_BLOCK.getDefaultState(), false);
-                });
+        super(settings);
         setDefaultState(getStateManager().getDefaultState().with(FACING, Direction.SOUTH).with(STAGE, 0));
     }
 

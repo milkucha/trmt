@@ -1,0 +1,19 @@
+[
+  {
+    "identifier": "trmt:eroded_grass_block",
+    "natural_config": "deErosion.grassEnabled",
+    "bonemeal_config": "bonemealDeErosion.grassEnabled",
+    "timeout_days_by_property": {
+      "stage": {
+        "0": 5.0,
+        "1": 5.0,
+        "2": 5.0,
+        "3": 5.0,
+        "4": 5.0
+      }
+    },
+    "fallback": {
+      "id": "minecraft:grass_block"
+    }
+  }
+]

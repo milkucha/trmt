@@ -6,6 +6,7 @@ import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.network.SyncChunkPayload;
 import milkucha.trmt.network.UpdateStagePayload;
+import net.minecraft.block.BlockState;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
@@ -105,6 +106,25 @@ public class ErosionMapManager {
         if (server == null) return;
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
             player.sendMessage(message, false);
+        }
+    }
+
+    public void tickNaturalDeErosion(MinecraftServer server) {
+        if (state == null) return;
+        ServerWorld world = server.getWorld(World.OVERWORLD);
+        if (world == null) return;
+
+        for (Map.Entry<ChunkPos, ChunkErosionMap> chunkEntry : List.copyOf(state.getAllChunkMaps().entrySet())) {
+            ChunkPos chunkPos = chunkEntry.getKey();
+            if (world.getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FULL, false) == null) {
+                continue;
+            }
+
+            for (Map.Entry<BlockPos, ErosionEntry> entry : List.copyOf(chunkEntry.getValue().getEntries().entrySet())) {
+                BlockPos pos = entry.getKey();
+                BlockState blockState = world.getBlockState(pos);
+                DeErosionLogic.tryNaturallyDeErode(world, this, pos, blockState, entry.getValue());
+            }
         }
     }
 

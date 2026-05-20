@@ -1,11 +1,7 @@
 package milkucha.trmt.mixin;
 
-import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.block.ErodedBlock;
-import milkucha.trmt.erosion.ErosionHistoryState;
-import milkucha.trmt.erosion.ErosionLogic;
+import milkucha.trmt.erosion.DeErosionLogic;
 import milkucha.trmt.erosion.ErosionMapManager;
-import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BoneMealItem;
@@ -19,9 +15,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Mixin(BoneMealItem.class)
 public class BoneMealItemMixin {
@@ -49,25 +42,6 @@ public class BoneMealItemMixin {
 
     @Unique
     private boolean trmt$deErodeWithBoneMeal(BlockState state, ServerWorld world, BlockPos pos) {
-        if (state.getBlock() instanceof ErodedBlock erodedBlock) {
-            return erodedBlock.deErode(state, world, pos, true);
-        }
-
-        ErosionMapManager manager = ErosionMapManager.getInstance();
-        List<ErosionHistoryState> history = new ArrayList<>(manager.getHistory(pos));
-        if (history.isEmpty()) {
-            return false;
-        }
-
-        ErosionHistoryState previous = history.remove(history.size() - 1);
-        BlockState previousState = previous.toBlockState();
-        world.setBlockState(pos, previousState, Block.NOTIFY_ALL);
-        manager.removeEntry(pos);
-
-        Block previousBlock = previousState.getBlock();
-        if (!history.isEmpty() || ErosionLogic.isErodedBlock(previousBlock)) {
-            manager.writeCooldownEntry(pos, previousBlock, world.getTime(), history);
-        }
-        return true;
+        return DeErosionLogic.tryBonemealDeErode(world, ErosionMapManager.getInstance(), pos, state);
     }
 }

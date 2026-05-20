@@ -1,7 +1,6 @@
 package milkucha.trmt.erosion;
 
 import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.TRMTConfig;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -14,8 +13,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Per-block-type threshold ranges for the erosion transformation chain.
- * Ranges are read from {@link TRMTConfig} so they can be tuned via
- * {@code config/trmt.json} without recompiling.
+ * Ranges are read from datapack erosion transforms when available.
  */
 public final class BlockThresholds {
 
@@ -49,8 +47,6 @@ public final class BlockThresholds {
         return new ErosionThresholdRange(2.0f, 4.0f);
     }
 
-    private static final long TICKS_PER_DAY = 24000L;
-
     private static final Direction[] HORIZONTALS = {
         Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST
     };
@@ -81,39 +77,5 @@ public final class BlockThresholds {
             }
         }
         return true;
-    }
-
-    /** Returns the de-erosion inactivity timeout (ticks) for the given grass erosion stage (1–5). */
-    public static long getGrassDeErosionTimeout(int stage) {
-        TRMTConfig cfg = TRMTConfig.get();
-        TRMTConfig.GrassDeErosion g = cfg.deErosionTimeoutDays.grass;
-        return switch (stage) {
-            case 1  -> (long)(g.stage1 * TICKS_PER_DAY);
-            case 2  -> (long)(g.stage2 * TICKS_PER_DAY);
-            case 3  -> (long)(g.stage3 * TICKS_PER_DAY);
-            case 4  -> (long)(g.stage4 * TICKS_PER_DAY);
-            default -> (long)(g.stage5 * TICKS_PER_DAY);
-        };
-    }
-
-    /** Returns the de-erosion inactivity timeout (ticks) for the given eroded sand stage (0–4). */
-    public static long getSandDeErosionTimeout(int stage) {
-        TRMTConfig cfg = TRMTConfig.get();
-        TRMTConfig.SandDeErosion s = cfg.deErosionTimeoutDays.sand;
-        return (long)((switch (stage) {
-            case 0  -> s.stage1;
-            case 1  -> s.stage2;
-            case 2  -> s.stage3;
-            case 3  -> s.stage4;
-            default -> s.stage5;
-        }) * TICKS_PER_DAY);
-    }
-
-    /** Returns the de-erosion inactivity timeout (ticks) for the given eroded dirt block type. */
-    public static long getDirtDeErosionTimeout(Block block) {
-        TRMTConfig cfg = TRMTConfig.get();
-        TRMTConfig.DirtDeErosion d = cfg.deErosionTimeoutDays.dirt;
-        if (block == TRMTBlocks.ERODED_DIRT) return (long)(d.erodedDirt       * TICKS_PER_DAY);
-        return (long)(d.erodedCoarseDirt * TICKS_PER_DAY);
     }
 }

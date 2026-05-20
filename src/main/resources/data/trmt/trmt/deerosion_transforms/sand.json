@@ -1,0 +1,19 @@
+[
+  {
+    "identifier": "trmt:eroded_sand",
+    "natural_config": "deErosion.sandEnabled",
+    "bonemeal_config": "bonemealDeErosion.sandEnabled",
+    "timeout_days_by_property": {
+      "stage": {
+        "0": 3.0,
+        "1": 5.0,
+        "2": 8.0,
+        "3": 13.0,
+        "4": 13.0
+      }
+    },
+    "fallback": {
+      "id": "minecraft:sand"
+    }
+  }
+]

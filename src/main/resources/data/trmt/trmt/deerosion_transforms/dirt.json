@@ -1,0 +1,22 @@
+[
+  {
+    "identifier": "trmt:eroded_dirt",
+    "natural_config": "deErosion.dirtEnabled",
+    "bonemeal_config": "bonemealDeErosion.dirtEnabled",
+    "timeout_days": 8.0,
+    "fallback": {
+      "id": "minecraft:dirt"
+    }
+  },
+  {
+    "identifier": "trmt:eroded_coarse_dirt",
+    "natural_config": "deErosion.dirtEnabled",
+    "bonemeal_config": "bonemealDeErosion.dirtEnabled",
+    "timeout_days": 13.0,
+    "fallback": {
+      "id": "trmt:eroded_dirt",
+      "stage": 3,
+      "facing": "carry"
+    }
+  }
+]

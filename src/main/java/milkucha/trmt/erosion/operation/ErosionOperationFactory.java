@@ -90,7 +90,7 @@ public final class ErosionOperationFactory {
         return value.getAsString();
     }
 
-    private static Predicate<BlockState> buildMatcher(List<String> identifiers) {
+    public static Predicate<BlockState> buildMatcher(List<String> identifiers) {
         List<Predicate<BlockState>> matchers = identifiers.stream()
                 .map(ErosionOperationFactory::buildMatcher)
                 .toList();
@@ -106,7 +106,7 @@ public final class ErosionOperationFactory {
         return state -> state.isOf(block);
     }
 
-    private static List<String> parseIdentifiers(JsonObject json) {
+    public static List<String> parseIdentifiers(JsonObject json) {
         boolean hasIdentifier = json.has("identifier");
         boolean hasIdentifiers = json.has("identifiers");
         if (hasIdentifier == hasIdentifiers) {

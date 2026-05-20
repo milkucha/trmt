@@ -1,10 +1,7 @@
 package milkucha.trmt.block;
 
-import milkucha.trmt.TRMTConfig;
-import milkucha.trmt.erosion.BlockThresholds;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.DirectionProperty;
@@ -40,16 +37,7 @@ public class ErodedSandBlock extends ErodedBlock {
     };
 
     public ErodedSandBlock(Settings settings) {
-        super(settings,
-                () -> TRMTConfig.get().deErosion.sandEnabled,
-                state -> BlockThresholds.getSandDeErosionTimeout(state.get(STAGE)),
-                state -> {
-                    int stage = state.get(STAGE);
-                    if (stage > 0) {
-                        return new DeErosionResult(state.with(STAGE, stage - 1), true);
-                    }
-                    return new DeErosionResult(Blocks.SAND.getDefaultState(), false);
-                });
+        super(settings);
         setDefaultState(getStateManager().getDefaultState().with(FACING, Direction.SOUTH).with(STAGE, 0));
     }
 

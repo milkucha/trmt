@@ -1,8 +1,5 @@
 package milkucha.trmt.block;
 
-import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.TRMTConfig;
-import milkucha.trmt.erosion.BlockThresholds;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.ShapeContext;
@@ -36,38 +33,13 @@ public class ErodedDirtBlock extends ErodedBlock {
     public static final IntProperty STAGE = IntProperty.of("stage", 0, 3);
 
     public ErodedDirtBlock(Settings settings) {
-        super(settings,
-                () -> TRMTConfig.get().deErosion.dirtEnabled,
-                state -> BlockThresholds.getDirtDeErosionTimeout(state.getBlock()),
-                ErodedDirtBlock::fallbackDeErosion);
+        super(settings);
         setDefaultState(getStateManager().getDefaultState().with(FACING, Direction.SOUTH).with(STAGE, 0));
     }
 
     @Override
     protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
         builder.add(FACING, STAGE);
-    }
-
-    private static DeErosionResult fallbackDeErosion(BlockState state) {
-        Direction facing = state.get(FACING);
-        Block block = state.getBlock();
-
-        if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
-            return new DeErosionResult(
-                    TRMTBlocks.ERODED_DIRT.getDefaultState().with(FACING, facing).with(STAGE, 3),
-                    true);
-        }
-
-        int stage = state.get(STAGE);
-        if (stage > 0) {
-            return new DeErosionResult(state.with(STAGE, stage - 1), true);
-        }
-
-        return new DeErosionResult(
-                TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
-                        .with(ErodedGrassBlock.FACING, facing)
-                        .with(ErodedGrassBlock.STAGE, 4),
-                true);
     }
 
     @Override
