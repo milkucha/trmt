@@ -43,6 +43,12 @@ public class TRMTWalkingErosionUtil {
             if (world.getBlockState(upper).isOf(state.getBlock())) {
                 world.removeBlock(upper, false);
             }
+            // Tall grass degrades to short grass rather than breaking entirely.
+            if (state.isOf(Blocks.TALL_GRASS)) {
+                world.setBlockState(pos, Blocks.GRASS.getDefaultState(), Block.NOTIFY_ALL);
+                manager.removeEntry(pos);
+                return;
+            }
         }
 
         float dropChance = TRMTConfig.get().erosionThresholds.vegetation.dropChance;
@@ -65,6 +71,7 @@ public class TRMTWalkingErosionUtil {
 
         // Threshold reached — advance visual stage or transform the block.
         if (state.isOf(Blocks.SAND)) {
+            if (!world.getBlockState(pos.up()).isAir()) return;
             Direction erodedFacing = rotationToFacing(BlockThresholds.posRotation(pos));
             world.setBlockState(pos,
                     TRMTBlocks.ERODED_SAND.getDefaultState()
@@ -77,6 +84,7 @@ public class TRMTWalkingErosionUtil {
         }
 
         if (state.isOf(TRMTBlocks.ERODED_SAND)) {
+            if (!world.getBlockState(pos.up()).isAir()) return;
             int stage = state.get(ErodedSandBlock.STAGE);
             if (stage < 4) {
                 world.setBlockState(pos, state.with(ErodedSandBlock.STAGE, stage + 1), Block.NOTIFY_ALL);

@@ -33,7 +33,7 @@ public class ServerPlayerEntityMixin {
     @Inject(method = "tick", at = @At("TAIL"))
     private void trmt$onTick(CallbackInfo ci) {
         ServerPlayerEntity player = (ServerPlayerEntity) (Object) this;
-
+        
         // Determine whether the player is mounted and, if so, delegate ground detection to the vehicle.
         Entity vehicle = player.getVehicle();
         boolean mounted = vehicle != null;
