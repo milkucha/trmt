@@ -1,16 +1,21 @@
 package milkucha.trmt.erosion;
 
+import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.LeavesBlock;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -21,20 +26,38 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public final class BlockThresholds {
 
-    /** All vegetation blocks that are subject to erosion trampling. */
-    public static final Set<Block> VEGETATION = Set.of(
-            Blocks.GRASS, Blocks.TALL_GRASS,
-            Blocks.DANDELION, Blocks.POPPY, Blocks.BLUE_ORCHID, Blocks.ALLIUM,
-            Blocks.AZURE_BLUET, Blocks.RED_TULIP, Blocks.ORANGE_TULIP,
-            Blocks.WHITE_TULIP, Blocks.PINK_TULIP, Blocks.OXEYE_DAISY,
-            Blocks.CORNFLOWER, Blocks.LILY_OF_THE_VALLEY, Blocks.WITHER_ROSE,
-            Blocks.SUNFLOWER, Blocks.LILAC, Blocks.ROSE_BUSH, Blocks.PEONY
-    );
+    private static volatile Set<Block> resolvedVegetation = null;
+
+    public static void invalidateVegetationCache() {
+        resolvedVegetation = null;
+    }
+
+    public static Set<Block> getVegetationSet() {
+        if (resolvedVegetation == null) {
+            List<String> ids = TRMTConfig.get().erodableVegetation;
+            Set<Block> resolved = new HashSet<>();
+            if (ids != null) {
+                for (String id : ids) {
+                    Identifier identifier = Identifier.tryParse(id);
+                    if (identifier == null) {
+                        TRMT.LOGGER.warn("[TRMT] erodableVegetation: '{}' is not a valid identifier, skipping", id);
+                        continue;
+                    }
+                    Registries.BLOCK.getOrEmpty(identifier).ifPresentOrElse(
+                        resolved::add,
+                        () -> TRMT.LOGGER.warn("[TRMT] erodableVegetation: unknown block '{}', skipping", id)
+                    );
+                }
+            }
+            resolvedVegetation = Set.copyOf(resolved);
+        }
+        return resolvedVegetation;
+    }
 
     private BlockThresholds() {}
 
     public static boolean isVegetation(Block block) {
-        return VEGETATION.contains(block);
+        return getVegetationSet().contains(block);
     }
 
     public static boolean isLeaves(Block block) {
@@ -78,7 +101,7 @@ public final class BlockThresholds {
             range = cfg.erosionThresholds.coarseDirt;
         } else if (block == Blocks.SAND) {
             range = cfg.erosionThresholds.sand;
-        } else if (VEGETATION.contains(block)) {
+        } else if (getVegetationSet().contains(block)) {
             range = cfg.erosionThresholds.vegetation;
         } else if (block instanceof LeavesBlock) {
             range = cfg.erosionThresholds.leaves;

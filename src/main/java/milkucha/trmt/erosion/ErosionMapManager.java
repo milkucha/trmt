@@ -2,7 +2,6 @@ package milkucha.trmt.erosion;
 
 import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.network.TRMTPackets;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
@@ -241,14 +240,29 @@ public class ErosionMapManager {
     }
 
     /**
-     * Scans one loaded chunk and reverts any eroded blocks whose category is currently disabled.
-     * No-ops if state is not yet initialized or all toggles are enabled.
+     * Converts all eroded blocks in all currently loaded chunks to their vanilla counterparts,
+     * unconditionally. Intended for use before uninstalling the mod.
      */
-    public void revertDisabledBlocks(ServerWorld world, ChunkPos chunkPos) {
+    public void convertAllErodedToVanilla(MinecraftServer server) {
         if (state == null) return;
-        TRMTConfig.ErosionToggles t = TRMTConfig.get().erosion;
-        if (t.grassEnabled && t.dirtEnabled && t.sandEnabled) return;
+        int viewDistance = server.getPlayerManager().getViewDistance();
+        for (ServerWorld world : server.getWorlds()) {
+            Set<ChunkPos> scanned = new HashSet<>();
+            for (ServerPlayerEntity player : world.getPlayers()) {
+                ChunkPos playerChunk = player.getChunkPos();
+                for (int dx = -viewDistance; dx <= viewDistance; dx++) {
+                    for (int dz = -viewDistance; dz <= viewDistance; dz++) {
+                        ChunkPos cp = new ChunkPos(playerChunk.x + dx, playerChunk.z + dz);
+                        if (scanned.add(cp) && world.getChunk(cp.x, cp.z, ChunkStatus.FULL, false) != null) {
+                            convertChunkToVanilla(world, cp);
+                        }
+                    }
+                }
+            }
+        }
+    }
 
+    private void convertChunkToVanilla(ServerWorld world, ChunkPos chunkPos) {
         int startX = chunkPos.getStartX();
         int startZ = chunkPos.getStartZ();
         int minY   = world.getBottomY();
@@ -260,50 +274,29 @@ public class ErosionMapManager {
                 for (int y = minY; y < maxY; y++) {
                     mutable.set(x, y, z);
                     Block block = world.getBlockState(mutable).getBlock();
-
-                    if (!t.grassEnabled && block == TRMTBlocks.ERODED_GRASS_BLOCK) {
-                        world.setBlockState(mutable.toImmutable(), Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
-                        removeEntry(mutable.toImmutable());
-                    } else if (!t.dirtEnabled) {
-                        if (block == TRMTBlocks.ERODED_DIRT) {
-                            world.setBlockState(mutable.toImmutable(), Blocks.DIRT.getDefaultState(), Block.NOTIFY_ALL);
-                            removeEntry(mutable.toImmutable());
-                        } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
-                            world.setBlockState(mutable.toImmutable(), Blocks.COARSE_DIRT.getDefaultState(), Block.NOTIFY_ALL);
-                            removeEntry(mutable.toImmutable());
-                        }
-                    } else if (!t.sandEnabled && block == TRMTBlocks.ERODED_SAND) {
-                        world.setBlockState(mutable.toImmutable(), Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
-                        removeEntry(mutable.toImmutable());
+                    BlockPos immutable = mutable.toImmutable();
+                    if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
+                        world.setBlockState(immutable, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
+                        removeEntry(immutable);
+                    } else if (block == TRMTBlocks.ERODED_DIRT) {
+                        world.setBlockState(immutable, Blocks.DIRT.getDefaultState(), Block.NOTIFY_ALL);
+                        removeEntry(immutable);
+                    } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
+                        world.setBlockState(immutable, Blocks.COARSE_DIRT.getDefaultState(), Block.NOTIFY_ALL);
+                        removeEntry(immutable);
+                    } else if (block == TRMTBlocks.ERODED_SAND) {
+                        world.setBlockState(immutable, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
+                        removeEntry(immutable);
                     }
                 }
             }
         }
     }
 
-    /**
-     * Scans all chunks loaded around online players and reverts eroded blocks whose
-     * category is disabled. Called after a config reload.
-     */
-    public void revertDisabledBlocksAllLoaded(MinecraftServer server) {
-        TRMTConfig.ErosionToggles t = TRMTConfig.get().erosion;
-        if (t.grassEnabled && t.dirtEnabled && t.sandEnabled) return;
-
-        int viewDistance = server.getPlayerManager().getViewDistance();
-        for (ServerWorld world : server.getWorlds()) {
-            Set<ChunkPos> scanned = new HashSet<>();
-            for (ServerPlayerEntity player : world.getPlayers()) {
-                ChunkPos playerChunk = player.getChunkPos();
-                for (int dx = -viewDistance; dx <= viewDistance; dx++) {
-                    for (int dz = -viewDistance; dz <= viewDistance; dz++) {
-                        ChunkPos cp = new ChunkPos(playerChunk.x + dx, playerChunk.z + dz);
-                        if (scanned.add(cp) && world.getChunk(cp.x, cp.z, ChunkStatus.FULL, false) != null) {
-                            revertDisabledBlocks(world, cp);
-                        }
-                    }
-                }
-            }
-        }
+    /** Returns all chunk positions that currently have erosion entries. */
+    public Set<ChunkPos> getErodedChunkPositions() {
+        if (state == null) return Collections.emptySet();
+        return state.getAllChunkMaps().keySet();
     }
 
     /** Returns an unmodifiable view of all chunk maps. Used by the debug HUD and join sync. */

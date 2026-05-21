@@ -4,11 +4,15 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.fabricmc.loader.api.FabricLoader;
 
+import milkucha.trmt.erosion.BlockThresholds;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Mod configuration loaded from {@code config/trmt.json}.
@@ -26,7 +30,8 @@ public final class TRMTConfig {
 
     public static class Multipliers {
         public float player  = 0.5f;
-        public float mounted = 1.5f;
+        public float mounted = 2.0f;
+        public float leash   = 1.5f;
     }
 
     public static class MinMax {
@@ -51,33 +56,33 @@ public final class TRMTConfig {
     }
 
     public static class ErosionThresholds {
-        public MinMax            grass               = new MinMax(2f, 4f);
-        public MinMax            dirt                = new MinMax(8f, 12f);
-        public MinMax            coarseDirt          = new MinMax(12f, 20f);
-        public MinMax            sand                = new MinMax(4f, 8f);
-        public VegetationThreshold vegetation        = new VegetationThreshold(2f, 3f, 0.2f);
-        public VegetationThreshold leaves            = new VegetationThreshold(2f, 3f, 0.1f);
+        public MinMax              grass      = new MinMax(2f, 4f);
+        public MinMax              dirt       = new MinMax(8f, 12f);
+        public MinMax              coarseDirt = new MinMax(12f, 20f);
+        public MinMax              sand       = new MinMax(1.5f, 3f);
+        public VegetationThreshold leaves     = new VegetationThreshold(2f, 3f, 0.1f);
+        public VegetationThreshold vegetation = new VegetationThreshold(2f, 3f, 0.2f);
     }
 
     public static class GrassDeErosion {
-        public float stage1 = 1f;
-        public float stage2 = 2f;
-        public float stage3 = 3f;
+        public float stage1 = 5f;
+        public float stage2 = 5f;
+        public float stage3 = 5f;
         public float stage4 = 5f;
-        public float stage5 = 8f;
+        public float stage5 = 5f;
     }
 
     public static class DirtDeErosion {
-        public float erodedDirt       = 13f;
-        public float erodedCoarseDirt = 21f;
+        public float erodedDirt       = 8f;
+        public float erodedCoarseDirt = 13f;
     }
 
     public static class SandDeErosion {
-        public float stage1 = 1f;
-        public float stage2 = 1f;
-        public float stage3 = 2f;
-        public float stage4 = 3f;
-        public float stage5 = 5f;
+        public float stage1 =  3f;
+        public float stage2 =  5f;
+        public float stage3 =  8f;
+        public float stage4 = 13f;
+        public float stage5 = 13f;
     }
 
     public static class DeErosionTimeoutDays {
@@ -86,11 +91,26 @@ public final class TRMTConfig {
         public SandDeErosion  sand  = new SandDeErosion();
     }
 
+    public static class DeErosionToggles {
+        public boolean grassEnabled = true;
+        public boolean dirtEnabled  = true;
+        public boolean sandEnabled  = true;
+    }
+
     // ── top-level fields ───────────────────────────────────────────────────
 
     public ErosionToggles       erosion              = new ErosionToggles();
+    public DeErosionToggles     deErosion            = new DeErosionToggles();
     public Multipliers          erosionMultipliers   = new Multipliers();
     public ErosionThresholds    erosionThresholds    = new ErosionThresholds();
+    public List<String> erodableVegetation = Arrays.asList(
+        "minecraft:grass", "minecraft:tall_grass",
+        "minecraft:dandelion", "minecraft:poppy", "minecraft:blue_orchid", "minecraft:allium",
+        "minecraft:azure_bluet", "minecraft:red_tulip", "minecraft:orange_tulip",
+        "minecraft:white_tulip", "minecraft:pink_tulip", "minecraft:oxeye_daisy",
+        "minecraft:cornflower", "minecraft:lily_of_the_valley", "minecraft:wither_rose",
+        "minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony"
+    );
     public DeErosionTimeoutDays deErosionTimeoutDays = new DeErosionTimeoutDays();
 
     // ── singleton ──────────────────────────────────────────────────────────
@@ -115,6 +135,7 @@ public final class TRMTConfig {
                 TRMTConfig loaded = GSON.fromJson(reader, TRMTConfig.class);
                 if (loaded != null) {
                     instance = loaded;
+                    BlockThresholds.invalidateVegetationCache();
                     // Save back immediately so any fields added since the last run
                     // are written to disk with their default values.
                     save();
