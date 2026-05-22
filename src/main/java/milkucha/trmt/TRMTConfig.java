@@ -45,6 +45,7 @@ public final class TRMTConfig {
         public boolean sandEnabled       = true;
         public boolean leavesEnabled     = true;
         public boolean vegetationEnabled = true;
+        public boolean snowEnabled       = true;
     }
 
     public static class VegetationThreshold extends MinMax {
@@ -62,6 +63,8 @@ public final class TRMTConfig {
         public MinMax              sand       = new MinMax(1.5f, 3f);
         public VegetationThreshold leaves     = new VegetationThreshold(2f, 3f, 0.1f);
         public VegetationThreshold vegetation = new VegetationThreshold(2f, 3f, 0.2f);
+        public VegetationThreshold snow       = new VegetationThreshold(0.5f, 1.0f, 0f);
+        public MinMax              snowBlock  = new MinMax(0.5f, 1.0f);
     }
 
     public static class GrassDeErosion {

@@ -101,6 +101,10 @@ public final class BlockThresholds {
             range = cfg.erosionThresholds.coarseDirt;
         } else if (block == Blocks.SAND) {
             range = cfg.erosionThresholds.sand;
+        } else if (block == Blocks.SNOW) {
+            range = cfg.erosionThresholds.snow;
+        } else if (block == Blocks.SNOW_BLOCK) {
+            range = cfg.erosionThresholds.snowBlock;
         } else if (getVegetationSet().contains(block)) {
             range = cfg.erosionThresholds.vegetation;
         } else if (block instanceof LeavesBlock) {
