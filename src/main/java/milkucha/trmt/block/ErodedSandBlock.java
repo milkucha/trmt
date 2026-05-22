@@ -11,6 +11,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.world.World;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.DirectionProperty;
 import net.minecraft.state.property.IntProperty;
@@ -54,9 +55,23 @@ public class ErodedSandBlock extends Block {
     }
 
     @Override
+    public void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
+        super.neighborUpdate(state, world, pos, sourceBlock, sourcePos, notify);
+        if (world.isClient) return;
+        if (!world.getBlockState(pos.up()).isOpaque()) return;
+        world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
+        ErosionMapManager.getInstance().removeEntry(pos);
+    }
+
+    @Override
     public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
-        if (!TRMTConfig.get().deErosion.sandEnabled) return;
         ErosionMapManager manager = ErosionMapManager.getInstance();
+        if (world.getBlockState(pos.up()).isOpaque()) {
+            world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
+            manager.removeEntry(pos);
+            return;
+        }
+        if (!TRMTConfig.get().deErosion.sandEnabled) return;
         ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
 

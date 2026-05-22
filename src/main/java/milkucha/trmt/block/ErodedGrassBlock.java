@@ -18,6 +18,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.random.Random;
+import net.minecraft.world.World;
 
 /**
  * Grass block produced by foot-traffic erosion.
@@ -47,9 +48,23 @@ public class ErodedGrassBlock extends Block {
     }
 
     @Override
+    public void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
+        super.neighborUpdate(state, world, pos, sourceBlock, sourcePos, notify);
+        if (world.isClient) return;
+        if (!world.getBlockState(pos.up()).isOpaque()) return;
+        world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
+        ErosionMapManager.getInstance().removeEntry(pos);
+    }
+
+    @Override
     public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
-        if (!TRMTConfig.get().deErosion.grassEnabled) return;
         ErosionMapManager manager = ErosionMapManager.getInstance();
+        if (world.getBlockState(pos.up()).isOpaque()) {
+            world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
+            manager.removeEntry(pos);
+            return;
+        }
+        if (!TRMTConfig.get().deErosion.grassEnabled) return;
         ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
 

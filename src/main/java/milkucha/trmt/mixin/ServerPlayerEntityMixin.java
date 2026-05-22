@@ -71,6 +71,9 @@ public class ServerPlayerEntityMixin {
 
         trmt$lastGroundPos = groundPos.toImmutable();
 
+        // Sneaking suppresses erosion.
+        if (player.isSneaking()) return;
+
         // Potion of Lightness suppresses erosion for the affected player or their mount.
         if (!mounted && player.hasStatusEffect(TRMTEffects.LIGHTNESS)) return;
         if (vehicle instanceof LivingEntity livingVehicle
