@@ -9,6 +9,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.world.World;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.DirectionProperty;
 import net.minecraft.state.property.IntProperty;
@@ -46,7 +47,21 @@ public class ErodedGrassBlock extends Block {
     }
 
     @Override
+    public void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
+        super.neighborUpdate(state, world, pos, sourceBlock, sourcePos, notify);
+        if (world.isClient) return;
+        if (!world.getBlockState(pos.up()).isOpaque()) return;
+        world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
+        ErosionMapManager.getInstance().removeEntry(pos);
+    }
+
+    @Override
     public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
+        if (world.getBlockState(pos.up()).isOpaque()) {
+            world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
+            ErosionMapManager.getInstance().removeEntry(pos);
+            return;
+        }
         if (!milkucha.trmt.TRMTConfig.get().deErosion.grassEnabled) return;
 
         ErosionMapManager manager = ErosionMapManager.getInstance();

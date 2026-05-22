@@ -10,6 +10,7 @@ import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BrushItem;
+import net.minecraft.state.property.Properties;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemUsageContext;
 import net.minecraft.server.world.ServerWorld;
@@ -75,7 +76,9 @@ public class BrushItemMixin {
         ErosionMapManager manager = ErosionMapManager.getInstance();
         int stage = state.get(ErodedSandBlock.STAGE);
         if (stage > 0) {
-            world.setBlockState(pos, state.with(ErodedSandBlock.STAGE, stage - 1), Block.NOTIFY_ALL);
+            BlockState newState = state.with(ErodedSandBlock.STAGE, stage - 1);
+            if (stage == 1) newState = newState.with(Properties.WATERLOGGED, false);
+            world.setBlockState(pos, newState, Block.NOTIFY_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime());
         } else {

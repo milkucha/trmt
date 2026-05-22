@@ -7,8 +7,10 @@ import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.world.World;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.DirectionProperty;
 import net.minecraft.state.property.IntProperty;
@@ -51,7 +53,27 @@ public class ErodedDirtBlock extends Block {
     }
 
     @Override
+    public void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
+        super.neighborUpdate(state, world, pos, sourceBlock, sourcePos, notify);
+        if (world.isClient) return;
+        if (!world.getBlockState(pos.up()).isOpaque()) return;
+        BlockState revertTo = state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)
+                ? Blocks.COARSE_DIRT.getDefaultState()
+                : Blocks.DIRT.getDefaultState();
+        world.setBlockState(pos, revertTo, Block.NOTIFY_ALL);
+        ErosionMapManager.getInstance().removeEntry(pos);
+    }
+
+    @Override
     public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
+        if (world.getBlockState(pos.up()).isOpaque()) {
+            BlockState revertTo = state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)
+                    ? Blocks.COARSE_DIRT.getDefaultState()
+                    : Blocks.DIRT.getDefaultState();
+            world.setBlockState(pos, revertTo, Block.NOTIFY_ALL);
+            ErosionMapManager.getInstance().removeEntry(pos);
+            return;
+        }
         if (!milkucha.trmt.TRMTConfig.get().deErosion.dirtEnabled) return;
 
         ErosionMapManager manager = ErosionMapManager.getInstance();
