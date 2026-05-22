@@ -11,8 +11,11 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.redstone.Orientation;
+import org.jetbrains.annotations.Nullable;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -47,7 +50,20 @@ public class ErodedGrassBlock extends Block {
     }
 
     @Override
+    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block sourceBlock, @Nullable Orientation wireOrientation, boolean notify) {
+        super.neighborChanged(state, world, pos, sourceBlock, wireOrientation, notify);
+        if (!world.isClientSide() && world.getBlockState(pos.above()).canOcclude()) {
+            world.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
+        }
+    }
+
+    @Override
     public void randomTick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
+        if (world.getBlockState(pos.above()).canOcclude()) {
+            world.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
+            return;
+        }
+
         if (!TRMTConfig.get().deErosion.grassEnabled) return;
 
         ErosionMapManager manager = ErosionMapManager.getInstance();

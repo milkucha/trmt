@@ -12,8 +12,12 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.redstone.Orientation;
+import org.jetbrains.annotations.Nullable;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
@@ -52,7 +56,26 @@ public class ErodedDirtBlock extends Block {
     }
 
     @Override
+    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block sourceBlock, @Nullable Orientation wireOrientation, boolean notify) {
+        super.neighborChanged(state, world, pos, sourceBlock, wireOrientation, notify);
+        if (!world.isClientSide() && world.getBlockState(pos.above()).canOcclude()) {
+            BlockState revert = state.is(TRMTBlocks.ERODED_COARSE_DIRT)
+                    ? Blocks.COARSE_DIRT.defaultBlockState()
+                    : Blocks.DIRT.defaultBlockState();
+            world.setBlock(pos, revert, Block.UPDATE_ALL);
+        }
+    }
+
+    @Override
     public void randomTick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
+        if (world.getBlockState(pos.above()).canOcclude()) {
+            BlockState revert = state.is(TRMTBlocks.ERODED_COARSE_DIRT)
+                    ? Blocks.COARSE_DIRT.defaultBlockState()
+                    : Blocks.DIRT.defaultBlockState();
+            world.setBlock(pos, revert, Block.UPDATE_ALL);
+            return;
+        }
+
         if (!TRMTConfig.get().deErosion.dirtEnabled) return;
 
         ErosionMapManager manager = ErosionMapManager.getInstance();

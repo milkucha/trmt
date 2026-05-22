@@ -71,6 +71,8 @@ public class ServerPlayerEntityMixin {
 
         trmt$lastGroundPos = groundPos.immutable();
 
+        if (player.isShiftKeyDown()) return;
+
         // Potion of Lightness suppresses erosion for the affected player or their mount.
         if (!mounted && player.hasEffect(TRMTEffects.LIGHTNESS_ENTRY)) return;
         if (vehicle instanceof LivingEntity livingVehicle
@@ -214,6 +216,7 @@ public class ServerPlayerEntityMixin {
         }
 
         if (state.is(Blocks.GRASS_BLOCK)) {
+            if (world.getBlockState(pos.above()).is(Blocks.WATER)) return;
             // Threshold reached — place the real eroded grass block at stage 0.
             Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
             world.setBlock(pos,
@@ -227,6 +230,7 @@ public class ServerPlayerEntityMixin {
         }
 
         if (state.is(TRMTBlocks.ERODED_GRASS_BLOCK)) {
+            if (world.getBlockState(pos.above()).is(Blocks.WATER)) return;
             Direction facing = state.getValue(ErodedGrassBlock.FACING);
             int currentStage = state.getValue(ErodedGrassBlock.STAGE);
             if (currentStage < 4) {
@@ -244,6 +248,7 @@ public class ServerPlayerEntityMixin {
         }
 
         if (state.is(TRMTBlocks.ERODED_DIRT)) {
+            if (world.getBlockState(pos.above()).is(Blocks.WATER)) return;
             Direction facing = state.getValue(ErodedDirtBlock.FACING);
             int currentStage = state.getValue(ErodedDirtBlock.STAGE);
             if (currentStage < 3) {
@@ -263,6 +268,7 @@ public class ServerPlayerEntityMixin {
         }
 
         if (!state.is(Blocks.DIRT)) return;
+        if (world.getBlockState(pos.above()).is(Blocks.WATER)) return;
         Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
         world.setBlock(pos,
                 TRMTBlocks.ERODED_DIRT.defaultBlockState()

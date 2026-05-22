@@ -154,6 +154,7 @@ public class MobEntityMixin {
         }
 
         if (state.is(Blocks.GRASS_BLOCK)) {
+            if (world.getBlockState(pos.above()).is(Blocks.WATER)) return;
             Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
             world.setBlock(pos,
                     TRMTBlocks.ERODED_GRASS_BLOCK.defaultBlockState()
@@ -166,6 +167,7 @@ public class MobEntityMixin {
         }
 
         if (state.is(TRMTBlocks.ERODED_GRASS_BLOCK)) {
+            if (world.getBlockState(pos.above()).is(Blocks.WATER)) return;
             Direction facing = state.getValue(ErodedGrassBlock.FACING);
             int currentStage = state.getValue(ErodedGrassBlock.STAGE);
             if (currentStage < 4) {
@@ -182,6 +184,7 @@ public class MobEntityMixin {
         }
 
         if (state.is(TRMTBlocks.ERODED_DIRT)) {
+            if (world.getBlockState(pos.above()).is(Blocks.WATER)) return;
             Direction facing = state.getValue(ErodedDirtBlock.FACING);
             int currentStage = state.getValue(ErodedDirtBlock.STAGE);
             if (currentStage < 3) {
@@ -197,6 +200,7 @@ public class MobEntityMixin {
         }
 
         if (!state.is(Blocks.DIRT)) return;
+        if (world.getBlockState(pos.above()).is(Blocks.WATER)) return;
         Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
         world.setBlock(pos,
                 TRMTBlocks.ERODED_DIRT.defaultBlockState()
