@@ -12,7 +12,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.redstone.Orientation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -20,6 +23,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Dirt block produced by foot-traffic erosion.
@@ -52,7 +56,28 @@ public class ErodedDirtBlock extends Block {
     }
 
     @Override
+    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block block,
+                                @Nullable Orientation orientation, boolean movedByPiston) {
+        super.neighborChanged(state, world, pos, block, orientation, movedByPiston);
+        if (!world.isClientSide() && world.getBlockState(pos.above()).canOcclude()) {
+            BlockState revert = state.is(TRMTBlocks.ERODED_COARSE_DIRT)
+                    ? Blocks.COARSE_DIRT.defaultBlockState()
+                    : Blocks.DIRT.defaultBlockState();
+            world.setBlock(pos, revert, Block.UPDATE_ALL);
+            ErosionMapManager.getInstance().removeEntry(pos);
+        }
+    }
+
+    @Override
     public void randomTick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
+        if (world.getBlockState(pos.above()).canOcclude()) {
+            BlockState revert = state.is(TRMTBlocks.ERODED_COARSE_DIRT)
+                    ? Blocks.COARSE_DIRT.defaultBlockState()
+                    : Blocks.DIRT.defaultBlockState();
+            world.setBlock(pos, revert, Block.UPDATE_ALL);
+            ErosionMapManager.getInstance().removeEntry(pos);
+            return;
+        }
         if (!TRMTConfig.get().deErosion.dirtEnabled) return;
 
         ErosionMapManager manager = ErosionMapManager.getInstance();

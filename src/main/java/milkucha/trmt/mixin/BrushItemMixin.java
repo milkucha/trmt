@@ -75,7 +75,10 @@ public class BrushItemMixin {
         ErosionMapManager manager = ErosionMapManager.getInstance();
         int stage = state.getValue(ErodedSandBlock.STAGE);
         if (stage > 0) {
-            world.setBlock(pos, state.setValue(ErodedSandBlock.STAGE, stage - 1), Block.UPDATE_ALL);
+            BlockState newState = state.setValue(ErodedSandBlock.STAGE, stage - 1);
+            // Stage 0 is not waterloggable; clear the flag when brushing 1→0.
+            if (stage == 1) newState = newState.setValue(ErodedSandBlock.WATERLOGGED, false);
+            world.setBlock(pos, newState, Block.UPDATE_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getGameTime());
         } else {

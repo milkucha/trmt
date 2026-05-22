@@ -11,13 +11,16 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.redstone.Orientation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Grass block produced by foot-traffic erosion.
@@ -47,7 +50,22 @@ public class ErodedGrassBlock extends Block {
     }
 
     @Override
+    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block block,
+                                @Nullable Orientation orientation, boolean movedByPiston) {
+        super.neighborChanged(state, world, pos, block, orientation, movedByPiston);
+        if (!world.isClientSide() && world.getBlockState(pos.above()).canOcclude()) {
+            world.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
+            ErosionMapManager.getInstance().removeEntry(pos);
+        }
+    }
+
+    @Override
     public void randomTick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
+        if (world.getBlockState(pos.above()).canOcclude()) {
+            world.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
+            ErosionMapManager.getInstance().removeEntry(pos);
+            return;
+        }
         if (!TRMTConfig.get().deErosion.grassEnabled) return;
 
         ErosionMapManager manager = ErosionMapManager.getInstance();
