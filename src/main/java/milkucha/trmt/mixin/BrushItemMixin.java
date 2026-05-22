@@ -85,7 +85,8 @@ public class BrushItemMixin {
         ErosionMapManager manager = ErosionMapManager.getInstance();
         int stage = state.get(ErodedSandBlock.STAGE);
         if (stage > 0) {
-            world.setBlockState(pos, state.with(ErodedSandBlock.STAGE, stage - 1), Block.NOTIFY_ALL);
+            boolean keepWaterlogged = stage > 1 && state.get(ErodedSandBlock.WATERLOGGED);
+            world.setBlockState(pos, state.with(ErodedSandBlock.STAGE, stage - 1).with(ErodedSandBlock.WATERLOGGED, keepWaterlogged), Block.NOTIFY_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime());
         } else {
