@@ -25,6 +25,7 @@ public final class TRMTForgeClient {
 
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
+        TRMTClientConfig.load();
         event.enqueueWork(() -> {
             // Register render layers so transparent pixels in the eroded grass overlay
             // and eroded sand are handled correctly.
