@@ -9,17 +9,17 @@ import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.TallPlantBlock;
-import net.minecraft.block.enums.DoubleBlockHalf;
-import net.minecraft.entity.mob.MobEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.DoublePlantBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.server.level.ServerLevel;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -28,7 +28,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-@Mixin(MobEntity.class)
+@Mixin(Mob.class)
 public class MobEntityMixin {
 
     @Unique
@@ -36,38 +36,38 @@ public class MobEntityMixin {
 
     @Inject(method = "tick", at = @At("TAIL"))
     private void trmt$onTick(CallbackInfo ci) {
-        MobEntity mob = (MobEntity)(Object) this;
+        Mob mob = (Mob)(Object) this;
 
-        if (!(mob.getWorld() instanceof ServerWorld)) return;
+        if (!(mob.level() instanceof ServerLevel)) return;
 
-        if (!mob.isOnGround()) {
+        if (!mob.onGround()) {
             trmt$lastGroundPos = null;
             return;
         }
 
         if (!mob.isLeashed()) return;
 
-        if (mob.hasStatusEffect(TRMTEffects.LIGHTNESS_ENTRY)) return;
+        if (mob.hasEffect(TRMTEffects.LIGHTNESS_ENTRY)) return;
 
-        BlockPos groundPos = mob.getBlockPos().down();
+        BlockPos groundPos = mob.blockPosition().below();
 
-        World world = mob.getWorld();
-        BlockState groundUpState = world.getBlockState(groundPos.up());
-        if (groundUpState.isOf(TRMTBlocks.ERODED_SAND) || groundUpState.isOf(Blocks.SAND)) {
-            groundPos = groundPos.up();
+        Level world = mob.level();
+        BlockState groundUpState = world.getBlockState(groundPos.above());
+        if (groundUpState.is(TRMTBlocks.ERODED_SAND.get()) || groundUpState.is(Blocks.SAND)) {
+            groundPos = groundPos.above();
         }
 
         if (groundPos.equals(trmt$lastGroundPos)) return;
-        trmt$lastGroundPos = groundPos.toImmutable();
+        trmt$lastGroundPos = groundPos.immutable();
 
         float mult = TRMTConfig.get().erosionMultipliers.player
                 * TRMTConfig.get().erosionMultipliers.leash;
 
         ErosionMapManager manager = ErosionMapManager.getInstance();
-        long gameTime = world.getTime();
+        long gameTime = world.getGameTime();
         TRMTConfig.ErosionToggles erosion = TRMTConfig.get().erosion;
 
-        BlockPos vegPos = groundPos.up();
+        BlockPos vegPos = groundPos.above();
         BlockState vegState = world.getBlockState(vegPos);
         if (erosion.vegetationEnabled && BlockThresholds.isVegetation(vegState.getBlock())) {
             manager.onStep(vegPos, vegState.getBlock(), 1.0f * mult, gameTime);
@@ -78,9 +78,9 @@ public class MobEntityMixin {
         BlockState state = world.getBlockState(groundPos);
         Block block = state.getBlock();
 
-        boolean tracked = (erosion.grassEnabled && (state.isOf(Blocks.GRASS_BLOCK) || state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)))
-                || (erosion.dirtEnabled && (state.isOf(Blocks.DIRT) || state.isOf(TRMTBlocks.ERODED_DIRT)))
-                || (erosion.sandEnabled && (state.isOf(Blocks.SAND) || state.isOf(TRMTBlocks.ERODED_SAND)))
+        boolean tracked = (erosion.grassEnabled && (state.is(Blocks.GRASS_BLOCK) || state.is(TRMTBlocks.ERODED_GRASS_BLOCK.get())))
+                || (erosion.dirtEnabled && (state.is(Blocks.DIRT) || state.is(TRMTBlocks.ERODED_DIRT.get())))
+                || (erosion.sandEnabled && (state.is(Blocks.SAND) || state.is(TRMTBlocks.ERODED_SAND.get())))
                 || (erosion.leavesEnabled && BlockThresholds.isLeaves(block));
 
         if (!tracked) return;
@@ -91,19 +91,19 @@ public class MobEntityMixin {
     }
 
     @Unique
-    private static void trmt$tryBreakVegetation(World world, ErosionMapManager manager,
+    private static void trmt$tryBreakVegetation(Level world, ErosionMapManager manager,
                                                  BlockPos pos, BlockState state) {
         ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
         if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
 
-        if (state.getBlock() instanceof TallPlantBlock
-                && state.get(TallPlantBlock.HALF) == DoubleBlockHalf.LOWER) {
-            BlockPos upper = pos.up();
-            if (world.getBlockState(upper).isOf(state.getBlock())) {
+        if (state.getBlock() instanceof DoublePlantBlock
+                && state.getValue(DoublePlantBlock.HALF) == DoubleBlockHalf.LOWER) {
+            BlockPos upper = pos.above();
+            if (world.getBlockState(upper).is(state.getBlock())) {
                 world.removeBlock(upper, false);
             }
-            if (state.isOf(Blocks.TALL_GRASS)) {
-                world.setBlockState(pos, Blocks.SHORT_GRASS.getDefaultState(), Block.NOTIFY_ALL);
+            if (state.is(Blocks.TALL_GRASS)) {
+                world.setBlock(pos, Blocks.SHORT_GRASS.defaultBlockState(), Block.UPDATE_ALL);
                 manager.removeEntry(pos);
                 return;
             }
@@ -111,102 +111,102 @@ public class MobEntityMixin {
 
         float dropChance = TRMTConfig.get().erosionThresholds.vegetation.dropChance;
         boolean drops = dropChance >= 1.0f || (dropChance > 0.0f && ThreadLocalRandom.current().nextFloat() < dropChance);
-        world.breakBlock(pos, drops);
+        world.destroyBlock(pos, drops);
         manager.removeEntry(pos);
     }
 
     @Unique
-    private static void trmt$tryTransform(World world, ErosionMapManager manager, BlockPos pos) {
+    private static void trmt$tryTransform(Level world, ErosionMapManager manager, BlockPos pos) {
         BlockState state = world.getBlockState(pos);
         ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
         if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
 
-        if (state.isOf(Blocks.SAND)) {
-            if (!world.getBlockState(pos.up()).isAir()) return;
+        if (state.is(Blocks.SAND)) {
+            if (!world.getBlockState(pos.above()).isAir()) return;
             Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
-            world.setBlockState(pos,
-                    TRMTBlocks.ERODED_SAND.getDefaultState()
-                            .with(ErodedSandBlock.FACING, erodedFacing)
-                            .with(ErodedSandBlock.STAGE, 0),
-                    Block.NOTIFY_ALL);
+            world.setBlock(pos,
+                    TRMTBlocks.ERODED_SAND.get().defaultBlockState()
+                            .setValue(ErodedSandBlock.FACING, erodedFacing)
+                            .setValue(ErodedSandBlock.STAGE, 0),
+                    Block.UPDATE_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime());
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND.get(), world.getGameTime());
             return;
         }
 
-        if (state.isOf(TRMTBlocks.ERODED_SAND)) {
-            if (!world.getBlockState(pos.up()).isAir()) return;
-            int stage = state.get(ErodedSandBlock.STAGE);
+        if (state.is(TRMTBlocks.ERODED_SAND.get())) {
+            if (!world.getBlockState(pos.above()).isAir()) return;
+            int stage = state.getValue(ErodedSandBlock.STAGE);
             if (stage < 4) {
-                world.setBlockState(pos, state.with(ErodedSandBlock.STAGE, stage + 1), Block.NOTIFY_ALL);
+                world.setBlock(pos, state.setValue(ErodedSandBlock.STAGE, stage + 1), Block.UPDATE_ALL);
             }
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime());
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND.get(), world.getGameTime());
             return;
         }
 
         if (BlockThresholds.isLeaves(state.getBlock())) {
             float dropChance = TRMTConfig.get().erosionThresholds.leaves.dropChance;
             boolean drops = dropChance >= 1.0f || (dropChance > 0.0f && ThreadLocalRandom.current().nextFloat() < dropChance);
-            world.breakBlock(pos, drops);
+            world.destroyBlock(pos, drops);
             manager.removeEntry(pos);
             return;
         }
 
-        if (state.isOf(Blocks.GRASS_BLOCK)) {
-            if (world.getBlockState(pos.up()).isOf(Blocks.WATER)) return;
+        if (state.is(Blocks.GRASS_BLOCK)) {
+            if (world.getBlockState(pos.above()).is(Blocks.WATER)) return;
             Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
-            world.setBlockState(pos,
-                    TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
-                            .with(ErodedGrassBlock.FACING, erodedFacing)
-                            .with(ErodedGrassBlock.STAGE, 0),
-                    Block.NOTIFY_ALL);
+            world.setBlock(pos,
+                    TRMTBlocks.ERODED_GRASS_BLOCK.get().defaultBlockState()
+                            .setValue(ErodedGrassBlock.FACING, erodedFacing)
+                            .setValue(ErodedGrassBlock.STAGE, 0),
+                    Block.UPDATE_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, world.getTime());
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK.get(), world.getGameTime());
             return;
         }
 
-        if (state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)) {
-            if (world.getBlockState(pos.up()).isOf(Blocks.WATER)) return;
-            Direction facing = state.get(ErodedGrassBlock.FACING);
-            int currentStage = state.get(ErodedGrassBlock.STAGE);
+        if (state.is(TRMTBlocks.ERODED_GRASS_BLOCK.get())) {
+            if (world.getBlockState(pos.above()).is(Blocks.WATER)) return;
+            Direction facing = state.getValue(ErodedGrassBlock.FACING);
+            int currentStage = state.getValue(ErodedGrassBlock.STAGE);
             if (currentStage < 4) {
-                world.setBlockState(pos, state.with(ErodedGrassBlock.STAGE, currentStage + 1), Block.NOTIFY_ALL);
+                world.setBlock(pos, state.setValue(ErodedGrassBlock.STAGE, currentStage + 1), Block.UPDATE_ALL);
                 manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, world.getTime());
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK.get(), world.getGameTime());
                 return;
             }
-            world.setBlockState(pos,
-                    TRMTBlocks.ERODED_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
-                    Block.NOTIFY_ALL);
+            world.setBlock(pos,
+                    TRMTBlocks.ERODED_DIRT.get().defaultBlockState().setValue(ErodedDirtBlock.FACING, facing),
+                    Block.UPDATE_ALL);
             manager.removeEntry(pos);
             return;
         }
 
-        if (state.isOf(TRMTBlocks.ERODED_DIRT)) {
-            if (world.getBlockState(pos.up()).isOf(Blocks.WATER)) return;
-            Direction facing = state.get(ErodedDirtBlock.FACING);
-            int currentStage = state.get(ErodedDirtBlock.STAGE);
+        if (state.is(TRMTBlocks.ERODED_DIRT.get())) {
+            if (world.getBlockState(pos.above()).is(Blocks.WATER)) return;
+            Direction facing = state.getValue(ErodedDirtBlock.FACING);
+            int currentStage = state.getValue(ErodedDirtBlock.STAGE);
             if (currentStage < 3) {
-                world.setBlockState(pos, state.with(ErodedDirtBlock.STAGE, currentStage + 1), Block.NOTIFY_ALL);
+                world.setBlock(pos, state.setValue(ErodedDirtBlock.STAGE, currentStage + 1), Block.UPDATE_ALL);
                 manager.removeEntry(pos);
                 return;
             }
-            world.setBlockState(pos,
-                    TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
-                    Block.NOTIFY_ALL);
+            world.setBlock(pos,
+                    TRMTBlocks.ERODED_COARSE_DIRT.get().defaultBlockState().setValue(ErodedDirtBlock.FACING, facing),
+                    Block.UPDATE_ALL);
             manager.removeEntry(pos);
             return;
         }
 
-        if (!state.isOf(Blocks.DIRT)) return;
-        if (world.getBlockState(pos.up()).isOf(Blocks.WATER)) return;
+        if (!state.is(Blocks.DIRT)) return;
+        if (world.getBlockState(pos.above()).is(Blocks.WATER)) return;
         Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
-        world.setBlockState(pos,
-                TRMTBlocks.ERODED_DIRT.getDefaultState()
-                        .with(ErodedDirtBlock.FACING, erodedFacing)
-                        .with(ErodedDirtBlock.STAGE, 1),
-                Block.NOTIFY_ALL);
+        world.setBlock(pos,
+                TRMTBlocks.ERODED_DIRT.get().defaultBlockState()
+                        .setValue(ErodedDirtBlock.FACING, erodedFacing)
+                        .setValue(ErodedDirtBlock.STAGE, 1),
+                Block.UPDATE_ALL);
         manager.removeEntry(pos);
     }
 

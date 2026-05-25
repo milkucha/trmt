@@ -1,10 +1,10 @@
 package milkucha.trmt.effect;
 
-import net.minecraft.entity.effect.StatusEffect;
-import net.minecraft.entity.effect.StatusEffectCategory;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectCategory;
 
-public class LightnessEffect extends StatusEffect {
+public class LightnessEffect extends MobEffect {
     public LightnessEffect() {
-        super(StatusEffectCategory.BENEFICIAL, 0xFBDC93);
+        super(MobEffectCategory.BENEFICIAL, 0xFBDC93);
     }
 }

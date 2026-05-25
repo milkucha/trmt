@@ -2,8 +2,10 @@ package milkucha.trmt;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.mojang.logging.LogUtils;
 import milkucha.trmt.erosion.BlockThresholds;
-import net.fabricmc.loader.api.FabricLoader;
+import net.minecraftforge.fml.loading.FMLPaths;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -13,15 +15,9 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Mod configuration loaded from {@code config/trmt.json}.
- * Each erodable block type has a min/max step-count range; a random
- * threshold is drawn from that range the first time a position is tracked.
- *
- * <p>Edit the JSON file and restart the server (or world) to apply changes.
- */
 public final class TRMTConfig {
 
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String FILE_NAME = "trmt.json";
 
@@ -123,10 +119,6 @@ public final class TRMTConfig {
 
     // ── load / save ────────────────────────────────────────────────────────
 
-    /**
-     * Loads config from disk, or writes a default config if the file does not exist.
-     * Called once from {@link TRMT#onInitialize()}.
-     */
     public static void load() {
         Path path = configPath();
         if (Files.exists(path)) {
@@ -135,20 +127,17 @@ public final class TRMTConfig {
                 if (loaded != null) {
                     instance = loaded;
                     BlockThresholds.invalidateVegetationCache();
-                    // Save back immediately so any fields added since the last run
-                    // are written to disk with their default values.
                     save();
-                    TRMT.LOGGER.info("[TRMT] Config loaded from {}", path);
+                    LOGGER.info("[TRMT] Config loaded from {}", path);
                     return;
                 }
             } catch (IOException e) {
-                TRMT.LOGGER.error("[TRMT] Failed to read config, using defaults", e);
+                LOGGER.error("[TRMT] Failed to read config, using defaults", e);
             }
         }
 
-        // File missing or unreadable — write defaults so the user can edit them.
         save();
-        TRMT.LOGGER.info("[TRMT] Default config written to {}", path);
+        LOGGER.info("[TRMT] Default config written to {}", path);
     }
 
     private static void save() {
@@ -159,11 +148,11 @@ public final class TRMTConfig {
                 GSON.toJson(instance, writer);
             }
         } catch (IOException e) {
-            TRMT.LOGGER.error("[TRMT] Failed to write default config", e);
+            LOGGER.error("[TRMT] Failed to write default config", e);
         }
     }
 
     private static Path configPath() {
-        return FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME);
+        return FMLPaths.CONFIGDIR.get().resolve(FILE_NAME);
     }
 }

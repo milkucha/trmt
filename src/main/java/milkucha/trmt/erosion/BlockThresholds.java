@@ -1,18 +1,18 @@
 package milkucha.trmt.erosion;
 
-import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.LeavesBlock;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.World;
+import milkucha.trmt.TRMTForge;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LeavesBlock;
+import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.HashSet;
 import java.util.List;
@@ -38,14 +38,14 @@ public final class BlockThresholds {
             Set<Block> resolved = new HashSet<>();
             if (ids != null) {
                 for (String id : ids) {
-                    Identifier identifier = Identifier.tryParse(id);
+                    ResourceLocation identifier = ResourceLocation.tryParse(id);
                     if (identifier == null) {
-                        TRMT.LOGGER.warn("[TRMT] erodableVegetation: '{}' is not a valid identifier, skipping", id);
+                        TRMTForge.LOGGER.warn("[TRMT] erodableVegetation: '{}' is not a valid identifier, skipping", id);
                         continue;
                     }
-                    Registries.BLOCK.getOrEmpty(identifier).ifPresentOrElse(
+                    BuiltInRegistries.BLOCK.getOptional(identifier).ifPresentOrElse(
                         resolved::add,
-                        () -> TRMT.LOGGER.warn("[TRMT] erodableVegetation: unknown block '{}', skipping", id)
+                        () -> TRMTForge.LOGGER.warn("[TRMT] erodableVegetation: unknown block '{}', skipping", id)
                     );
                 }
             }
@@ -80,13 +80,13 @@ public final class BlockThresholds {
      */
     public static float randomThreshold(Block block) {
         // Eroded variants use the same range as their vanilla counterpart.
-        if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
+        if (block == TRMTBlocks.ERODED_GRASS_BLOCK.get()) {
             block = Blocks.GRASS_BLOCK;
-        } else if (block == TRMTBlocks.ERODED_DIRT) {
+        } else if (block == TRMTBlocks.ERODED_DIRT.get()) {
             block = Blocks.DIRT;
-        } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
+        } else if (block == TRMTBlocks.ERODED_COARSE_DIRT.get()) {
             block = Blocks.COARSE_DIRT;
-        } else if (block == TRMTBlocks.ERODED_SAND) {
+        } else if (block == TRMTBlocks.ERODED_SAND.get()) {
             block = Blocks.SAND;
         }
 
@@ -124,16 +124,16 @@ public final class BlockThresholds {
      * Returns true if none of the 12 slope-aware horizontal neighbours (4 directions × 3 heights)
      * are an eroded block — meaning this block is an isolated erosion patch and should de-erode faster.
      */
-    public static boolean isIsolated(World world, BlockPos pos, ErosionMapManager manager) {
+    public static boolean isIsolated(Level world, BlockPos pos, ErosionMapManager manager) {
         for (Direction dir : HORIZONTALS) {
             for (int dy = -1; dy <= 1; dy++) {
-                BlockPos neighbor = pos.offset(dir).up(dy);
+                BlockPos neighbor = pos.relative(dir).above(dy);
                 BlockState neighborState = world.getBlockState(neighbor);
                 Block neighborBlock = neighborState.getBlock();
-                if (neighborBlock == TRMTBlocks.ERODED_GRASS_BLOCK
-                        || neighborBlock == TRMTBlocks.ERODED_DIRT
-                        || neighborBlock == TRMTBlocks.ERODED_COARSE_DIRT
-                        || neighborBlock == TRMTBlocks.ERODED_SAND) {
+                if (neighborBlock == TRMTBlocks.ERODED_GRASS_BLOCK.get()
+                        || neighborBlock == TRMTBlocks.ERODED_DIRT.get()
+                        || neighborBlock == TRMTBlocks.ERODED_COARSE_DIRT.get()
+                        || neighborBlock == TRMTBlocks.ERODED_SAND.get()) {
                     return false;
                 }
                 if (neighborBlock == Blocks.GRASS_BLOCK) {
@@ -178,7 +178,7 @@ public final class BlockThresholds {
     public static long getDirtDeErosionTimeout(Block block) {
         TRMTConfig cfg = TRMTConfig.get();
         TRMTConfig.DirtDeErosion d = cfg.deErosionTimeoutDays.dirt;
-        if (block == TRMTBlocks.ERODED_DIRT) return (long)(d.erodedDirt       * TICKS_PER_DAY);
+        if (block == TRMTBlocks.ERODED_DIRT.get()) return (long)(d.erodedDirt       * TICKS_PER_DAY);
         return (long)(d.erodedCoarseDirt * TICKS_PER_DAY);
     }
 }

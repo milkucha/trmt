@@ -1,23 +1,23 @@
 package milkucha.trmt.erosion;
 
-import net.minecraft.block.Block;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.PersistentState;
-import net.minecraft.world.World;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ErosionPersistentState extends PersistentState {
+public class ErosionPersistentState extends SavedData {
 
     private static final String DATA_KEY = "trmt_erosion";
 
@@ -32,11 +32,11 @@ public class ErosionPersistentState extends PersistentState {
     }
 
     public static ErosionPersistentState getOrCreate(MinecraftServer server) {
-        return server.getWorld(World.OVERWORLD)
-                .getPersistentStateManager()
-                .getOrCreate(new PersistentState.Type<>(
+        return server.getLevel(Level.OVERWORLD)
+                .getDataStorage()
+                .computeIfAbsent(new SavedData.Factory<>(
                         ErosionPersistentState::new,
-                        ErosionPersistentState::fromNbt,
+                        ErosionPersistentState::fromTag,
                         null), DATA_KEY);
     }
 
@@ -64,23 +64,23 @@ public class ErosionPersistentState extends PersistentState {
     // --- NBT serialization ---
 
     @Override
-    public NbtCompound writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
-        NbtList chunkList = new NbtList();
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+        ListTag chunkList = new ListTag();
 
         for (Map.Entry<ChunkPos, ChunkErosionMap> chunkEntry : chunkMaps.entrySet()) {
             ChunkPos chunkPos = chunkEntry.getKey();
             ChunkErosionMap chunkMap = chunkEntry.getValue();
 
-            NbtList entryList = new NbtList();
+            ListTag entryList = new ListTag();
             for (Map.Entry<BlockPos, ErosionEntry> entry : chunkMap.getEntries().entrySet()) {
                 BlockPos pos = entry.getKey();
                 ErosionEntry erosion = entry.getValue();
 
-                NbtCompound entryNbt = new NbtCompound();
+                CompoundTag entryNbt = new CompoundTag();
                 entryNbt.putInt("x", pos.getX());
                 entryNbt.putInt("y", pos.getY());
                 entryNbt.putInt("z", pos.getZ());
-                entryNbt.putString("block", Registries.BLOCK.getId(erosion.getTrackedBlock()).toString());
+                entryNbt.putString("block", BuiltInRegistries.BLOCK.getKey(erosion.getTrackedBlock()).toString());
                 entryNbt.putFloat("count", erosion.getWalkedOnCount());
                 entryNbt.putFloat("threshold", erosion.getThreshold());
                 entryNbt.putLong("lastTime", erosion.getLastTouchedGameTime());
@@ -88,35 +88,37 @@ public class ErosionPersistentState extends PersistentState {
                 entryList.add(entryNbt);
             }
 
-            NbtCompound chunkNbt = new NbtCompound();
+            CompoundTag chunkNbt = new CompoundTag();
             chunkNbt.putInt("cx", chunkPos.x);
             chunkNbt.putInt("cz", chunkPos.z);
             chunkNbt.put("entries", entryList);
             chunkList.add(chunkNbt);
         }
 
-        nbt.put("chunks", chunkList);
-        return nbt;
+        tag.put("chunks", chunkList);
+        return tag;
     }
 
-    private static ErosionPersistentState fromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
+    private static ErosionPersistentState fromTag(CompoundTag tag, HolderLookup.Provider registries) {
         Map<ChunkPos, ChunkErosionMap> chunkMaps = new HashMap<>();
 
-        NbtList chunkList = nbt.getList("chunks", NbtElement.COMPOUND_TYPE);
+        ListTag chunkList = tag.getList("chunks", Tag.TAG_COMPOUND);
         for (int i = 0; i < chunkList.size(); i++) {
-            NbtCompound chunkNbt = chunkList.getCompound(i);
+            CompoundTag chunkNbt = chunkList.getCompound(i);
             ChunkPos chunkPos = new ChunkPos(chunkNbt.getInt("cx"), chunkNbt.getInt("cz"));
             ChunkErosionMap chunkMap = new ChunkErosionMap();
 
-            NbtList entryList = chunkNbt.getList("entries", NbtElement.COMPOUND_TYPE);
+            ListTag entryList = chunkNbt.getList("entries", Tag.TAG_COMPOUND);
             for (int j = 0; j < entryList.size(); j++) {
-                NbtCompound entryNbt = entryList.getCompound(j);
+                CompoundTag entryNbt = entryList.getCompound(j);
                 BlockPos pos = new BlockPos(
                         entryNbt.getInt("x"),
                         entryNbt.getInt("y"),
                         entryNbt.getInt("z")
                 );
-                Block block = Registries.BLOCK.get(Identifier.of(entryNbt.getString("block")));
+                Block block = BuiltInRegistries.BLOCK.getOptional(
+                        ResourceLocation.parse(entryNbt.getString("block"))
+                ).orElse(net.minecraft.world.level.block.Blocks.AIR);
                 float count     = entryNbt.getFloat("count");
                 float threshold = entryNbt.getFloat("threshold");
                 long  lastTime  = entryNbt.getLong("lastTime");

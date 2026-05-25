@@ -1,91 +1,101 @@
 plugins {
-	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+	id 'eclipse'
+	id 'idea'
 	id 'maven-publish'
+	id 'net.minecraftforge.gradle' version '[6.0.24,6.2)'
+	id 'org.spongepowered.mixin' version '0.7.+'
 }
 
-version = project.mod_version
-group = project.maven_group
+version = mod_version
+group = mod_group_id
+base { archivesName = mod_id }
 
-repositories {
-	// Add repositories to retrieve artifacts from in here.
-	// You should only use this when depending on other mods because
-	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
-	// for more information about repositories.
-}
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-loom {
-	splitEnvironmentSourceSets()
+minecraft {
+	mappings channel: mapping_channel, version: mapping_version
+	reobf = false
+	copyIdeResources = true
 
-	mods {
-		"trmt" {
-			sourceSet sourceSets.main
-			sourceSet sourceSets.client
+	runs {
+		configureEach {
+			workingDirectory project.file('run')
+			property 'forge.logging.markers', 'REGISTRIES'
+			property 'forge.logging.console.level', 'debug'
+			mods {
+				"${mod_id}" {
+					source sourceSets.main
+				}
+			}
+		}
+
+		client {
+			property 'forge.enabledGameTestNamespaces', mod_id
+		}
+
+		server {
+			property 'forge.enabledGameTestNamespaces', mod_id
+			args '--nogui'
+		}
+
+		gameTestServer {
+			property 'forge.enabledGameTestNamespaces', mod_id
 		}
 	}
-
 }
 
-fabricApi {
-	configureDataGeneration {
-		client = true
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+dependencies {
+	minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+	annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+}
+
+mixin {
+	add sourceSets.main, 'trmt.refmap.json'
+	config 'trmt.mixins.json'
+}
+
+tasks.named('processResources', ProcessResources).configure {
+	var replaceProperties = [
+		minecraft_version      : minecraft_version,
+		minecraft_version_range: minecraft_version_range,
+		forge_version          : forge_version,
+		forge_version_range    : forge_version_range,
+		loader_version_range   : loader_version_range,
+		mod_id                 : mod_id,
+		mod_name               : mod_name,
+		mod_license            : mod_license,
+		mod_version            : mod_version,
+		mod_authors            : mod_authors,
+		mod_description        : mod_description,
+	]
+	inputs.properties replaceProperties
+	filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+		expand replaceProperties + [project: project]
 	}
 }
 
-dependencies {
-	// To change the versions see the gradle.properties file
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-
-	// Fabric API. This is technically optional, but you probably want it anyway.
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-	
-}
-
-processResources {
-	inputs.property "version", project.version
-
-	filesMatching("fabric.mod.json") {
-		expand "version": inputs.properties.version
+tasks.named('jar', Jar).configure {
+	manifest {
+		attributes([
+			'Specification-Title'     : mod_id,
+			'Specification-Vendor'    : mod_authors,
+			'Specification-Version'   : '1',
+			'Implementation-Title'    : project.name,
+			'Implementation-Version'  : project.jar.archiveVersion,
+			'Implementation-Vendor'   : mod_authors,
+			'MixinConfigs'            : 'trmt.mixins.json',
+		])
 	}
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 17
+	options.encoding = 'UTF-8'
 }
 
-java {
-	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-	// if it is present.
-	// If you remove this line, sources will not be generated.
-	withSourcesJar()
-
-	sourceCompatibility = JavaVersion.VERSION_17
-	targetCompatibility = JavaVersion.VERSION_17
-}
-
-jar {
-	inputs.property "projectName", project.name
-
-	from("LICENSE") {
-		rename { "${it}_${project.name}"}
-	}
-}
-
-// configure the maven publication
-publishing {
-	publications {
-		create("mavenJava", MavenPublication) {
-			from components.java
-		}
-	}
-
-	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
-	repositories {
-		// Add repositories to publish to here.
-		// Notice: This block does NOT have the same function as the block in the top level.
-		// The repositories here will be used for publishing your artifact, not for
-		// retrieving dependencies.
-	}
+sourceSets.each {
+	def dir = layout.buildDirectory.dir("sourcesSets/$it.name")
+	it.output.resourcesDir = dir
+	it.java.destinationDirectory = dir
 }

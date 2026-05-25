@@ -1,7 +1,7 @@
 package milkucha.trmt.erosion;
 
-import net.minecraft.block.Block;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Block;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -26,7 +26,7 @@ public class ChunkErosionMap {
      * @param currentGameTime Current world game time (ticks).
      */
     public void recordStep(BlockPos pos, Block block, float amount, long currentGameTime) {
-        BlockPos key = pos.toImmutable();
+        BlockPos key = pos.immutable();
         ErosionEntry existing = entries.get(key);
         if (existing != null && existing.getTrackedBlock() != block) {
             // Block type changed since we last saw this position — reset progress.
@@ -58,7 +58,7 @@ public class ChunkErosionMap {
 
     /** Deserialization only — inserts an entry directly, bypassing recordStep logic. */
     void putEntry(BlockPos pos, ErosionEntry entry) {
-        entries.put(pos.toImmutable(), entry);
+        entries.put(pos.immutable(), entry);
     }
 
     /** Removes the entry for the given position (e.g. after a block transformation). */
