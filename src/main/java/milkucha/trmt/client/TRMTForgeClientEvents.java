@@ -2,12 +2,10 @@ package milkucha.trmt.client;
 
 import milkucha.trmt.client.network.ClientErosionCache;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-@OnlyIn(Dist.CLIENT)
 @Mod.EventBusSubscriber(modid = "trmt", bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public final class TRMTForgeClientEvents {
 

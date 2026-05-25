@@ -1,20 +1,20 @@
 {
 	"required": true,
 	"minVersion": "0.8",
-	"package": "milkucha.trmt",
+	"package": "milkucha.trmt.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"mixin.BoneMealItemMixin",
-		"mixin.BrushItemMixin",
-		"mixin.HoeItemMixin",
-		"mixin.MobEntityMixin",
-		"mixin.SandBlockMixin",
-		"mixin.ServerPlayerEntityMixin",
-		"mixin.ShovelItemMixin",
-		"mixin.SugarCaneBlockMixin"
+		"BoneMealItemMixin",
+		"BrushItemMixin",
+		"HoeItemMixin",
+		"MobEntityMixin",
+		"SandBlockMixin",
+		"ServerPlayerEntityMixin",
+		"ShovelItemMixin",
+		"SugarCaneBlockMixin"
 	],
 	"client": [
-		"mixin.GuiMixin"
+		"GuiMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -18,7 +18,6 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import java.util.ArrayList;
 import java.util.Map;
 
-@OnlyIn(Dist.CLIENT)
 @Mod.EventBusSubscriber(modid = "trmt", bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class TRMTForgeClient {
 
