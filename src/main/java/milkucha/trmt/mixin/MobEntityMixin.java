@@ -47,7 +47,7 @@ public class MobEntityMixin {
 
         if (!mob.isLeashed()) return;
 
-        if (mob.hasEffect(TRMTEffects.LIGHTNESS_ENTRY)) return;
+        if (mob.hasEffect(TRMTEffects.LIGHTNESS)) return;
 
         BlockPos groundPos = mob.blockPosition().below();
 

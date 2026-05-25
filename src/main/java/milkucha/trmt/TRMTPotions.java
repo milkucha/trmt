@@ -1,25 +1,25 @@
 package milkucha.trmt;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.item.alchemy.Potion;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class TRMTPotions {
 
     public static final DeferredRegister<Potion> POTIONS =
-            DeferredRegister.create(ForgeRegistries.POTIONS, "trmt");
+            DeferredRegister.create(Registries.POTION, "trmt");
 
-    public static final RegistryObject<Potion> LIGHTNESS =
+    public static final DeferredHolder<Potion, Potion> LIGHTNESS =
             POTIONS.register("lightness",
                     () -> new Potion("trmt.lightness",
-                            new MobEffectInstance(TRMTEffects.LIGHTNESS.getHolder().orElseThrow(), 3600)));
+                            new MobEffectInstance(TRMTEffects.LIGHTNESS, 3600)));
 
-    public static final RegistryObject<Potion> LONG_LIGHTNESS =
+    public static final DeferredHolder<Potion, Potion> LONG_LIGHTNESS =
             POTIONS.register("long_lightness",
                     () -> new Potion("trmt.lightness",
-                            new MobEffectInstance(TRMTEffects.LIGHTNESS.getHolder().orElseThrow(), 9600)));
+                            new MobEffectInstance(TRMTEffects.LIGHTNESS, 9600)));
 
     private TRMTPotions() {}
 }

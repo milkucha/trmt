@@ -5,6 +5,7 @@ import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ChunkErosionMap;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -19,6 +20,10 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.client.ChunkRenderTypeSet;
+import net.neoforged.neoforge.client.model.data.ModelData;
 
 /**
  * Grass block produced by foot-traffic erosion.
@@ -45,6 +50,11 @@ public class ErodedGrassBlock extends Block {
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(FACING, STAGE);
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public ChunkRenderTypeSet getRenderTypes(BlockState state, RandomSource rand, ModelData data) {
+        return ChunkRenderTypeSet.of(RenderType.cutoutMipped());
     }
 
     @Override

@@ -6,6 +6,7 @@ import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ChunkErosionMap;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -28,6 +29,10 @@ import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.client.ChunkRenderTypeSet;
+import net.neoforged.neoforge.client.model.data.ModelData;
 
 import javax.annotation.Nullable;
 
@@ -146,5 +151,10 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
         return COLLISION_SHAPES[state.getValue(STAGE)];
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public ChunkRenderTypeSet getRenderTypes(BlockState state, RandomSource rand, ModelData data) {
+        return ChunkRenderTypeSet.of(RenderType.cutoutMipped());
     }
 }

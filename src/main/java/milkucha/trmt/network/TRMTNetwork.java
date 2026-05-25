@@ -1,20 +1,21 @@
 package milkucha.trmt.network;
 
-import milkucha.trmt.TRMTForge;
+import milkucha.trmt.TRMTNeoForge;
 import milkucha.trmt.client.network.ClientErosionCache;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraftforge.event.network.CustomPayloadEvent;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.network.ChannelBuilder;
-import net.minecraftforge.network.NetworkDirection;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.SimpleChannel;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,43 +26,59 @@ public final class TRMTNetwork {
 
     public static final String MODRINTH_URL = "https://modrinth.com/mod/the-roads-more-travelled";
 
-    public static final SimpleChannel CHANNEL = ChannelBuilder
-            .named(ResourceLocation.fromNamespaceAndPath("trmt", "main"))
-            .networkProtocolVersion(1)
-            .optional()
-            .simpleChannel();
+    public static void register(IEventBus modEventBus) {
+        modEventBus.addListener(TRMTNetwork::onRegisterPayloads);
+    }
 
-    public static void register() {
-        CHANNEL.messageBuilder(SyncChunkMessage.class, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(SyncChunkMessage::encode)
-                .decoder(SyncChunkMessage::decode)
-                .consumerMainThread(SyncChunkMessage::handle)
-                .add();
-        CHANNEL.messageBuilder(UpdateStageMessage.class, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(UpdateStageMessage::encode)
-                .decoder(UpdateStageMessage::decode)
-                .consumerMainThread(UpdateStageMessage::handle)
-                .add();
-        CHANNEL.messageBuilder(VersionCheckMessage.class, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(VersionCheckMessage::encode)
-                .decoder(VersionCheckMessage::decode)
-                .consumerMainThread(VersionCheckMessage::handle)
-                .add();
-        CHANNEL.messageBuilder(VersionResponseMessage.class, NetworkDirection.PLAY_TO_SERVER)
-                .encoder(VersionResponseMessage::encode)
-                .decoder(VersionResponseMessage::decode)
-                .consumerMainThread(VersionResponseMessage::handle)
-                .add();
-        CHANNEL.build();
+    private static void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar("1").optional();
+        registrar.playToClient(SyncChunkPayload.TYPE, SyncChunkPayload.STREAM_CODEC,
+                (payload, ctx) -> ctx.enqueueWork(() -> {
+                    ChunkPos chunkPos = new ChunkPos(payload.chunkX(), payload.chunkZ());
+                    Map<BlockPos, ClientErosionCache.Entry> entries = new HashMap<>(payload.entries().size());
+                    for (Map.Entry<BlockPos, SyncChunkMessage.Entry> e : payload.entries().entrySet()) {
+                        SyncChunkMessage.Entry d = e.getValue();
+                        entries.put(e.getKey(),
+                                new ClientErosionCache.Entry(d.stage(), d.walkedOnCount(), d.threshold(), d.lastTouchedGameTime()));
+                    }
+                    ClientErosionCache.getInstance().setChunk(chunkPos, entries);
+                }));
+        registrar.playToClient(UpdateStagePayload.TYPE, UpdateStagePayload.STREAM_CODEC,
+                (payload, ctx) -> ctx.enqueueWork(() ->
+                        ClientErosionCache.getInstance().setEntry(
+                                payload.pos(), payload.stage(), payload.walkedOnCount(),
+                                payload.threshold(), payload.lastTouchedGameTime())));
+        registrar.playToClient(VersionCheckPayload.TYPE, VersionCheckPayload.STREAM_CODEC,
+                (payload, ctx) ->
+                        PacketDistributor.sendToServer(new VersionResponsePayload(getModVersion())));
+        registrar.playToServer(VersionResponsePayload.TYPE, VersionResponsePayload.STREAM_CODEC,
+                (payload, ctx) -> {
+                    String clientVer = payload.version();
+                    String serverVer = getModVersion();
+                    if (isClientOutdated(clientVer, serverVer)) {
+                        ctx.disconnect(Component.translatable("trmt.disconnect.outdated", clientVer, serverVer));
+                    }
+                });
     }
 
     public static void sendVersionCheck(ServerPlayer player) {
-        CHANNEL.send(new VersionCheckMessage(getModVersion()), PacketDistributor.PLAYER.with(player));
+        PacketDistributor.sendToPlayer(player, new VersionCheckPayload(getModVersion()));
+    }
+
+    public static void sendSyncChunk(ServerPlayer player, int chunkX, int chunkZ, List<SyncChunkMessage.Entry> entries) {
+        Map<BlockPos, SyncChunkMessage.Entry> entryMap = new HashMap<>(entries.size());
+        for (SyncChunkMessage.Entry e : entries) entryMap.put(e.pos(), e);
+        PacketDistributor.sendToPlayer(player, new SyncChunkPayload(chunkX, chunkZ, entryMap));
+    }
+
+    public static void broadcastUpdateStage(MinecraftServer server, BlockPos pos, int stage,
+                                             float walkedOnCount, float threshold, long lastTouchedGameTime) {
+        PacketDistributor.sendToAllPlayers(new UpdateStagePayload(pos, stage, walkedOnCount, threshold, lastTouchedGameTime));
     }
 
     static String getModVersion() {
         return ModList.get()
-                .getModContainerById(TRMTForge.MOD_ID)
+                .getModContainerById(TRMTNeoForge.MOD_ID)
                 .map(c -> c.getModInfo().getVersion().toString())
                 .orElse("0.0.0");
     }
@@ -87,163 +104,75 @@ public final class TRMTNetwork {
         return result;
     }
 
-    public static void sendSyncChunk(ServerPlayer player, int chunkX, int chunkZ, List<SyncChunkMessage.Entry> entries) {
-        CHANNEL.send(new SyncChunkMessage(chunkX, chunkZ, entries), PacketDistributor.PLAYER.with(player));
-    }
+    // ── Public message type (used by ErosionMapManager) ────────────────────
 
-    public static void broadcastUpdateStage(MinecraftServer server, BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {
-        UpdateStageMessage msg = new UpdateStageMessage(pos, stage, walkedOnCount, threshold, lastTouchedGameTime);
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            CHANNEL.send(msg, PacketDistributor.PLAYER.with(player));
-        }
-    }
-
-    // ── SyncChunkMessage ──────────────────────────────────────────────────
-
-    public static class SyncChunkMessage {
-
+    public static final class SyncChunkMessage {
         public record Entry(BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {}
-
-        final int chunkX, chunkZ;
-        final List<Entry> entries;
-
-        SyncChunkMessage(int chunkX, int chunkZ, List<Entry> entries) {
-            this.chunkX  = chunkX;
-            this.chunkZ  = chunkZ;
-            this.entries = entries;
-        }
-
-        static void encode(SyncChunkMessage msg, FriendlyByteBuf buf) {
-            buf.writeInt(msg.chunkX);
-            buf.writeInt(msg.chunkZ);
-            buf.writeInt(msg.entries.size());
-            for (Entry e : msg.entries) {
-                buf.writeBlockPos(e.pos());
-                buf.writeInt(e.stage());
-                buf.writeFloat(e.walkedOnCount());
-                buf.writeFloat(e.threshold());
-                buf.writeLong(e.lastTouchedGameTime());
-            }
-        }
-
-        static SyncChunkMessage decode(FriendlyByteBuf buf) {
-            int chunkX = buf.readInt();
-            int chunkZ = buf.readInt();
-            int count  = buf.readInt();
-            List<Entry> entries = new ArrayList<>(count);
-            for (int i = 0; i < count; i++) {
-                entries.add(new Entry(
-                        buf.readBlockPos(),
-                        buf.readInt(),
-                        buf.readFloat(),
-                        buf.readFloat(),
-                        buf.readLong()
-                ));
-            }
-            return new SyncChunkMessage(chunkX, chunkZ, entries);
-        }
-
-        // consumerMainThread already enqueues this on the main thread and marks packet handled.
-        static void handle(SyncChunkMessage msg, CustomPayloadEvent.Context ctx) {
-            ChunkPos chunkPos = new ChunkPos(msg.chunkX, msg.chunkZ);
-            Map<BlockPos, ClientErosionCache.Entry> chunkEntries = new HashMap<>(msg.entries.size());
-            for (Entry e : msg.entries) {
-                chunkEntries.put(e.pos(),
-                        new ClientErosionCache.Entry(e.stage(), e.walkedOnCount(), e.threshold(), e.lastTouchedGameTime()));
-            }
-            ClientErosionCache.getInstance().setChunk(chunkPos, chunkEntries);
-        }
+        private SyncChunkMessage() {}
     }
 
-    // ── UpdateStageMessage ────────────────────────────────────────────────
+    // ── Payload records ─────────────────────────────────────────────────────
 
-    public static class UpdateStageMessage {
-        final BlockPos pos;
-        final int   stage;
-        final float walkedOnCount;
-        final float threshold;
-        final long  lastTouchedGameTime;
-
-        UpdateStageMessage(BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {
-            this.pos                 = pos;
-            this.stage               = stage;
-            this.walkedOnCount       = walkedOnCount;
-            this.threshold           = threshold;
-            this.lastTouchedGameTime = lastTouchedGameTime;
-        }
-
-        static void encode(UpdateStageMessage msg, FriendlyByteBuf buf) {
-            buf.writeBlockPos(msg.pos);
-            buf.writeInt(msg.stage);
-            buf.writeFloat(msg.walkedOnCount);
-            buf.writeFloat(msg.threshold);
-            buf.writeLong(msg.lastTouchedGameTime);
-        }
-
-        static UpdateStageMessage decode(FriendlyByteBuf buf) {
-            return new UpdateStageMessage(
-                    buf.readBlockPos(), buf.readInt(), buf.readFloat(), buf.readFloat(), buf.readLong()
-            );
-        }
-
-        // consumerMainThread already enqueues this on the main thread and marks packet handled.
-        static void handle(UpdateStageMessage msg, CustomPayloadEvent.Context ctx) {
-            ClientErosionCache.getInstance().setEntry(
-                    msg.pos, msg.stage, msg.walkedOnCount, msg.threshold, msg.lastTouchedGameTime);
-        }
+    record SyncChunkPayload(int chunkX, int chunkZ, Map<BlockPos, SyncChunkMessage.Entry> entries)
+            implements CustomPacketPayload {
+        static final Type<SyncChunkPayload> TYPE =
+                new Type<>(ResourceLocation.fromNamespaceAndPath("trmt", "sync_chunk"));
+        static final StreamCodec<RegistryFriendlyByteBuf, SyncChunkPayload> STREAM_CODEC = StreamCodec.of(
+                (buf, p) -> {
+                    buf.writeInt(p.chunkX); buf.writeInt(p.chunkZ); buf.writeInt(p.entries.size());
+                    for (Map.Entry<BlockPos, SyncChunkMessage.Entry> e : p.entries.entrySet()) {
+                        buf.writeBlockPos(e.getKey());
+                        SyncChunkMessage.Entry d = e.getValue();
+                        buf.writeInt(d.stage()); buf.writeFloat(d.walkedOnCount());
+                        buf.writeFloat(d.threshold()); buf.writeLong(d.lastTouchedGameTime());
+                    }
+                },
+                buf -> {
+                    int cx = buf.readInt(), cz = buf.readInt(), count = buf.readInt();
+                    Map<BlockPos, SyncChunkMessage.Entry> entries = new HashMap<>(count);
+                    for (int i = 0; i < count; i++) {
+                        BlockPos pos = buf.readBlockPos();
+                        entries.put(pos, new SyncChunkMessage.Entry(
+                                pos, buf.readInt(), buf.readFloat(), buf.readFloat(), buf.readLong()));
+                    }
+                    return new SyncChunkPayload(cx, cz, entries);
+                }
+        );
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
-    // ── VersionCheckMessage ───────────────────────────────────────────────
-    // Server → client: carry server mod version so client can respond.
-
-    public static class VersionCheckMessage {
-        final String serverVersion;
-
-        VersionCheckMessage(String serverVersion) {
-            this.serverVersion = serverVersion;
-        }
-
-        static void encode(VersionCheckMessage msg, FriendlyByteBuf buf) {
-            buf.writeUtf(msg.serverVersion);
-        }
-
-        static VersionCheckMessage decode(FriendlyByteBuf buf) {
-            return new VersionCheckMessage(buf.readUtf());
-        }
-
-        static void handle(VersionCheckMessage msg, CustomPayloadEvent.Context ctx) {
-            // Client replies with its own version; server will kick if outdated.
-            CHANNEL.send(new VersionResponseMessage(getModVersion()), PacketDistributor.SERVER.noArg());
-        }
+    record UpdateStagePayload(BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime)
+            implements CustomPacketPayload {
+        static final Type<UpdateStagePayload> TYPE =
+                new Type<>(ResourceLocation.fromNamespaceAndPath("trmt", "update_stage"));
+        static final StreamCodec<RegistryFriendlyByteBuf, UpdateStagePayload> STREAM_CODEC = StreamCodec.of(
+                (buf, p) -> {
+                    buf.writeBlockPos(p.pos); buf.writeInt(p.stage); buf.writeFloat(p.walkedOnCount);
+                    buf.writeFloat(p.threshold); buf.writeLong(p.lastTouchedGameTime);
+                },
+                buf -> new UpdateStagePayload(buf.readBlockPos(), buf.readInt(), buf.readFloat(), buf.readFloat(), buf.readLong())
+        );
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
-    // ── VersionResponseMessage ────────────────────────────────────────────
-    // Client → server: carry client mod version so server can compare and kick.
+    record VersionCheckPayload(String version) implements CustomPacketPayload {
+        static final Type<VersionCheckPayload> TYPE =
+                new Type<>(ResourceLocation.fromNamespaceAndPath("trmt", "version_check"));
+        static final StreamCodec<RegistryFriendlyByteBuf, VersionCheckPayload> STREAM_CODEC = StreamCodec.of(
+                (buf, p) -> buf.writeUtf(p.version),
+                buf -> new VersionCheckPayload(buf.readUtf())
+        );
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
 
-    public static class VersionResponseMessage {
-        final String clientVersion;
-
-        VersionResponseMessage(String clientVersion) {
-            this.clientVersion = clientVersion;
-        }
-
-        static void encode(VersionResponseMessage msg, FriendlyByteBuf buf) {
-            buf.writeUtf(msg.clientVersion);
-        }
-
-        static VersionResponseMessage decode(FriendlyByteBuf buf) {
-            return new VersionResponseMessage(buf.readUtf());
-        }
-
-        static void handle(VersionResponseMessage msg, CustomPayloadEvent.Context ctx) {
-            ServerPlayer player = ctx.getSender();
-            if (player == null) return;
-            String serverVer = getModVersion();
-            if (isClientOutdated(msg.clientVersion, serverVer)) {
-                player.connection.disconnect(
-                        Component.translatable("trmt.disconnect.outdated", msg.clientVersion, serverVer));
-            }
-        }
+    record VersionResponsePayload(String version) implements CustomPacketPayload {
+        static final Type<VersionResponsePayload> TYPE =
+                new Type<>(ResourceLocation.fromNamespaceAndPath("trmt", "version_response"));
+        static final StreamCodec<RegistryFriendlyByteBuf, VersionResponsePayload> STREAM_CODEC = StreamCodec.of(
+                (buf, p) -> buf.writeUtf(p.version),
+                buf -> new VersionResponsePayload(buf.readUtf())
+        );
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
     private TRMTNetwork() {}

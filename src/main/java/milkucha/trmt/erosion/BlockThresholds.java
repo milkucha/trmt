@@ -2,7 +2,7 @@ package milkucha.trmt.erosion;
 
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
-import milkucha.trmt.TRMTForge;
+import milkucha.trmt.TRMTNeoForge;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -40,12 +40,12 @@ public final class BlockThresholds {
                 for (String id : ids) {
                     ResourceLocation identifier = ResourceLocation.tryParse(id);
                     if (identifier == null) {
-                        TRMTForge.LOGGER.warn("[TRMT] erodableVegetation: '{}' is not a valid identifier, skipping", id);
+                        TRMTNeoForge.LOGGER.warn("[TRMT] erodableVegetation: '{}' is not a valid identifier, skipping", id);
                         continue;
                     }
                     BuiltInRegistries.BLOCK.getOptional(identifier).ifPresentOrElse(
                         resolved::add,
-                        () -> TRMTForge.LOGGER.warn("[TRMT] erodableVegetation: unknown block '{}', skipping", id)
+                        () -> TRMTNeoForge.LOGGER.warn("[TRMT] erodableVegetation: unknown block '{}', skipping", id)
                     );
                 }
             }
