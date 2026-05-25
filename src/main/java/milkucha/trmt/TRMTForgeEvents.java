@@ -2,6 +2,7 @@ package milkucha.trmt;
 
 import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.ErosionMapManager;
+import milkucha.trmt.network.TRMTNetwork;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -89,6 +90,7 @@ public class TRMTForgeEvents {
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             ErosionMapManager.getInstance().sendFullSyncToPlayer(player);
+            TRMTNetwork.sendVersionCheck(player);
         }
     }
 
