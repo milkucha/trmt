@@ -3,10 +3,11 @@ package milkucha.trmt.client;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.client.render.ErodedGrassBlockModel;
 import net.minecraft.client.renderer.BiomeColors;
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.block.model.BlockStateModel;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
@@ -15,7 +16,6 @@ import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 
 import java.util.Map;
 
-@OnlyIn(Dist.CLIENT)
 @EventBusSubscriber(modid = "trmt", value = Dist.CLIENT)
 public final class TRMTNeoForgeClient {
 
@@ -24,6 +24,10 @@ public final class TRMTNeoForgeClient {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         TRMTClientConfig.load();
+        event.enqueueWork(() -> {
+            ItemBlockRenderTypes.setRenderLayer(TRMTBlocks.ERODED_GRASS_BLOCK.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(TRMTBlocks.ERODED_SAND.get(), ChunkSectionLayer.CUTOUT);
+        });
     }
 
     @SubscribeEvent

@@ -2,8 +2,6 @@ package milkucha.trmt.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.IOException;
@@ -12,7 +10,6 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-@OnlyIn(Dist.CLIENT)
 public final class TRMTClientConfig {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();

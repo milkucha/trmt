@@ -20,9 +20,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
-
 import java.util.List;
 
 /**
@@ -40,7 +37,6 @@ import java.util.List;
  *   age: &lt;ticks since last touch&gt;
  *   out: &lt;de-erosion timeout&gt;
  */
-@OnlyIn(Dist.CLIENT)
 public class ErosionDebugHud {
 
     private static final int TEXT_COLOR  = 0xFFFFFFFF;
