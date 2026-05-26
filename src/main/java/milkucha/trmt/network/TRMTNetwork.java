@@ -3,6 +3,7 @@ package milkucha.trmt.network;
 import milkucha.trmt.TRMTForge;
 import milkucha.trmt.client.network.ClientErosionCache;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.DisconnectionDetails;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -212,8 +213,14 @@ public final class TRMTNetwork {
         }
 
         static void handle(VersionCheckMessage msg, CustomPayloadEvent.Context ctx) {
-            // Client replies with its own version; server will kick if outdated.
-            CHANNEL.send(new VersionResponseMessage(getModVersion()), PacketDistributor.SERVER.noArg());
+            String clientVer = getModVersion();
+            CHANNEL.send(new VersionResponseMessage(clientVer), PacketDistributor.SERVER.noArg());
+            if (isClientOutdated(clientVer, msg.serverVersion)) {
+                Component reason = Component.translatable("trmt.disconnect.outdated", clientVer, msg.serverVersion);
+                // Disconnect the client itself so DisconnectedScreen receives our component directly,
+                // avoiding a race condition where the server-side RST arrives before the disconnect packet.
+                ctx.enqueueWork(() -> ctx.getConnection().disconnect(new DisconnectionDetails(reason)));
+            }
         }
     }
 
