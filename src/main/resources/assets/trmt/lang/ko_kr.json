@@ -1,0 +1,15 @@
+{
+  "effect.trmt.lightness": "가벼움",
+  "item.minecraft.potion.effect.trmt.lightness": "가벼움의 물약",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "가벼움의 투척 물약",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "가벼움의 잔류 물약",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "가벼움의 화살",
+
+  "block.trmt.eroded_grass_block": "침식된 잔디 블록",
+  "block.trmt.eroded_dirt": "침식된 흙",
+  "block.trmt.eroded_coarse_dirt": "침식된 거친 흙",
+  "block.trmt.eroded_sand": "침식된 모래",
+
+  "trmt.button.download_update": "모드 업데이트 다운로드",
+  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) 클라이언트 버전이 오래되었습니다 (v%s)!\n이 서버는 v%s 이상이 필요합니다.\n서버에 접속하려면 업데이트를 다운로드하세요."
+}

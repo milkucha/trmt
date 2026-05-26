@@ -24,7 +24,9 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.Potion;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.server.permissions.Permissions;
 import net.minecraftforge.common.brewing.IBrewingRecipe;
+import net.minecraftforge.common.util.Result;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.brewing.BrewingRecipeRegisterEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -32,7 +34,7 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.eventbus.api.listener.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 import java.util.ArrayList;
@@ -108,7 +110,8 @@ public class TRMTForgeEvents {
         if (below.is(TRMTBlocks.ERODED_SAND.get())
                 && below.getValue(ErodedSandBlock.STAGE) > 0
                 && event.getItemStack().getItem() instanceof BlockItem) {
-            event.setCanceled(true);
+            event.setUseBlock(Result.DENY);
+            event.setUseItem(Result.DENY);
             event.setCancellationResult(InteractionResult.FAIL);
         }
     }
@@ -117,20 +120,20 @@ public class TRMTForgeEvents {
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("trmt")
                 .then(Commands.literal("reloadconfig")
-                        .requires(src -> src.hasPermission(2))
+                        .requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                         .executes(ctx -> {
                             TRMTConfig.load();
                             ctx.getSource().sendSuccess(() -> Component.literal("[TRMT] Config reloaded."), true);
                             return 1;
                         }))
                 .then(Commands.literal("convert-to-vanilla")
-                        .requires(src -> src.hasPermission(2))
+                        .requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                         .executes(ctx -> {
                             ctx.getSource().sendSuccess(() -> Component.literal(
                                     "[TRMT] WARNING: This will convert all existing eroded blocks in all currently loaded chunks to their vanilla counterparts. This cannot be undone. ")
                                     .append(Component.literal("[Click to confirm]")
                                             .withStyle(s -> s
-                                                    .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/trmt convert-to-vanilla confirm"))
+                                                    .withClickEvent(new ClickEvent.RunCommand("/trmt convert-to-vanilla confirm"))
                                                     .withColor(ChatFormatting.YELLOW)
                                                     .withUnderlined(true))), false);
                             return 1;
@@ -142,7 +145,7 @@ public class TRMTForgeEvents {
                                     return 1;
                                 })))
                 .then(Commands.literal("eroded-chunks")
-                        .requires(src -> src.hasPermission(2))
+                        .requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                         .executes(ctx -> {
                             ServerLevel overworld = ctx.getSource().getServer().getLevel(Level.OVERWORLD);
                             Set<ChunkPos> allChunks = ErosionMapManager.getInstance().getErodedChunkPositions();

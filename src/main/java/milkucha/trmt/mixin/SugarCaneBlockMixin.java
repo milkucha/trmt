@@ -4,7 +4,6 @@ import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.block.ErodedSandBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SugarCaneBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.LevelReader;
@@ -28,19 +27,14 @@ public class SugarCaneBlockMixin {
             return;
         }
 
-        // Eroded grass/dirt are full-height blocks — allow placement when adjacent water is present (vanilla rule).
-        if (below.is(TRMTBlocks.ERODED_GRASS_BLOCK.get())
-                || below.is(TRMTBlocks.ERODED_DIRT.get())
+        if (below.is(TRMTBlocks.ERODED_GRASS_BLOCK.get()) || below.is(TRMTBlocks.ERODED_DIRT.get())
                 || below.is(TRMTBlocks.ERODED_COARSE_DIRT.get())) {
-            BlockPos floorPos = pos.below();
             for (Direction dir : Direction.Plane.HORIZONTAL) {
-                if (world.getFluidState(floorPos.relative(dir)).is(Fluids.WATER)
-                        || world.getBlockState(floorPos.relative(dir)).is(Blocks.FROSTED_ICE)) {
+                if (world.getFluidState(pos.relative(dir)).is(Fluids.WATER)) {
                     cir.setReturnValue(true);
                     return;
                 }
             }
-            cir.setReturnValue(false);
         }
     }
 }

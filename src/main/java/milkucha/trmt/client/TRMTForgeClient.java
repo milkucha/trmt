@@ -4,40 +4,38 @@ import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.client.render.ErodedGrassBlockModel;
 import net.minecraft.client.renderer.BiomeColors;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.resources.model.BakedModel;
-import net.minecraft.client.resources.model.ModelResourceLocation;
+import net.minecraft.client.renderer.block.model.BlockStateModel;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.ModelEvent;
 import net.minecraftforge.client.event.RegisterColorHandlersEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.eventbus.api.bus.BusGroup;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
-import java.util.ArrayList;
 import java.util.Map;
 
-@Mod.EventBusSubscriber(modid = "trmt", bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+@OnlyIn(Dist.CLIENT)
 public final class TRMTForgeClient {
 
     private TRMTForgeClient() {}
 
-    @SubscribeEvent
-    public static void onClientSetup(FMLClientSetupEvent event) {
+    public static void register(BusGroup busGroup) {
+        FMLClientSetupEvent.getBus(busGroup).addListener(TRMTForgeClient::onClientSetup);
+        RegisterColorHandlersEvent.Block.getBus(busGroup).addListener(TRMTForgeClient::onRegisterBlockColors);
+        ModelEvent.ModifyBakingResult.getBus(busGroup).addListener(TRMTForgeClient::onModifyBakingResult);
+    }
+
+    private static void onClientSetup(FMLClientSetupEvent event) {
         TRMTClientConfig.load();
         event.enqueueWork(() -> {
-            // Register render layers so transparent pixels in the eroded grass overlay
-            // and eroded sand are handled correctly.
-            ItemBlockRenderTypes.setRenderLayer(TRMTBlocks.ERODED_GRASS_BLOCK.get(), RenderType.cutoutMipped());
-            // ERODED_SAND: nonOpaque block defaults to SOLID without this, causing white pixels when breaking.
-            ItemBlockRenderTypes.setRenderLayer(TRMTBlocks.ERODED_SAND.get(), RenderType.cutoutMipped());
+            ItemBlockRenderTypes.setRenderLayer(TRMTBlocks.ERODED_GRASS_BLOCK.get(), ChunkSectionLayer.CUTOUT);
+            ItemBlockRenderTypes.setRenderLayer(TRMTBlocks.ERODED_SAND.get(), ChunkSectionLayer.CUTOUT);
         });
     }
 
-    @SubscribeEvent
-    public static void onRegisterBlockColors(RegisterColorHandlersEvent.Block event) {
-        // Apply biome grass tint to the eroded_top overlay quad on eroded grass blocks.
+    private static void onRegisterBlockColors(RegisterColorHandlersEvent.Block event) {
         event.register(
                 (state, level, pos, tintIndex) -> level != null && pos != null
                         ? BiomeColors.getAverageGrassColor(level, pos)
@@ -46,17 +44,12 @@ public final class TRMTForgeClient {
         );
     }
 
-    @SubscribeEvent
-    public static void onModifyBakingResult(ModelEvent.ModifyBakingResult event) {
-        Map<ModelResourceLocation, BakedModel> models = event.getModels();
-        // Iterate over a copy to avoid ConcurrentModificationException.
-        for (ModelResourceLocation mid : new ArrayList<>(models.keySet())) {
-            if ("trmt".equals(mid.id().getNamespace())
-                    && mid.id().getPath().startsWith("eroded_grass_block")) {
-                BakedModel original = models.get(mid);
-                if (original != null) {
-                    models.put(mid, new ErodedGrassBlockModel(original));
-                }
+    private static void onModifyBakingResult(ModelEvent.ModifyBakingResult event) {
+        Map<BlockState, BlockStateModel> models = event.getResults().blockStateModels();
+        for (BlockState state : TRMTBlocks.ERODED_GRASS_BLOCK.get().getStateDefinition().getPossibleStates()) {
+            BlockStateModel original = models.get(state);
+            if (original != null) {
+                models.put(state, new ErodedGrassBlockModel(original));
             }
         }
     }

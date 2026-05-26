@@ -1,17 +1,15 @@
 package milkucha.trmt.erosion;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,16 +26,53 @@ public class ErosionPersistentState extends SavedData {
     }
 
     private ErosionPersistentState(Map<ChunkPos, ChunkErosionMap> chunkMaps) {
-        this.chunkMaps = chunkMaps;
+        this.chunkMaps = new HashMap<>(chunkMaps);
     }
+
+    // --- Codec-based serialization ---
+
+    private static final Codec<ErosionEntry> ENTRY_CODEC = RecordCodecBuilder.create(instance -> instance.group(
+        BuiltInRegistries.BLOCK.byNameCodec().fieldOf("block").forGetter(ErosionEntry::getTrackedBlock),
+        Codec.FLOAT.fieldOf("threshold").forGetter(ErosionEntry::getThreshold),
+        Codec.FLOAT.fieldOf("count").forGetter(ErosionEntry::getWalkedOnCount),
+        Codec.LONG.fieldOf("lastTime").forGetter(ErosionEntry::getLastTouchedGameTime),
+        Codec.INT.fieldOf("stage").forGetter(ErosionEntry::getErosionStage)
+    ).apply(instance, (block, threshold, count, lastTime, stage) ->
+            new ErosionEntry(block, threshold, count, lastTime, stage)));
+
+    private static final Codec<BlockPos> STRING_BLOCK_POS = Codec.STRING.xmap(
+        s -> { String[] p = s.split(","); return new BlockPos(Integer.parseInt(p[0]), Integer.parseInt(p[1]), Integer.parseInt(p[2])); },
+        pos -> pos.getX() + "," + pos.getY() + "," + pos.getZ()
+    );
+
+    private static final Codec<ChunkPos> STRING_CHUNK_POS = Codec.STRING.xmap(
+        s -> { String[] p = s.split(","); return new ChunkPos(Integer.parseInt(p[0]), Integer.parseInt(p[1])); },
+        pos -> pos.x + "," + pos.z
+    );
+
+    private static final Codec<ChunkErosionMap> CHUNK_MAP_CODEC =
+        Codec.unboundedMap(STRING_BLOCK_POS, ENTRY_CODEC).xmap(
+            entries -> {
+                ChunkErosionMap m = new ChunkErosionMap();
+                entries.forEach((pos, entry) -> m.putEntry(pos, entry));
+                return m;
+            },
+            ChunkErosionMap::getEntries
+        );
+
+    static final Codec<ErosionPersistentState> CODEC =
+        Codec.unboundedMap(STRING_CHUNK_POS, CHUNK_MAP_CODEC).xmap(
+            ErosionPersistentState::new,
+            state -> state.chunkMaps
+        );
+
+    private static final SavedDataType<ErosionPersistentState> TYPE =
+        new SavedDataType<>(DATA_KEY, ErosionPersistentState::new, CODEC, DataFixTypes.SAVED_DATA_SCOREBOARD);
 
     public static ErosionPersistentState getOrCreate(MinecraftServer server) {
         return server.getLevel(Level.OVERWORLD)
                 .getDataStorage()
-                .computeIfAbsent(new SavedData.Factory<>(
-                        ErosionPersistentState::new,
-                        ErosionPersistentState::fromTag,
-                        null), DATA_KEY);
+                .computeIfAbsent(TYPE);
     }
 
     // --- Map access ---
@@ -59,77 +94,5 @@ public class ErosionPersistentState extends SavedData {
 
     public Map<ChunkPos, ChunkErosionMap> getAllChunkMaps() {
         return Collections.unmodifiableMap(chunkMaps);
-    }
-
-    // --- NBT serialization ---
-
-    @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
-        ListTag chunkList = new ListTag();
-
-        for (Map.Entry<ChunkPos, ChunkErosionMap> chunkEntry : chunkMaps.entrySet()) {
-            ChunkPos chunkPos = chunkEntry.getKey();
-            ChunkErosionMap chunkMap = chunkEntry.getValue();
-
-            ListTag entryList = new ListTag();
-            for (Map.Entry<BlockPos, ErosionEntry> entry : chunkMap.getEntries().entrySet()) {
-                BlockPos pos = entry.getKey();
-                ErosionEntry erosion = entry.getValue();
-
-                CompoundTag entryNbt = new CompoundTag();
-                entryNbt.putInt("x", pos.getX());
-                entryNbt.putInt("y", pos.getY());
-                entryNbt.putInt("z", pos.getZ());
-                entryNbt.putString("block", BuiltInRegistries.BLOCK.getKey(erosion.getTrackedBlock()).toString());
-                entryNbt.putFloat("count", erosion.getWalkedOnCount());
-                entryNbt.putFloat("threshold", erosion.getThreshold());
-                entryNbt.putLong("lastTime", erosion.getLastTouchedGameTime());
-                entryNbt.putInt("stage", erosion.getErosionStage());
-                entryList.add(entryNbt);
-            }
-
-            CompoundTag chunkNbt = new CompoundTag();
-            chunkNbt.putInt("cx", chunkPos.x);
-            chunkNbt.putInt("cz", chunkPos.z);
-            chunkNbt.put("entries", entryList);
-            chunkList.add(chunkNbt);
-        }
-
-        tag.put("chunks", chunkList);
-        return tag;
-    }
-
-    private static ErosionPersistentState fromTag(CompoundTag tag, HolderLookup.Provider registries) {
-        Map<ChunkPos, ChunkErosionMap> chunkMaps = new HashMap<>();
-
-        ListTag chunkList = tag.getList("chunks", Tag.TAG_COMPOUND);
-        for (int i = 0; i < chunkList.size(); i++) {
-            CompoundTag chunkNbt = chunkList.getCompound(i);
-            ChunkPos chunkPos = new ChunkPos(chunkNbt.getInt("cx"), chunkNbt.getInt("cz"));
-            ChunkErosionMap chunkMap = new ChunkErosionMap();
-
-            ListTag entryList = chunkNbt.getList("entries", Tag.TAG_COMPOUND);
-            for (int j = 0; j < entryList.size(); j++) {
-                CompoundTag entryNbt = entryList.getCompound(j);
-                BlockPos pos = new BlockPos(
-                        entryNbt.getInt("x"),
-                        entryNbt.getInt("y"),
-                        entryNbt.getInt("z")
-                );
-                Block block = BuiltInRegistries.BLOCK.getOptional(
-                        ResourceLocation.parse(entryNbt.getString("block"))
-                ).orElse(net.minecraft.world.level.block.Blocks.AIR);
-                float count     = entryNbt.getFloat("count");
-                float threshold = entryNbt.getFloat("threshold");
-                long  lastTime  = entryNbt.getLong("lastTime");
-                int   stage     = entryNbt.getInt("stage");
-
-                chunkMap.putEntry(pos, new ErosionEntry(block, threshold, count, lastTime, stage));
-            }
-
-            chunkMaps.put(chunkPos, chunkMap);
-        }
-
-        return new ErosionPersistentState(chunkMaps);
     }
 }

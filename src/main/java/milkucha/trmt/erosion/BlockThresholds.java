@@ -6,7 +6,7 @@ import milkucha.trmt.TRMTForge;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -38,7 +38,7 @@ public final class BlockThresholds {
             Set<Block> resolved = new HashSet<>();
             if (ids != null) {
                 for (String id : ids) {
-                    ResourceLocation identifier = ResourceLocation.tryParse(id);
+                    Identifier identifier = Identifier.tryParse(id);
                     if (identifier == null) {
                         TRMTForge.LOGGER.warn("[TRMT] erodableVegetation: '{}' is not a valid identifier, skipping", id);
                         continue;

@@ -5,7 +5,7 @@ import milkucha.trmt.client.network.ClientErosionCache;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
@@ -26,7 +26,7 @@ public final class TRMTNetwork {
     public static final String MODRINTH_URL = "https://modrinth.com/mod/the-roads-more-travelled";
 
     public static final SimpleChannel CHANNEL = ChannelBuilder
-            .named(ResourceLocation.fromNamespaceAndPath("trmt", "main"))
+            .named(Identifier.fromNamespaceAndPath("trmt", "main"))
             .networkProtocolVersion(1)
             .optional()
             .simpleChannel();

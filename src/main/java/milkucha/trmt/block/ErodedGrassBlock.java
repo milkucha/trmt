@@ -17,8 +17,10 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.redstone.Orientation;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Grass block produced by foot-traffic erosion.
@@ -28,7 +30,7 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
  */
 public class ErodedGrassBlock extends Block {
 
-    public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
+    public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
 
     /**
      * Visual erosion stage (0–4).
@@ -48,9 +50,10 @@ public class ErodedGrassBlock extends Block {
     }
 
     @Override
-    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean isMoving) {
-        super.neighborChanged(state, world, pos, sourceBlock, sourcePos, isMoving);
-        if (world.isClientSide) return;
+    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block block,
+                                @Nullable Orientation orientation, boolean movedByPiston) {
+        super.neighborChanged(state, world, pos, block, orientation, movedByPiston);
+        if (world.isClientSide()) return;
         if (!world.getBlockState(pos.above()).canOcclude()) return;
         world.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
         ErosionMapManager.getInstance().removeEntry(pos);
