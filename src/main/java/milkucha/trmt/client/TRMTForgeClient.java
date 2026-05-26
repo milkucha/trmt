@@ -1,14 +1,17 @@
 package milkucha.trmt.client;
 
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.client.debug.ErosionDebugHud;
 import milkucha.trmt.client.render.ErodedGrassBlockModel;
 import net.minecraft.client.renderer.BiomeColors;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.block.model.BlockStateModel;
 import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.client.event.AddGuiOverlayLayersEvent;
 import net.minecraftforge.client.event.ModelEvent;
 import net.minecraftforge.client.event.RegisterColorHandlersEvent;
 import net.minecraftforge.eventbus.api.bus.BusGroup;
@@ -25,6 +28,14 @@ public final class TRMTForgeClient {
         FMLClientSetupEvent.getBus(busGroup).addListener(TRMTForgeClient::onClientSetup);
         RegisterColorHandlersEvent.Block.getBus(busGroup).addListener(TRMTForgeClient::onRegisterBlockColors);
         ModelEvent.ModifyBakingResult.getBus(busGroup).addListener(TRMTForgeClient::onModifyBakingResult);
+        AddGuiOverlayLayersEvent.BUS.addListener(TRMTForgeClient::onAddGuiOverlayLayers);
+    }
+
+    private static void onAddGuiOverlayLayers(AddGuiOverlayLayersEvent event) {
+        event.getLayeredDraw().add(
+            Identifier.fromNamespaceAndPath("trmt", "erosion_debug_hud"),
+            (gg, dt) -> ErosionDebugHud.render(gg)
+        );
     }
 
     private static void onClientSetup(FMLClientSetupEvent event) {

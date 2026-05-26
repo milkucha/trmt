@@ -14,8 +14,7 @@
 		"SugarCaneBlockMixin"
 	],
 	"client": [
-		"DisconnectedScreenMixin",
-		"GuiMixin"
+		"DisconnectedScreenMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
