@@ -39,7 +39,7 @@ public class ShovelItemMixin {
 
         Player player = context.getPlayer();
         world.playSound(player, pos, SoundEvents.SHOVEL_FLATTEN, SoundSource.BLOCKS, 1.0f, 1.0f);
-        if (!world.isClientSide) {
+        if (!world.isClientSide()) {
             world.setBlock(pos, Blocks.DIRT_PATH.defaultBlockState(),
                     Block.UPDATE_ALL | Block.UPDATE_IMMEDIATE);
             ErosionMapManager.getInstance().removeEntry(pos);
@@ -48,6 +48,6 @@ public class ShovelItemMixin {
                         context.getHand() == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);
             }
         }
-        cir.setReturnValue(InteractionResult.sidedSuccess(world.isClientSide));
+        cir.setReturnValue(world.isClientSide() ? InteractionResult.SUCCESS : InteractionResult.CONSUME);
     }
 }

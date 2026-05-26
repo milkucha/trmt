@@ -11,6 +11,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.server.permissions.Permissions;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -32,7 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-@EventBusSubscriber(modid = "trmt", bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = "trmt")
 public class TRMTNeoForgeEvents {
 
     @SubscribeEvent
@@ -85,20 +86,20 @@ public class TRMTNeoForgeEvents {
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("trmt")
                 .then(Commands.literal("reloadconfig")
-                        .requires(src -> src.hasPermission(2))
+                        .requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                         .executes(ctx -> {
                             TRMTConfig.load();
                             ctx.getSource().sendSuccess(() -> Component.literal("[TRMT] Config reloaded."), true);
                             return 1;
                         }))
                 .then(Commands.literal("convert-to-vanilla")
-                        .requires(src -> src.hasPermission(2))
+                        .requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                         .executes(ctx -> {
                             ctx.getSource().sendSuccess(() -> Component.literal(
                                     "[TRMT] WARNING: This will convert all existing eroded blocks in all currently loaded chunks to their vanilla counterparts. This cannot be undone. ")
                                     .append(Component.literal("[Click to confirm]")
                                             .withStyle(s -> s
-                                                    .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/trmt convert-to-vanilla confirm"))
+                                                    .withClickEvent(new ClickEvent.RunCommand("/trmt convert-to-vanilla confirm"))
                                                     .withColor(ChatFormatting.YELLOW)
                                                     .withUnderlined(true))), false);
                             return 1;
@@ -110,7 +111,7 @@ public class TRMTNeoForgeEvents {
                                     return 1;
                                 })))
                 .then(Commands.literal("eroded-chunks")
-                        .requires(src -> src.hasPermission(2))
+                        .requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                         .executes(ctx -> {
                             ServerLevel overworld = ctx.getSource().getServer().getLevel(Level.OVERWORLD);
                             Set<ChunkPos> allChunks = ErosionMapManager.getInstance().getErodedChunkPositions();

@@ -6,7 +6,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 
-@EventBusSubscriber(modid = "trmt", bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
+@EventBusSubscriber(modid = "trmt", value = Dist.CLIENT)
 public final class TRMTNeoForgeClientEvents {
 
     private TRMTNeoForgeClientEvents() {}

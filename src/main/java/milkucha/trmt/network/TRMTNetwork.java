@@ -7,12 +7,13 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
@@ -49,8 +50,13 @@ public final class TRMTNetwork {
                                 payload.pos(), payload.stage(), payload.walkedOnCount(),
                                 payload.threshold(), payload.lastTouchedGameTime())));
         registrar.playToClient(VersionCheckPayload.TYPE, VersionCheckPayload.STREAM_CODEC,
-                (payload, ctx) ->
-                        PacketDistributor.sendToServer(new VersionResponsePayload(getModVersion())));
+                (payload, ctx) -> {
+                    String clientVer = getModVersion();
+                    ClientPacketDistributor.sendToServer(new VersionResponsePayload(clientVer));
+                    if (isClientOutdated(clientVer, payload.version())) {
+                        ctx.disconnect(Component.translatable("trmt.disconnect.outdated", clientVer, payload.version()));
+                    }
+                });
         registrar.playToServer(VersionResponsePayload.TYPE, VersionResponsePayload.STREAM_CODEC,
                 (payload, ctx) -> {
                     String clientVer = payload.version();
@@ -116,7 +122,7 @@ public final class TRMTNetwork {
     record SyncChunkPayload(int chunkX, int chunkZ, Map<BlockPos, SyncChunkMessage.Entry> entries)
             implements CustomPacketPayload {
         static final Type<SyncChunkPayload> TYPE =
-                new Type<>(ResourceLocation.fromNamespaceAndPath("trmt", "sync_chunk"));
+                new Type<>(Identifier.fromNamespaceAndPath("trmt", "sync_chunk"));
         static final StreamCodec<RegistryFriendlyByteBuf, SyncChunkPayload> STREAM_CODEC = StreamCodec.of(
                 (buf, p) -> {
                     buf.writeInt(p.chunkX); buf.writeInt(p.chunkZ); buf.writeInt(p.entries.size());
@@ -144,7 +150,7 @@ public final class TRMTNetwork {
     record UpdateStagePayload(BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime)
             implements CustomPacketPayload {
         static final Type<UpdateStagePayload> TYPE =
-                new Type<>(ResourceLocation.fromNamespaceAndPath("trmt", "update_stage"));
+                new Type<>(Identifier.fromNamespaceAndPath("trmt", "update_stage"));
         static final StreamCodec<RegistryFriendlyByteBuf, UpdateStagePayload> STREAM_CODEC = StreamCodec.of(
                 (buf, p) -> {
                     buf.writeBlockPos(p.pos); buf.writeInt(p.stage); buf.writeFloat(p.walkedOnCount);
@@ -157,7 +163,7 @@ public final class TRMTNetwork {
 
     record VersionCheckPayload(String version) implements CustomPacketPayload {
         static final Type<VersionCheckPayload> TYPE =
-                new Type<>(ResourceLocation.fromNamespaceAndPath("trmt", "version_check"));
+                new Type<>(Identifier.fromNamespaceAndPath("trmt", "version_check"));
         static final StreamCodec<RegistryFriendlyByteBuf, VersionCheckPayload> STREAM_CODEC = StreamCodec.of(
                 (buf, p) -> buf.writeUtf(p.version),
                 buf -> new VersionCheckPayload(buf.readUtf())
@@ -167,7 +173,7 @@ public final class TRMTNetwork {
 
     record VersionResponsePayload(String version) implements CustomPacketPayload {
         static final Type<VersionResponsePayload> TYPE =
-                new Type<>(ResourceLocation.fromNamespaceAndPath("trmt", "version_response"));
+                new Type<>(Identifier.fromNamespaceAndPath("trmt", "version_response"));
         static final StreamCodec<RegistryFriendlyByteBuf, VersionResponsePayload> STREAM_CODEC = StreamCodec.of(
                 (buf, p) -> buf.writeUtf(p.version),
                 buf -> new VersionResponsePayload(buf.readUtf())

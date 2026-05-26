@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.block.ErodedGrassBlock;
+import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.network.TRMTNetwork;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -203,8 +204,8 @@ public class ErosionMapManager {
     private void convertChunkToVanilla(ServerLevel world, ChunkPos chunkPos) {
         int startX = chunkPos.getMinBlockX();
         int startZ = chunkPos.getMinBlockZ();
-        int minY   = world.getMinBuildHeight();
-        int maxY   = world.getMaxBuildHeight();
+        int minY   = world.getMinY();
+        int maxY   = world.getMinY() + world.getHeight();
 
         BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
         for (int x = startX; x < startX + 16; x++) {
@@ -225,6 +226,65 @@ public class ErosionMapManager {
                     } else if (block == TRMTBlocks.ERODED_SAND.get()) {
                         world.setBlock(immutable, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
                         removeEntry(immutable);
+                    }
+                }
+            }
+        }
+    }
+
+    public void revertDisabledBlocks(ServerLevel world, ChunkPos chunkPos) {
+        if (state == null) return;
+        TRMTConfig.ErosionToggles t = TRMTConfig.get().erosion;
+        if (t.grassEnabled && t.dirtEnabled && t.sandEnabled) return;
+
+        int startX = chunkPos.getMinBlockX();
+        int startZ = chunkPos.getMinBlockZ();
+        int minY   = world.getMinY();
+        int maxY   = world.getMinY() + world.getHeight();
+
+        BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
+        for (int x = startX; x < startX + 16; x++) {
+            for (int z = startZ; z < startZ + 16; z++) {
+                for (int y = minY; y < maxY; y++) {
+                    mutable.set(x, y, z);
+                    Block block = world.getBlockState(mutable).getBlock();
+                    BlockPos immutable = mutable.immutable();
+
+                    if (!t.grassEnabled && block == TRMTBlocks.ERODED_GRASS_BLOCK.get()) {
+                        world.setBlock(immutable, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
+                        removeEntry(immutable);
+                    } else if (!t.dirtEnabled) {
+                        if (block == TRMTBlocks.ERODED_DIRT.get()) {
+                            world.setBlock(immutable, Blocks.DIRT.defaultBlockState(), Block.UPDATE_ALL);
+                            removeEntry(immutable);
+                        } else if (block == TRMTBlocks.ERODED_COARSE_DIRT.get()) {
+                            world.setBlock(immutable, Blocks.COARSE_DIRT.defaultBlockState(), Block.UPDATE_ALL);
+                            removeEntry(immutable);
+                        }
+                    } else if (!t.sandEnabled && block == TRMTBlocks.ERODED_SAND.get()) {
+                        world.setBlock(immutable, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
+                        removeEntry(immutable);
+                    }
+                }
+            }
+        }
+    }
+
+    public void revertDisabledBlocksAllLoaded(MinecraftServer server) {
+        TRMTConfig.ErosionToggles t = TRMTConfig.get().erosion;
+        if (t.grassEnabled && t.dirtEnabled && t.sandEnabled) return;
+
+        int viewDistance = server.getPlayerList().getViewDistance();
+        for (ServerLevel world : server.getAllLevels()) {
+            Set<ChunkPos> scanned = new HashSet<>();
+            for (ServerPlayer player : world.players()) {
+                ChunkPos playerChunk = player.chunkPosition();
+                for (int dx = -viewDistance; dx <= viewDistance; dx++) {
+                    for (int dz = -viewDistance; dz <= viewDistance; dz++) {
+                        ChunkPos cp = new ChunkPos(playerChunk.x + dx, playerChunk.z + dz);
+                        if (scanned.add(cp) && world.getChunk(cp.x, cp.z, ChunkStatus.FULL, false) != null) {
+                            revertDisabledBlocks(world, cp);
+                        }
                     }
                 }
             }

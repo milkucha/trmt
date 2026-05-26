@@ -18,10 +18,12 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.redstone.Orientation;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Dirt block produced by foot-traffic erosion.
@@ -34,7 +36,7 @@ public class ErodedDirtBlock extends Block {
     private static final VoxelShape SHAPE = Block.box(0, 0, 0, 16, 16, 16);
 
     /** Preserves the rotation of the eroded grass stage that preceded this block. */
-    public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
+    public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
 
     /**
      * Visual erosion stage for eroded_dirt (0–3).
@@ -54,9 +56,10 @@ public class ErodedDirtBlock extends Block {
     }
 
     @Override
-    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean isMoving) {
-        super.neighborChanged(state, world, pos, sourceBlock, sourcePos, isMoving);
-        if (world.isClientSide) return;
+    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block block,
+                                @Nullable Orientation orientation, boolean movedByPiston) {
+        super.neighborChanged(state, world, pos, block, orientation, movedByPiston);
+        if (world.isClientSide()) return;
         if (!world.getBlockState(pos.above()).canOcclude()) return;
         BlockState revertTo = state.is(TRMTBlocks.ERODED_COARSE_DIRT.get())
                 ? Blocks.COARSE_DIRT.defaultBlockState()

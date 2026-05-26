@@ -5,7 +5,6 @@ import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ChunkErosionMap;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -18,12 +17,11 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.neoforge.client.ChunkRenderTypeSet;
-import net.neoforged.neoforge.client.model.data.ModelData;
+import net.minecraft.world.level.redstone.Orientation;
+import org.jetbrains.annotations.Nullable;
+
 
 /**
  * Grass block produced by foot-traffic erosion.
@@ -33,7 +31,7 @@ import net.neoforged.neoforge.client.model.data.ModelData;
  */
 public class ErodedGrassBlock extends Block {
 
-    public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
+    public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
 
     /**
      * Visual erosion stage (0–4).
@@ -52,15 +50,11 @@ public class ErodedGrassBlock extends Block {
         builder.add(FACING, STAGE);
     }
 
-    @OnlyIn(Dist.CLIENT)
-    public ChunkRenderTypeSet getRenderTypes(BlockState state, RandomSource rand, ModelData data) {
-        return ChunkRenderTypeSet.of(RenderType.cutoutMipped());
-    }
-
     @Override
-    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean isMoving) {
-        super.neighborChanged(state, world, pos, sourceBlock, sourcePos, isMoving);
-        if (world.isClientSide) return;
+    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block block,
+                                @Nullable Orientation orientation, boolean movedByPiston) {
+        super.neighborChanged(state, world, pos, block, orientation, movedByPiston);
+        if (world.isClientSide()) return;
         if (!world.getBlockState(pos.above()).canOcclude()) return;
         world.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
         ErosionMapManager.getInstance().removeEntry(pos);

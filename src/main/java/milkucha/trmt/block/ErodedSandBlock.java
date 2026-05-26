@@ -6,15 +6,18 @@ import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ChunkErosionMap;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SimpleWaterloggedBlock;
@@ -22,24 +25,23 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.level.redstone.Orientation;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.neoforge.client.ChunkRenderTypeSet;
-import net.neoforged.neoforge.client.model.data.ModelData;
+import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.Nullable;
 
 public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
 
-    public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
+    public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final IntegerProperty STAGE = IntegerProperty.create("stage", 0, 4);
+    public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
 
     // Collision shapes: flat 10/16 for stages 1–4; full height for stage 0.
     private static final VoxelShape[] COLLISION_SHAPES = {
@@ -64,48 +66,48 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
         registerDefaultState(stateDefinition.any()
                 .setValue(FACING, Direction.SOUTH)
                 .setValue(STAGE, 0)
-                .setValue(BlockStateProperties.WATERLOGGED, false));
+                .setValue(WATERLOGGED, false));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, STAGE, BlockStateProperties.WATERLOGGED);
+        builder.add(FACING, STAGE, WATERLOGGED);
     }
 
     // Only stages 1–4 (sunken) accept waterlogging; stage 0 is full-height and does not.
     @Override
-    public boolean canPlaceLiquid(@Nullable net.minecraft.world.entity.player.Player player,
-                                   BlockGetter world, BlockPos pos, BlockState state, Fluid fluid) {
-        return !state.getValue(BlockStateProperties.WATERLOGGED) && state.getValue(STAGE) > 0;
+    public boolean canPlaceLiquid(@Nullable LivingEntity entity, BlockGetter world, BlockPos pos,
+                                   BlockState state, Fluid fluid) {
+        return !state.getValue(WATERLOGGED) && state.getValue(STAGE) > 0 && fluid == Fluids.WATER;
     }
 
     @Override
     public boolean placeLiquid(LevelAccessor world, BlockPos pos, BlockState state, FluidState fluidState) {
-        if (!canPlaceLiquid(null, world, pos, state, fluidState.getType())) return false;
-        world.setBlock(pos, state.setValue(BlockStateProperties.WATERLOGGED, true),
-                Block.UPDATE_ALL | Block.UPDATE_IMMEDIATE);
-        world.scheduleTick(pos, fluidState.getType(), fluidState.getType().getTickDelay(world));
+        world.setBlock(pos, state.setValue(WATERLOGGED, true), Block.UPDATE_ALL);
+        world.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(world));
         return true;
     }
 
     @Override
     public FluidState getFluidState(BlockState state) {
-        return state.getValue(BlockStateProperties.WATERLOGGED) ? Fluids.WATER.getSource(false) : super.getFluidState(state);
+        return state.getValue(WATERLOGGED) ? Fluids.WATER.getSource(false) : super.getFluidState(state);
     }
 
     @Override
-    public BlockState updateShape(BlockState state, Direction direction, BlockState neighborState,
-                                   LevelAccessor world, BlockPos pos, BlockPos neighborPos) {
-        if (state.getValue(BlockStateProperties.WATERLOGGED)) {
-            world.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(world));
+    public BlockState updateShape(BlockState state, LevelReader level, ScheduledTickAccess tickAccess,
+                                   BlockPos pos, Direction direction, BlockPos neighborPos,
+                                   BlockState neighborState, RandomSource random) {
+        if (state.getValue(WATERLOGGED)) {
+            tickAccess.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
         }
-        return super.updateShape(state, direction, neighborState, world, pos, neighborPos);
+        return super.updateShape(state, level, tickAccess, pos, direction, neighborPos, neighborState, random);
     }
 
     @Override
-    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean isMoving) {
-        super.neighborChanged(state, world, pos, sourceBlock, sourcePos, isMoving);
-        if (world.isClientSide) return;
+    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block block,
+                                @Nullable Orientation orientation, boolean movedByPiston) {
+        super.neighborChanged(state, world, pos, block, orientation, movedByPiston);
+        if (world.isClientSide()) return;
         if (!world.getBlockState(pos.above()).canOcclude()) return;
         world.setBlock(pos, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
         ErosionMapManager.getInstance().removeEntry(pos);
@@ -133,7 +135,7 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
         if (stage > 0) {
             BlockState newState = state.setValue(STAGE, stage - 1);
             // Stage 0 cannot be waterlogged — clear the flag when reverting to it.
-            if (stage == 1) newState = newState.setValue(BlockStateProperties.WATERLOGGED, false);
+            if (stage == 1) newState = newState.setValue(WATERLOGGED, false);
             world.setBlock(pos, newState, Block.UPDATE_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND.get(), currentTime);
@@ -153,8 +155,4 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
         return COLLISION_SHAPES[state.getValue(STAGE)];
     }
 
-    @OnlyIn(Dist.CLIENT)
-    public ChunkRenderTypeSet getRenderTypes(BlockState state, RandomSource rand, ModelData data) {
-        return ChunkRenderTypeSet.of(RenderType.cutoutMipped());
-    }
 }

@@ -1,6 +1,5 @@
 package milkucha.trmt.client.debug;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.block.ErodedSandBlock;
@@ -11,9 +10,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.model.BlockModelPart;
+import net.minecraft.client.renderer.block.model.BlockStateModel;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
@@ -21,6 +22,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+
+import java.util.List;
 
 /**
  * Debug HUD showing a compass-cross of erosion counts centred on the block under the player.
@@ -40,10 +43,10 @@ import net.neoforged.api.distmarker.OnlyIn;
 @OnlyIn(Dist.CLIENT)
 public class ErosionDebugHud {
 
-    private static final int TEXT_COLOR  = 0xFFFFFF;
-    private static final int COUNT_COLOR = 0xFFFF55;
-    private static final int AGE_COLOR   = 0x55FFFF;
-    private static final int OUT_COLOR   = 0xFF5555;
+    private static final int TEXT_COLOR  = 0xFFFFFFFF;
+    private static final int COUNT_COLOR = 0xFFFFFF55;
+    private static final int AGE_COLOR   = 0xFF55FFFF;
+    private static final int OUT_COLOR   = 0xFFFF5555;
     private static final int MARGIN      = 4;
     private static final int CELL        = 32;
 
@@ -80,18 +83,17 @@ public class ErosionDebugHud {
         BlockState state = world.getBlockState(pos);
 
         ClientErosionCache.Entry cellEntry = ClientErosionCache.getInstance().getEntry(pos);
-        BakedModel model = client.getBlockRenderer().getBlockModel(state);
+        BlockStateModel model = client.getBlockRenderer().getBlockModel(state);
         RandomSource rng = RandomSource.create(0);
-        for (BakedQuad quad : model.getQuads(state, null, rng)) {
-            drawQuad(guiGraphics, client, state, world, pos, x, y, quad);
+        List<BlockModelPart> parts = model.collectParts(rng);
+        for (BlockModelPart part : parts) {
+            for (BakedQuad quad : part.getQuads(null)) {
+                drawQuad(guiGraphics, client, state, world, pos, x, y, quad);
+            }
+            for (BakedQuad quad : part.getQuads(Direction.UP)) {
+                drawQuad(guiGraphics, client, state, world, pos, x, y, quad);
+            }
         }
-        for (BakedQuad quad : model.getQuads(state, Direction.UP, rng)) {
-            drawQuad(guiGraphics, client, state, world, pos, x, y, quad);
-        }
-
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0.0, 0.0, 200.0);
-        guiGraphics.pose().scale(0.5f, 0.5f, 1f);
 
         long currentTime = world.getGameTime();
         int lineH = tr.lineHeight + 1;
@@ -116,16 +118,14 @@ public class ErosionDebugHud {
             outLabel = "out:" + timeout + (isolated ? " I" : "");
         }
         drawCenteredScaled(guiGraphics, tr, outLabel, x, y, lineH * 2, OUT_COLOR);
-
-        guiGraphics.pose().popPose();
     }
 
     private static void drawCenteredScaled(GuiGraphics guiGraphics, Font tr,
                                            String text, int cellX, int cellY,
                                            int lineOffset, int color) {
         int textWidth = tr.width(text);
-        int drawX = (cellX * 2) + (CELL * 2 - textWidth) / 2;
-        int drawY = (cellY * 2) + 2 + lineOffset;
+        int drawX = cellX + (CELL - textWidth) / 2;
+        int drawY = cellY + 2 + lineOffset;
         guiGraphics.drawString(tr, text, drawX, drawY, color, true);
     }
 
@@ -147,16 +147,15 @@ public class ErosionDebugHud {
     private static void drawQuad(GuiGraphics guiGraphics, Minecraft client,
                                   BlockState state, ClientLevel world, BlockPos pos,
                                   int x, int y, BakedQuad quad) {
-        TextureAtlasSprite sprite = quad.getSprite();
-        if (quad.getTintIndex() != -1) {
-            int color = client.getBlockColors().getColor(state, world, pos, quad.getTintIndex());
-            float r = ((color >> 16) & 0xFF) / 255.0f;
-            float g = ((color >>  8) & 0xFF) / 255.0f;
-            float b = ( color        & 0xFF) / 255.0f;
-            RenderSystem.setShaderColor(r, g, b, 1.0f);
+        TextureAtlasSprite sprite = quad.sprite();
+        int color;
+        if (quad.isTinted()) {
+            int biomeColor = client.getBlockColors().getColor(state, world, pos, quad.tintIndex());
+            color = 0xFF000000 | (biomeColor & 0x00FFFFFF);
+        } else {
+            color = 0xFFFFFFFF;
         }
-        guiGraphics.blit(x, y, 0, CELL, CELL, sprite);
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x, y, CELL, CELL, color);
     }
 
     private static final Direction[] HORIZONTALS = {

@@ -1,7 +1,7 @@
 package milkucha.trmt.mixin;
 
 import milkucha.trmt.network.TRMTNetwork;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
