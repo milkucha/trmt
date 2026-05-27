@@ -99,7 +99,7 @@ public final class TRMTConfig {
     public Multipliers          erosionMultipliers   = new Multipliers();
     public ErosionThresholds    erosionThresholds    = new ErosionThresholds();
     public List<String> erodableVegetation = Arrays.asList(
-        "minecraft:short_grass", "minecraft:tall_grass",
+        "minecraft:grass", "minecraft:tall_grass",
         "minecraft:dandelion", "minecraft:poppy", "minecraft:blue_orchid", "minecraft:allium",
         "minecraft:azure_bluet", "minecraft:red_tulip", "minecraft:orange_tulip",
         "minecraft:white_tulip", "minecraft:pink_tulip", "minecraft:oxeye_daisy",

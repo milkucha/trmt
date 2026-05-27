@@ -88,7 +88,7 @@ public class BrushItemMixin {
 
         EquipmentSlot slot = stack.equals(player.getItemBySlot(EquipmentSlot.OFFHAND))
                 ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND;
-        stack.hurtAndBreak(1, player, slot);
+        stack.hurtAndBreak(1, player, p -> p.broadcastBreakEvent(slot));
 
         ((ServerLevel) world).levelEvent(2005, pos, 0);
         trmt$brushProgress.put(uuid, 0);

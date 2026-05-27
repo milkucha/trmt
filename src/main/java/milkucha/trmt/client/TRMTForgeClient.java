@@ -1,16 +1,18 @@
 package milkucha.trmt.client;
 
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.client.debug.ErosionDebugHud;
 import milkucha.trmt.client.render.ErodedGrassBlockModel;
 import net.minecraft.client.renderer.BiomeColors;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.resources.model.BakedModel;
-import net.minecraft.client.resources.model.ModelResourceLocation;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.ModelEvent;
 import net.minecraftforge.client.event.RegisterColorHandlersEvent;
+import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
@@ -47,15 +49,22 @@ public final class TRMTForgeClient {
     }
 
     @SubscribeEvent
+    public static void onRegisterGuiOverlays(RegisterGuiOverlaysEvent event) {
+        event.registerAboveAll("erosion_debug_hud",
+                (gui, guiGraphics, partialTick, screenWidth, screenHeight) ->
+                        ErosionDebugHud.render(guiGraphics));
+    }
+
+    @SubscribeEvent
     public static void onModifyBakingResult(ModelEvent.ModifyBakingResult event) {
-        Map<ModelResourceLocation, BakedModel> models = event.getModels();
+        Map<ResourceLocation, BakedModel> models = event.getModels();
         // Iterate over a copy to avoid ConcurrentModificationException.
-        for (ModelResourceLocation mid : new ArrayList<>(models.keySet())) {
-            if ("trmt".equals(mid.id().getNamespace())
-                    && mid.id().getPath().startsWith("eroded_grass_block")) {
-                BakedModel original = models.get(mid);
+        for (ResourceLocation loc : new ArrayList<>(models.keySet())) {
+            if ("trmt".equals(loc.getNamespace())
+                    && loc.getPath().startsWith("eroded_grass_block")) {
+                BakedModel original = models.get(loc);
                 if (original != null) {
-                    models.put(mid, new ErodedGrassBlockModel(original));
+                    models.put(loc, new ErodedGrassBlockModel(original));
                 }
             }
         }

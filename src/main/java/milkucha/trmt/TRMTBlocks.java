@@ -17,17 +17,17 @@ public final class TRMTBlocks {
             DeferredRegister.create(ForgeRegistries.BLOCKS, "trmt");
 
     public static final RegistryObject<ErodedDirtBlock> ERODED_DIRT = BLOCKS.register("eroded_dirt",
-            () -> new ErodedDirtBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.DIRT).randomTicks()));
+            () -> new ErodedDirtBlock(BlockBehaviour.Properties.copy(Blocks.DIRT).randomTicks()));
 
     public static final RegistryObject<ErodedDirtBlock> ERODED_COARSE_DIRT = BLOCKS.register("eroded_coarse_dirt",
-            () -> new ErodedDirtBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.COARSE_DIRT).randomTicks()));
+            () -> new ErodedDirtBlock(BlockBehaviour.Properties.copy(Blocks.COARSE_DIRT).randomTicks()));
 
     public static final RegistryObject<ErodedGrassBlock> ERODED_GRASS_BLOCK = BLOCKS.register("eroded_grass_block",
-            () -> new ErodedGrassBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.GRASS_BLOCK)
+            () -> new ErodedGrassBlock(BlockBehaviour.Properties.copy(Blocks.GRASS_BLOCK)
                     .mapColor(MapColor.DIRT).randomTicks()));
 
     public static final RegistryObject<ErodedSandBlock> ERODED_SAND = BLOCKS.register("eroded_sand",
-            () -> new ErodedSandBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.SAND)
+            () -> new ErodedSandBlock(BlockBehaviour.Properties.copy(Blocks.SAND)
                     .mapColor(MapColor.TERRACOTTA_YELLOW).noOcclusion().randomTicks()));
 
     private TRMTBlocks() {}

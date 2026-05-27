@@ -1,7 +1,6 @@
 package milkucha.trmt.erosion;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -34,10 +33,7 @@ public class ErosionPersistentState extends SavedData {
     public static ErosionPersistentState getOrCreate(MinecraftServer server) {
         return server.getLevel(Level.OVERWORLD)
                 .getDataStorage()
-                .computeIfAbsent(new SavedData.Factory<>(
-                        ErosionPersistentState::new,
-                        ErosionPersistentState::fromTag,
-                        null), DATA_KEY);
+                .computeIfAbsent(ErosionPersistentState::fromTag, ErosionPersistentState::new, DATA_KEY);
     }
 
     // --- Map access ---
@@ -64,7 +60,7 @@ public class ErosionPersistentState extends SavedData {
     // --- NBT serialization ---
 
     @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    public CompoundTag save(CompoundTag tag) {
         ListTag chunkList = new ListTag();
 
         for (Map.Entry<ChunkPos, ChunkErosionMap> chunkEntry : chunkMaps.entrySet()) {
@@ -99,7 +95,7 @@ public class ErosionPersistentState extends SavedData {
         return tag;
     }
 
-    private static ErosionPersistentState fromTag(CompoundTag tag, HolderLookup.Provider registries) {
+    private static ErosionPersistentState fromTag(CompoundTag tag) {
         Map<ChunkPos, ChunkErosionMap> chunkMaps = new HashMap<>();
 
         ListTag chunkList = tag.getList("chunks", Tag.TAG_COMPOUND);
@@ -117,7 +113,7 @@ public class ErosionPersistentState extends SavedData {
                         entryNbt.getInt("z")
                 );
                 Block block = BuiltInRegistries.BLOCK.getOptional(
-                        ResourceLocation.parse(entryNbt.getString("block"))
+                        new ResourceLocation(entryNbt.getString("block"))
                 ).orElse(net.minecraft.world.level.block.Blocks.AIR);
                 float count     = entryNbt.getFloat("count");
                 float threshold = entryNbt.getFloat("threshold");

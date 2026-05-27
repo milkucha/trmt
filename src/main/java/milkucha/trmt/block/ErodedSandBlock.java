@@ -29,8 +29,6 @@ import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-import javax.annotation.Nullable;
-
 public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
 
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
@@ -69,14 +67,13 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
 
     // Only stages 1–4 (sunken) accept waterlogging; stage 0 is full-height and does not.
     @Override
-    public boolean canPlaceLiquid(@Nullable net.minecraft.world.entity.player.Player player,
-                                   BlockGetter world, BlockPos pos, BlockState state, Fluid fluid) {
+    public boolean canPlaceLiquid(BlockGetter world, BlockPos pos, BlockState state, Fluid fluid) {
         return !state.getValue(BlockStateProperties.WATERLOGGED) && state.getValue(STAGE) > 0;
     }
 
     @Override
     public boolean placeLiquid(LevelAccessor world, BlockPos pos, BlockState state, FluidState fluidState) {
-        if (!canPlaceLiquid(null, world, pos, state, fluidState.getType())) return false;
+        if (!canPlaceLiquid(world, pos, state, fluidState.getType())) return false;
         world.setBlock(pos, state.setValue(BlockStateProperties.WATERLOGGED, true),
                 Block.UPDATE_ALL | Block.UPDATE_IMMEDIATE);
         world.scheduleTick(pos, fluidState.getType(), fluidState.getType().getTickDelay(world));

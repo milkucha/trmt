@@ -6,7 +6,6 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.DisconnectionDetails;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentContents;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -26,7 +25,7 @@ import java.net.URI;
 @Mixin(DisconnectedScreen.class)
 public abstract class DisconnectedScreenMixin extends Screen {
 
-    @Final @Shadow private DisconnectionDetails details;
+    @Shadow private Component reason;
     @Unique private Button trmt$backButton;
     @Unique private Button trmt$downloadButton;
 
@@ -38,8 +37,8 @@ public abstract class DisconnectedScreenMixin extends Screen {
     private void trmt$addUpdateButton(CallbackInfo ci) {
         trmt$backButton = null;
         trmt$downloadButton = null;
-        if (this.details == null) return;
-        ComponentContents contents = this.details.reason().getContents();
+        if (this.reason == null) return;
+        ComponentContents contents = this.reason.getContents();
         if (!(contents instanceof TranslatableContents tc)) return;
         if (!tc.getKey().equals("trmt.disconnect.outdated")) return;
         for (GuiEventListener child : this.children()) {

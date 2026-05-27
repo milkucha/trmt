@@ -9,54 +9,51 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraftforge.event.network.CustomPayloadEvent;
 import net.minecraftforge.fml.ModList;
-import net.minecraftforge.network.ChannelBuilder;
 import net.minecraftforge.network.NetworkDirection;
+import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.SimpleChannel;
+import net.minecraftforge.network.simple.SimpleChannel;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Supplier;
 
 public final class TRMTNetwork {
 
     public static final String MODRINTH_URL = "https://modrinth.com/mod/the-roads-more-travelled";
 
-    public static final SimpleChannel CHANNEL = ChannelBuilder
-            .named(ResourceLocation.fromNamespaceAndPath("trmt", "main"))
-            .networkProtocolVersion(1)
-            .optional()
-            .simpleChannel();
+    private static final String PROTOCOL_VERSION = "1";
+
+    public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
+            new ResourceLocation("trmt", "main"),
+            () -> PROTOCOL_VERSION,
+            PROTOCOL_VERSION::equals,
+            PROTOCOL_VERSION::equals
+    );
 
     public static void register() {
-        CHANNEL.messageBuilder(SyncChunkMessage.class, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(SyncChunkMessage::encode)
-                .decoder(SyncChunkMessage::decode)
-                .consumerMainThread(SyncChunkMessage::handle)
-                .add();
-        CHANNEL.messageBuilder(UpdateStageMessage.class, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(UpdateStageMessage::encode)
-                .decoder(UpdateStageMessage::decode)
-                .consumerMainThread(UpdateStageMessage::handle)
-                .add();
-        CHANNEL.messageBuilder(VersionCheckMessage.class, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(VersionCheckMessage::encode)
-                .decoder(VersionCheckMessage::decode)
-                .consumerMainThread(VersionCheckMessage::handle)
-                .add();
-        CHANNEL.messageBuilder(VersionResponseMessage.class, NetworkDirection.PLAY_TO_SERVER)
-                .encoder(VersionResponseMessage::encode)
-                .decoder(VersionResponseMessage::decode)
-                .consumerMainThread(VersionResponseMessage::handle)
-                .add();
-        CHANNEL.build();
+        int id = 0;
+        CHANNEL.registerMessage(id++, SyncChunkMessage.class,
+                SyncChunkMessage::encode, SyncChunkMessage::decode, SyncChunkMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(id++, UpdateStageMessage.class,
+                UpdateStageMessage::encode, UpdateStageMessage::decode, UpdateStageMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(id++, VersionCheckMessage.class,
+                VersionCheckMessage::encode, VersionCheckMessage::decode, VersionCheckMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(id++, VersionResponseMessage.class,
+                VersionResponseMessage::encode, VersionResponseMessage::decode, VersionResponseMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
     }
 
     public static void sendVersionCheck(ServerPlayer player) {
-        CHANNEL.send(new VersionCheckMessage(getModVersion()), PacketDistributor.PLAYER.with(player));
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new VersionCheckMessage(getModVersion()));
     }
 
     static String getModVersion() {
@@ -88,13 +85,13 @@ public final class TRMTNetwork {
     }
 
     public static void sendSyncChunk(ServerPlayer player, int chunkX, int chunkZ, List<SyncChunkMessage.Entry> entries) {
-        CHANNEL.send(new SyncChunkMessage(chunkX, chunkZ, entries), PacketDistributor.PLAYER.with(player));
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncChunkMessage(chunkX, chunkZ, entries));
     }
 
     public static void broadcastUpdateStage(MinecraftServer server, BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {
         UpdateStageMessage msg = new UpdateStageMessage(pos, stage, walkedOnCount, threshold, lastTouchedGameTime);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            CHANNEL.send(msg, PacketDistributor.PLAYER.with(player));
+            CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), msg);
         }
     }
 
@@ -143,15 +140,18 @@ public final class TRMTNetwork {
             return new SyncChunkMessage(chunkX, chunkZ, entries);
         }
 
-        // consumerMainThread already enqueues this on the main thread and marks packet handled.
-        static void handle(SyncChunkMessage msg, CustomPayloadEvent.Context ctx) {
-            ChunkPos chunkPos = new ChunkPos(msg.chunkX, msg.chunkZ);
-            Map<BlockPos, ClientErosionCache.Entry> chunkEntries = new HashMap<>(msg.entries.size());
-            for (Entry e : msg.entries) {
-                chunkEntries.put(e.pos(),
-                        new ClientErosionCache.Entry(e.stage(), e.walkedOnCount(), e.threshold(), e.lastTouchedGameTime()));
-            }
-            ClientErosionCache.getInstance().setChunk(chunkPos, chunkEntries);
+        static void handle(SyncChunkMessage msg, Supplier<NetworkEvent.Context> ctxSupplier) {
+            NetworkEvent.Context ctx = ctxSupplier.get();
+            ctx.enqueueWork(() -> {
+                ChunkPos chunkPos = new ChunkPos(msg.chunkX, msg.chunkZ);
+                Map<BlockPos, ClientErosionCache.Entry> chunkEntries = new HashMap<>(msg.entries.size());
+                for (Entry e : msg.entries) {
+                    chunkEntries.put(e.pos(),
+                            new ClientErosionCache.Entry(e.stage(), e.walkedOnCount(), e.threshold(), e.lastTouchedGameTime()));
+                }
+                ClientErosionCache.getInstance().setChunk(chunkPos, chunkEntries);
+            });
+            ctx.setPacketHandled(true);
         }
     }
 
@@ -186,10 +186,12 @@ public final class TRMTNetwork {
             );
         }
 
-        // consumerMainThread already enqueues this on the main thread and marks packet handled.
-        static void handle(UpdateStageMessage msg, CustomPayloadEvent.Context ctx) {
-            ClientErosionCache.getInstance().setEntry(
-                    msg.pos, msg.stage, msg.walkedOnCount, msg.threshold, msg.lastTouchedGameTime);
+        static void handle(UpdateStageMessage msg, Supplier<NetworkEvent.Context> ctxSupplier) {
+            NetworkEvent.Context ctx = ctxSupplier.get();
+            ctx.enqueueWork(() ->
+                    ClientErosionCache.getInstance().setEntry(
+                            msg.pos, msg.stage, msg.walkedOnCount, msg.threshold, msg.lastTouchedGameTime));
+            ctx.setPacketHandled(true);
         }
     }
 
@@ -211,9 +213,12 @@ public final class TRMTNetwork {
             return new VersionCheckMessage(buf.readUtf());
         }
 
-        static void handle(VersionCheckMessage msg, CustomPayloadEvent.Context ctx) {
+        static void handle(VersionCheckMessage msg, Supplier<NetworkEvent.Context> ctxSupplier) {
+            NetworkEvent.Context ctx = ctxSupplier.get();
             // Client replies with its own version; server will kick if outdated.
-            CHANNEL.send(new VersionResponseMessage(getModVersion()), PacketDistributor.SERVER.noArg());
+            ctx.enqueueWork(() ->
+                    CHANNEL.sendToServer(new VersionResponseMessage(getModVersion())));
+            ctx.setPacketHandled(true);
         }
     }
 
@@ -235,14 +240,18 @@ public final class TRMTNetwork {
             return new VersionResponseMessage(buf.readUtf());
         }
 
-        static void handle(VersionResponseMessage msg, CustomPayloadEvent.Context ctx) {
-            ServerPlayer player = ctx.getSender();
-            if (player == null) return;
-            String serverVer = getModVersion();
-            if (isClientOutdated(msg.clientVersion, serverVer)) {
-                player.connection.disconnect(
-                        Component.translatable("trmt.disconnect.outdated", msg.clientVersion, serverVer));
-            }
+        static void handle(VersionResponseMessage msg, Supplier<NetworkEvent.Context> ctxSupplier) {
+            NetworkEvent.Context ctx = ctxSupplier.get();
+            ctx.enqueueWork(() -> {
+                ServerPlayer player = ctx.getSender();
+                if (player == null) return;
+                String serverVer = getModVersion();
+                if (isClientOutdated(msg.clientVersion, serverVer)) {
+                    player.connection.disconnect(
+                            Component.translatable("trmt.disconnect.outdated", msg.clientVersion, serverVer));
+                }
+            });
+            ctx.setPacketHandled(true);
         }
     }
 

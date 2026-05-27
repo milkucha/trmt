@@ -2,7 +2,7 @@
 	"required": true,
 	"minVersion": "0.8",
 	"package": "milkucha.trmt.mixin",
-	"compatibilityLevel": "JAVA_21",
+	"compatibilityLevel": "JAVA_17",
 	"mixins": [
 		"BoneMealItemMixin",
 		"BrushItemMixin",
@@ -14,8 +14,7 @@
 		"SugarCaneBlockMixin"
 	],
 	"client": [
-		"DisconnectedScreenMixin",
-		"GuiMixin"
+		"DisconnectedScreenMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -1,7 +1,6 @@
 package milkucha.trmt.mixin;
 
 import milkucha.trmt.client.debug.ErosionDebugHud;
-import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraftforge.api.distmarker.Dist;
@@ -16,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class GuiMixin {
 
     @Inject(method = "render", at = @At("TAIL"))
-    private void trmt$renderDebugHud(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+    private void trmt$renderDebugHud(GuiGraphics guiGraphics, float tickDelta, CallbackInfo ci) {
         ErosionDebugHud.render(guiGraphics);
     }
 }

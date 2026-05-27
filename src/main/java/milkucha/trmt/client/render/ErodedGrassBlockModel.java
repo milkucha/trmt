@@ -94,7 +94,7 @@ public class ErodedGrassBlockModel implements BakedModel {
     // ── Standard BakedModel delegation ───────────────────────────────────────
 
     @Override public boolean useAmbientOcclusion()        { return true; }
-    @Override public boolean isGui3d()                    { return wrapped.isGui3d(); }
+    @Override public boolean isGui3d()                     { return wrapped.isGui3d(); }
     @Override public boolean usesBlockLight()             { return wrapped.usesBlockLight(); }
     @Override public boolean isCustomRenderer()           { return wrapped.isCustomRenderer(); }
     @Override public TextureAtlasSprite getParticleIcon() { return wrapped.getParticleIcon(); }

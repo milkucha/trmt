@@ -16,17 +16,8 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
-import net.minecraft.core.Holder;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.alchemy.Potion;
-import net.minecraft.world.item.alchemy.PotionContents;
-import net.minecraft.world.item.alchemy.Potions;
-import net.minecraftforge.common.brewing.IBrewingRecipe;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.event.brewing.BrewingRecipeRegisterEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.level.BlockEvent;
@@ -41,38 +32,6 @@ import java.util.Set;
 
 @Mod.EventBusSubscriber(modid = "trmt", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class TRMTForgeEvents {
-
-    @SubscribeEvent
-    public static void onRegisterBrewingRecipes(BrewingRecipeRegisterEvent event) {
-        Holder<Potion> awkward      = Potions.AWKWARD;
-        Holder<Potion> lightness     = TRMTPotions.LIGHTNESS.getHolder().orElseThrow();
-        Holder<Potion> longLightness = TRMTPotions.LONG_LIGHTNESS.getHolder().orElseThrow();
-        event.addRecipe(makePotionMix(awkward, Items.FEATHER, lightness));
-        event.addRecipe(makePotionMix(lightness, Items.REDSTONE, longLightness));
-    }
-
-    private static IBrewingRecipe makePotionMix(Holder<Potion> input, net.minecraft.world.item.Item ingredient, Holder<Potion> output) {
-        return new IBrewingRecipe() {
-            @Override
-            public boolean isInput(ItemStack stack) {
-                PotionContents contents = stack.get(DataComponents.POTION_CONTENTS);
-                return contents != null && contents.potion()
-                        .filter(h -> h.unwrapKey().equals(input.unwrapKey()))
-                        .isPresent();
-            }
-            @Override
-            public boolean isIngredient(ItemStack stack) {
-                return stack.is(ingredient);
-            }
-            @Override
-            public ItemStack getOutput(ItemStack inputStack, ItemStack ingredientStack) {
-                if (!isInput(inputStack) || !isIngredient(ingredientStack)) return ItemStack.EMPTY;
-                ItemStack result = new ItemStack(inputStack.getItem());
-                result.set(DataComponents.POTION_CONTENTS, new PotionContents(output));
-                return result;
-            }
-        };
-    }
 
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {

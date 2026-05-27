@@ -103,7 +103,7 @@ public class MobEntityMixin {
                 world.removeBlock(upper, false);
             }
             if (state.is(Blocks.TALL_GRASS)) {
-                world.setBlock(pos, Blocks.SHORT_GRASS.defaultBlockState(), Block.UPDATE_ALL);
+                world.setBlock(pos, Blocks.GRASS.defaultBlockState(), Block.UPDATE_ALL);
                 manager.removeEntry(pos);
                 return;
             }

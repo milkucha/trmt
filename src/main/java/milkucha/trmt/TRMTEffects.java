@@ -1,7 +1,6 @@
 package milkucha.trmt;
 
 import milkucha.trmt.effect.LightnessEffect;
-import net.minecraft.core.Holder;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -15,11 +14,11 @@ public final class TRMTEffects {
     public static final RegistryObject<MobEffect> LIGHTNESS =
             MOB_EFFECTS.register("lightness", LightnessEffect::new);
 
-    public static Holder<MobEffect> LIGHTNESS_ENTRY;
+    public static MobEffect LIGHTNESS_ENTRY;
 
     private TRMTEffects() {}
 
     public static void initLightnessEntry() {
-        LIGHTNESS_ENTRY = LIGHTNESS.getHolder().orElseThrow();
+        LIGHTNESS_ENTRY = LIGHTNESS.get();
     }
 }
