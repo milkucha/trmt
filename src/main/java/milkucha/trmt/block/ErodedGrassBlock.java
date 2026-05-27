@@ -75,10 +75,12 @@ public class ErodedGrassBlock extends Block {
         if (BlockThresholds.isIsolated(world, pos, manager)) timeout /= 2;
         if (entry != null && currentTime - entry.getLastTouchedGameTime() <= timeout) return;
 
+        long newCooldownTime = (entry != null) ? entry.getLastTouchedGameTime() + timeout : currentTime;
+
         if (blockStage > 0) {
             world.setBlockState(pos, state.with(STAGE, blockStage - 1), Block.NOTIFY_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, currentTime);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, newCooldownTime);
         } else {
             // Stage 0 → revert to vanilla grass_block.
             world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);

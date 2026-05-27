@@ -85,6 +85,8 @@ public class ErodedDirtBlock extends Block {
         if (BlockThresholds.isIsolated(world, pos, manager)) timeout /= 2;
         if (entry != null && currentTime - entry.getLastTouchedGameTime() <= timeout) return;
 
+        long newCooldownTime = (entry != null) ? entry.getLastTouchedGameTime() + timeout : currentTime;
+
         Direction facing = state.get(FACING);
         Block block = state.getBlock();
 
@@ -92,14 +94,14 @@ public class ErodedDirtBlock extends Block {
             // De-erode to the most eroded dirt stage.
             world.setBlockState(pos, TRMTBlocks.ERODED_DIRT.getDefaultState().with(FACING, facing).with(STAGE, 3), Block.NOTIFY_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, newCooldownTime);
         } else if (block == TRMTBlocks.ERODED_DIRT) {
             int stage = state.get(STAGE);
             if (stage > 0) {
                 // Step down one visual stage.
                 world.setBlockState(pos, state.with(STAGE, stage - 1), Block.NOTIFY_ALL);
                 manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, newCooldownTime);
             } else {
                 // Stage 0 → revert to eroded grass block at its most-eroded stage, preserving rotation.
                 world.setBlockState(pos,
@@ -108,7 +110,7 @@ public class ErodedDirtBlock extends Block {
                                 .with(ErodedGrassBlock.STAGE, 4),
                         Block.NOTIFY_ALL);
                 manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, currentTime);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, newCooldownTime);
             }
         }
     }
