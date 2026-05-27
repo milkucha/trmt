@@ -93,7 +93,7 @@ public class MobEntityMixin {
     @Unique
     private static void trmt$tryBreakVegetation(Level world, ErosionMapManager manager,
                                                  BlockPos pos, BlockState state) {
-        ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
+        ErosionEntry entry = manager.getChunkMap(ChunkPos.containing(pos)).getEntry(pos);
         if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
 
         if (state.getBlock() instanceof DoublePlantBlock
@@ -118,7 +118,7 @@ public class MobEntityMixin {
     @Unique
     private static void trmt$tryTransform(Level world, ErosionMapManager manager, BlockPos pos) {
         BlockState state = world.getBlockState(pos);
-        ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
+        ErosionEntry entry = manager.getChunkMap(ChunkPos.containing(pos)).getEntry(pos);
         if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
 
         if (state.is(Blocks.SAND)) {

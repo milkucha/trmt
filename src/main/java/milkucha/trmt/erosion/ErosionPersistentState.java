@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.level.ChunkPos;
@@ -17,7 +18,7 @@ import java.util.Map;
 
 public class ErosionPersistentState extends SavedData {
 
-    private static final String DATA_KEY = "trmt_erosion";
+    private static final Identifier DATA_KEY = Identifier.fromNamespaceAndPath("trmt", "trmt_erosion");
 
     private final Map<ChunkPos, ChunkErosionMap> chunkMaps;
 
@@ -47,7 +48,7 @@ public class ErosionPersistentState extends SavedData {
 
     private static final Codec<ChunkPos> STRING_CHUNK_POS = Codec.STRING.xmap(
         s -> { String[] p = s.split(","); return new ChunkPos(Integer.parseInt(p[0]), Integer.parseInt(p[1])); },
-        pos -> pos.x + "," + pos.z
+        pos -> pos.x() + "," + pos.z()
     );
 
     private static final Codec<ChunkErosionMap> CHUNK_MAP_CODEC =
@@ -67,7 +68,7 @@ public class ErosionPersistentState extends SavedData {
         );
 
     private static final SavedDataType<ErosionPersistentState> TYPE =
-        new SavedDataType<>(DATA_KEY, ErosionPersistentState::new, CODEC, DataFixTypes.SAVED_DATA_SCOREBOARD);
+        new SavedDataType<ErosionPersistentState>(DATA_KEY, ErosionPersistentState::new, CODEC, DataFixTypes.SAVED_DATA_SCOREBOARD);
 
     public static ErosionPersistentState getOrCreate(MinecraftServer server) {
         return server.getLevel(Level.OVERWORLD)

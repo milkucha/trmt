@@ -1,27 +1,11 @@
 package milkucha.trmt.client.render;
 
-import net.minecraft.client.renderer.block.model.BlockModelPart;
-import net.minecraft.client.renderer.block.model.BlockStateModel;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.util.RandomSource;
-import java.util.List;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
+import net.neoforged.neoforge.client.model.DelegateBlockStateModel;
 
-public class ErodedGrassBlockModel implements BlockStateModel {
-
-    private final BlockStateModel wrapped;
+public class ErodedGrassBlockModel extends DelegateBlockStateModel {
 
     public ErodedGrassBlockModel(BlockStateModel wrapped) {
-        this.wrapped = wrapped;
+        super(wrapped);
     }
-
-    @Override
-    public void collectParts(RandomSource random, List<BlockModelPart> list) {
-        wrapped.collectParts(random, list);
-    }
-
-    @Override
-    public TextureAtlasSprite particleIcon() {
-        return wrapped.particleIcon();
-    }
-
 }

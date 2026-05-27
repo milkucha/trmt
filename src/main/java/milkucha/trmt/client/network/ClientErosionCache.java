@@ -39,7 +39,7 @@ public final class ClientErosionCache {
     }
 
     public Entry getEntry(BlockPos pos) {
-        Map<BlockPos, Entry> chunk = chunks.get(new ChunkPos(pos));
+        Map<BlockPos, Entry> chunk = chunks.get(ChunkPos.containing(pos));
         if (chunk == null) return null;
         return chunk.get(pos);
     }
@@ -53,7 +53,7 @@ public final class ClientErosionCache {
     }
 
     public void setEntry(BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {
-        ChunkPos chunkPos = new ChunkPos(pos);
+        ChunkPos chunkPos = ChunkPos.containing(pos);
         if (stage <= 0) {
             Map<BlockPos, Entry> chunk = chunks.get(chunkPos);
             if (chunk != null) {

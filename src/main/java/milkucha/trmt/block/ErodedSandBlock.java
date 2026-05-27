@@ -123,7 +123,7 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
         if (!TRMTConfig.get().deErosion.sandEnabled) return;
 
         ErosionMapManager manager = ErosionMapManager.getInstance();
-        ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
+        ChunkErosionMap chunkMap = manager.getChunkMap(ChunkPos.containing(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
 
         int stage = state.getValue(STAGE);

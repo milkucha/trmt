@@ -70,7 +70,7 @@ public class ErodedGrassBlock extends Block {
         if (!milkucha.trmt.TRMTConfig.get().deErosion.grassEnabled) return;
 
         ErosionMapManager manager = ErosionMapManager.getInstance();
-        ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
+        ChunkErosionMap chunkMap = manager.getChunkMap(ChunkPos.containing(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
 
         int blockStage = state.getValue(STAGE);

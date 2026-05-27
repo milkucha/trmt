@@ -1,19 +1,4 @@
 package milkucha.trmt.mixin;
 
-import milkucha.trmt.client.debug.ErosionDebugHud;
-import net.minecraft.client.DeltaTracker;
-import net.minecraft.client.gui.Gui;
-import net.minecraft.client.gui.GuiGraphics;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-@Mixin(Gui.class)
-public class GuiMixin {
-
-    @Inject(method = "render", at = @At("TAIL"))
-    private void trmt$renderDebugHud(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
-        ErosionDebugHud.render(guiGraphics);
-    }
-}
+// GuiMixin removed: Gui.render() is gone in MC 26.1.
+// Debug HUD rendering is handled via RenderGuiEvent.Post in TRMTNeoForgeClient.

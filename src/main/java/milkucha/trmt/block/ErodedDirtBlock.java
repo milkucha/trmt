@@ -81,7 +81,7 @@ public class ErodedDirtBlock extends Block {
         if (!milkucha.trmt.TRMTConfig.get().deErosion.dirtEnabled) return;
 
         ErosionMapManager manager = ErosionMapManager.getInstance();
-        ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
+        ChunkErosionMap chunkMap = manager.getChunkMap(ChunkPos.containing(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
 
         long currentTime = world.getGameTime();

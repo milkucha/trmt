@@ -1,11 +1,10 @@
 package milkucha.trmt.client;
 
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.client.debug.ErosionDebugHud;
 import milkucha.trmt.client.render.ErodedGrassBlockModel;
-import net.minecraft.client.renderer.BiomeColors;
-import net.minecraft.client.renderer.ItemBlockRenderTypes;
-import net.minecraft.client.renderer.block.model.BlockStateModel;
-import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+import net.minecraft.client.color.block.BlockTintSources;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -13,7 +12,9 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
+import net.neoforged.neoforge.client.event.RenderGuiEvent;
 
+import java.util.List;
 import java.util.Map;
 
 @EventBusSubscriber(modid = "trmt", value = Dist.CLIENT)
@@ -24,18 +25,12 @@ public final class TRMTNeoForgeClient {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         TRMTClientConfig.load();
-        event.enqueueWork(() -> {
-            ItemBlockRenderTypes.setRenderLayer(TRMTBlocks.ERODED_GRASS_BLOCK.get(), ChunkSectionLayer.CUTOUT);
-            ItemBlockRenderTypes.setRenderLayer(TRMTBlocks.ERODED_SAND.get(), ChunkSectionLayer.CUTOUT);
-        });
     }
 
     @SubscribeEvent
-    public static void onRegisterBlockColors(RegisterColorHandlersEvent.Block event) {
+    public static void onRegisterBlockColors(RegisterColorHandlersEvent.BlockTintSources event) {
         event.register(
-                (state, level, pos, tintIndex) -> level != null && pos != null
-                        ? BiomeColors.getAverageGrassColor(level, pos)
-                        : 0x79C05A,
+                List.of(BlockTintSources.grassBlock()),
                 TRMTBlocks.ERODED_GRASS_BLOCK.get()
         );
     }
@@ -49,5 +44,10 @@ public final class TRMTNeoForgeClient {
                 models.put(state, new ErodedGrassBlockModel(original));
             }
         }
+    }
+
+    @SubscribeEvent
+    public static void onRenderGuiPost(RenderGuiEvent.Post event) {
+        ErosionDebugHud.render(event.getGuiGraphics());
     }
 }

@@ -7,36 +7,22 @@ import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.erosion.BlockThresholds;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.block.model.BlockModelPart;
-import net.minecraft.client.renderer.block.model.BlockStateModel;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Debug HUD showing a compass-cross of erosion counts centred on the block under the player.
- *
- * Layout (bottom-left corner):
- *
- *       [-z]
- *  [-x] [*] [+x]
- *       [+z]
- *  &lt;x&gt; &lt;y&gt; &lt;z&gt;
- *
- * Each cell (32×32) renders the block's top-face texture with three lines of data:
- *   walkedOnCount/threshold
- *   age: &lt;ticks since last touch&gt;
- *   out: &lt;de-erosion timeout&gt;
- */
 public class ErosionDebugHud {
 
     private static final int TEXT_COLOR  = 0xFFFFFFFF;
@@ -48,7 +34,7 @@ public class ErosionDebugHud {
 
     private ErosionDebugHud() {}
 
-    public static void render(GuiGraphics guiGraphics) {
+    public static void render(GuiGraphicsExtractor guiGraphics) {
         if (!TRMTClientConfig.get().debugHud) return;
         Minecraft client = Minecraft.getInstance();
         if (client.player == null || client.level == null) return;
@@ -61,28 +47,29 @@ public class ErosionDebugHud {
 
         int totalHeight = 3 * CELL + 4 + lineHeight;
         int x0 = MARGIN;
-        int y0 = client.getWindow().getGuiScaledHeight() - MARGIN - totalHeight;
+        int y0 = guiGraphics.guiHeight() - MARGIN - totalHeight;
 
-        renderCell(guiGraphics, world, center.north(),         x0 + CELL,         y0,            tr); // -z
-        renderCell(guiGraphics, world, center.west(),          x0,                y0 + CELL,     tr); // -x
-        renderCell(guiGraphics, world, center,                 x0 + CELL,         y0 + CELL,     tr); // *
-        renderCell(guiGraphics, world, center.east(),          x0 + 2 * CELL,     y0 + CELL,     tr); // +x
-        renderCell(guiGraphics, world, center.south(),         x0 + CELL,         y0 + 2 * CELL, tr); // +z
+        renderCell(guiGraphics, world, center.north(),     x0 + CELL,         y0,            tr); // -z
+        renderCell(guiGraphics, world, center.west(),      x0,                y0 + CELL,     tr); // -x
+        renderCell(guiGraphics, world, center,             x0 + CELL,         y0 + CELL,     tr); // *
+        renderCell(guiGraphics, world, center.east(),      x0 + 2 * CELL,     y0 + CELL,     tr); // +x
+        renderCell(guiGraphics, world, center.south(),     x0 + CELL,         y0 + 2 * CELL, tr); // +z
 
         String coords = center.getX() + " " + center.getY() + " " + center.getZ();
-        guiGraphics.drawString(tr, coords, x0, y0 + 3 * CELL + 4, TEXT_COLOR, true);
+        guiGraphics.text(tr, coords, x0, y0 + 3 * CELL + 4, TEXT_COLOR, true);
     }
 
-    private static void renderCell(GuiGraphics guiGraphics, ClientLevel world,
+    private static void renderCell(GuiGraphicsExtractor guiGraphics, ClientLevel world,
                                    BlockPos pos, int x, int y, Font tr) {
         Minecraft client = Minecraft.getInstance();
         BlockState state = world.getBlockState(pos);
 
         ClientErosionCache.Entry cellEntry = ClientErosionCache.getInstance().getEntry(pos);
-        BlockStateModel model = client.getBlockRenderer().getBlockModel(state);
+        BlockStateModel model = client.getModelManager().getBlockStateModelSet().get(state);
         RandomSource rng = RandomSource.create(0);
-        List<BlockModelPart> parts = model.collectParts(rng);
-        for (BlockModelPart part : parts) {
+        List<BlockStateModelPart> parts = new ArrayList<>();
+        model.collectParts(world, pos, state, rng, parts);
+        for (BlockStateModelPart part : parts) {
             for (BakedQuad quad : part.getQuads(null)) {
                 drawQuad(guiGraphics, client, state, world, pos, x, y, quad);
             }
@@ -91,18 +78,18 @@ public class ErosionDebugHud {
             }
         }
 
-        long currentTime = world.getGameTime();
+        long currentTime = client.level != null ? client.level.getGameTime() : 0L;
         int lineH = tr.lineHeight + 1;
 
         String countLabel = cellEntry != null
                 ? String.format("%.1f/%.1f", cellEntry.walkedOnCount, cellEntry.threshold)
                 : "0.0/-";
-        drawCenteredScaled(guiGraphics, tr, countLabel, x, y, 0, COUNT_COLOR);
+        drawCentered(guiGraphics, tr, countLabel, x, y, 0, COUNT_COLOR);
 
         String ageLabel = cellEntry != null
                 ? "age:" + (currentTime - cellEntry.lastTouchedGameTime)
                 : "age:-";
-        drawCenteredScaled(guiGraphics, tr, ageLabel, x, y, lineH, AGE_COLOR);
+        drawCentered(guiGraphics, tr, ageLabel, x, y, lineH, AGE_COLOR);
 
         long timeout = resolveTimeout(state, cellEntry);
         String outLabel;
@@ -113,16 +100,16 @@ public class ErosionDebugHud {
             if (isolated) timeout /= 2;
             outLabel = "out:" + timeout + (isolated ? " I" : "");
         }
-        drawCenteredScaled(guiGraphics, tr, outLabel, x, y, lineH * 2, OUT_COLOR);
+        drawCentered(guiGraphics, tr, outLabel, x, y, lineH * 2, OUT_COLOR);
     }
 
-    private static void drawCenteredScaled(GuiGraphics guiGraphics, Font tr,
-                                           String text, int cellX, int cellY,
-                                           int lineOffset, int color) {
+    private static void drawCentered(GuiGraphicsExtractor guiGraphics, Font tr,
+                                     String text, int cellX, int cellY,
+                                     int lineOffset, int color) {
         int textWidth = tr.width(text);
         int drawX = cellX + (CELL - textWidth) / 2;
         int drawY = cellY + 2 + lineOffset;
-        guiGraphics.drawString(tr, text, drawX, drawY, color, true);
+        guiGraphics.text(tr, text, drawX, drawY, color, true);
     }
 
     private static long resolveTimeout(BlockState state, ClientErosionCache.Entry entry) {
@@ -140,18 +127,20 @@ public class ErosionDebugHud {
         return -1;
     }
 
-    private static void drawQuad(GuiGraphics guiGraphics, Minecraft client,
+    private static void drawQuad(GuiGraphicsExtractor guiGraphics, Minecraft client,
                                   BlockState state, ClientLevel world, BlockPos pos,
                                   int x, int y, BakedQuad quad) {
-        TextureAtlasSprite sprite = quad.sprite();
+        var materialInfo = quad.materialInfo();
         int color;
-        if (quad.isTinted()) {
-            int biomeColor = client.getBlockColors().getColor(state, world, pos, quad.tintIndex());
-            color = 0xFF000000 | (biomeColor & 0x00FFFFFF);
+        if (materialInfo.isTinted()) {
+            BlockTintSource tintSource = client.getBlockColors().getTintSource(state, materialInfo.tintIndex());
+            color = tintSource != null
+                    ? (0xFF000000 | tintSource.colorInWorld(state, world, pos))
+                    : 0xFFFFFFFF;
         } else {
             color = 0xFFFFFFFF;
         }
-        guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x, y, CELL, CELL, color);
+        guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, materialInfo.sprite(), x, y, CELL, CELL, color);
     }
 
     private static final Direction[] HORIZONTALS = {

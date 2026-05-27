@@ -119,7 +119,7 @@ public class TRMTNeoForgeEvents {
                             List<ChunkPos> unloaded = new ArrayList<>();
                             int loadedCount = 0;
                             for (ChunkPos cp : allChunks) {
-                                if (overworld != null && overworld.getChunk(cp.x, cp.z, ChunkStatus.FULL, false) != null) {
+                                if (overworld != null && overworld.getChunk(cp.x(), cp.z(), ChunkStatus.FULL, false) != null) {
                                     loadedCount++;
                                 } else {
                                     unloaded.add(cp);
