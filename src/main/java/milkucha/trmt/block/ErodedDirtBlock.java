@@ -88,6 +88,7 @@ public class ErodedDirtBlock extends Block {
         long timeout = BlockThresholds.getDirtDeErosionTimeout(state.getBlock());
         if (BlockThresholds.isIsolated(world, pos, manager)) timeout /= 2;
         if (entry != null && currentTime - entry.getLastTouchedGameTime() <= timeout) return;
+        long newCooldownTime = (entry != null) ? entry.getLastTouchedGameTime() + timeout : currentTime;
 
         Direction facing = state.getValue(FACING);
         Block block = state.getBlock();
@@ -96,14 +97,14 @@ public class ErodedDirtBlock extends Block {
             // De-erode to the most eroded dirt stage.
             world.setBlock(pos, TRMTBlocks.ERODED_DIRT.defaultBlockState().setValue(FACING, facing).setValue(STAGE, 3), Block.UPDATE_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, newCooldownTime);
         } else if (block == TRMTBlocks.ERODED_DIRT) {
             int stage = state.getValue(STAGE);
             if (stage > 0) {
                 // Step down one visual stage.
                 world.setBlock(pos, state.setValue(STAGE, stage - 1), Block.UPDATE_ALL);
                 manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, newCooldownTime);
             } else {
                 // Stage 0 → revert to eroded grass block at its most-eroded stage, preserving rotation.
                 world.setBlock(pos,
@@ -112,7 +113,7 @@ public class ErodedDirtBlock extends Block {
                                 .setValue(ErodedGrassBlock.STAGE, 4),
                         Block.UPDATE_ALL);
                 manager.removeEntry(pos);
-                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, currentTime);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, newCooldownTime);
             }
         }
     }
