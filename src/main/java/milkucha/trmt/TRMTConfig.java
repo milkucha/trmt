@@ -107,8 +107,7 @@ public final class TRMTConfig {
         "minecraft:dandelion", "minecraft:poppy", "minecraft:blue_orchid", "minecraft:allium",
         "minecraft:azure_bluet", "minecraft:red_tulip", "minecraft:orange_tulip",
         "minecraft:white_tulip", "minecraft:pink_tulip", "minecraft:oxeye_daisy",
-        "minecraft:cornflower", "minecraft:lily_of_the_valley", "minecraft:wither_rose",
-        "minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony"
+        "minecraft:cornflower", "minecraft:lily_of_the_valley", "minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony"
     );
     public DeErosionTimeoutDays deErosionTimeoutDays = new DeErosionTimeoutDays();
 
