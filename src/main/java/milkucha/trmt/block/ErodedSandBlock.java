@@ -138,13 +138,14 @@ public class ErodedSandBlock extends Block implements Waterloggable {
         long timeout = BlockThresholds.getSandDeErosionTimeout(stage);
         if (BlockThresholds.isIsolated(world, pos, manager)) timeout /= 2;
         if (entry != null && currentTime - entry.getLastTouchedGameTime() <= timeout) return;
+        long newCooldownTime = (entry != null) ? entry.getLastTouchedGameTime() + timeout : currentTime;
 
         if (stage > 0) {
             // Preserve WATERLOGGED for stages that remain sunken (> 1); drop it at stage 0 (full height).
             boolean keepWaterlogged = stage > 1 && state.get(WATERLOGGED);
             world.setBlockState(pos, state.with(STAGE, stage - 1).with(WATERLOGGED, keepWaterlogged), Block.NOTIFY_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, currentTime);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, newCooldownTime);
         } else {
             world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
             manager.removeEntry(pos);
