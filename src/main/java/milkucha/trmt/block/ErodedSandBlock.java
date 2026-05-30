@@ -129,6 +129,7 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
         long timeout = BlockThresholds.getSandDeErosionTimeout(stage);
         if (BlockThresholds.isIsolated(world, pos, manager)) timeout /= 2;
         if (entry != null && currentTime - entry.getLastTouchedGameTime() <= timeout) return;
+        long newCooldownTime = (entry != null) ? entry.getLastTouchedGameTime() + timeout : currentTime;
 
         if (stage > 0) {
             BlockState newState = state.setValue(STAGE, stage - 1);
@@ -136,7 +137,7 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
             if (stage == 1) newState = newState.setValue(WATERLOGGED, false);
             world.setBlock(pos, newState, Block.UPDATE_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND.get(), currentTime);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND.get(), newCooldownTime);
         } else {
             world.setBlock(pos, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
             manager.removeEntry(pos);
