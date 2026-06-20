@@ -1,0 +1,15 @@
+{
+  "effect.trmt.lightness": "Ľahkosť",
+  "item.minecraft.potion.effect.trmt.lightness": "Elixír ľahkosti",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "Hádzací elixír ľahkosti",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "Plynný elixír ľahkosti",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Šíp ľahkosti",
+
+  "block.trmt.eroded_grass_block": "Erodovaný trávnik",
+  "block.trmt.eroded_dirt": "Erodovaná hlina",
+  "block.trmt.eroded_coarse_dirt": "Erodovaná hrubá hlina",
+  "block.trmt.eroded_sand": "Erodovaný piesok",
+
+  "trmt.button.download_update": "Stiahnuť aktualizáciu módu",
+  "trmt.disconnect.outdated": "Verzia klienta The Roads More Travelled (TRMT) je zastaraná (v%s)!\nTento server vyžaduje v%s alebo novšiu.\nPre pripojenie k tomuto serveru si stiahnite aktualizáciu!"
+}
