@@ -1,0 +1,15 @@
+{
+  "effect.trmt.lightness": "Liohkasc",
+  "item.minecraft.potion.effect.trmt.lightness": "Zielle liohkasci",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "Vybuchnoje zielle liohkasci",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "Tryvałaje zielle liohkasci",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Strała liohkasci",
+
+  "block.trmt.eroded_grass_block": "Vytaptanaja ziamla z dziornam",
+  "block.trmt.eroded_dirt": "Vytaptanaja ziamla",
+  "block.trmt.eroded_coarse_dirt": "Vytaptanaja hrubaja ziamla",
+  "block.trmt.eroded_sand": "Vytaptany piasok",
+
+  "trmt.button.download_update": "Sampavac abnaŭleńnie moda",
+  "trmt.disconnect.outdated": "Viertsija klijenta The Roads More Travelled (TRMT) sastareła (v%s)!\nHety serwier patrabuje viertsii v%s albo navejšaj.\nKali łaska, sampavujcie abnaŭleńnie dla padklučennia da serwera."
+}
