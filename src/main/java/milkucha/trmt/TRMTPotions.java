@@ -1,35 +1,40 @@
 package milkucha.trmt;
 
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.item.Items;
-import net.minecraft.potion.Potion;
-import net.minecraft.potion.Potions;
-import net.minecraft.recipe.BrewingRecipeRegistry;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.util.Identifier;
+import net.fabricmc.fabric.api.registry.FabricPotionBrewingBuilder;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.Potion;
+import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.world.item.crafting.Ingredient;
 
 public final class TRMTPotions {
 
-    public static final Potion LIGHTNESS = Registry.register(
-            Registries.POTION,
-            new Identifier("trmt", "lightness"),
-            new Potion("trmt.lightness", new StatusEffectInstance(TRMTEffects.LIGHTNESS, 3600))
-    );
-
-    public static final Potion LONG_LIGHTNESS = Registry.register(
-            Registries.POTION,
-            new Identifier("trmt", "long_lightness"),
-            new Potion("trmt.lightness", new StatusEffectInstance(TRMTEffects.LIGHTNESS, 9600))
-    );
+    public static Potion LIGHTNESS;
+    public static Potion LONG_LIGHTNESS;
 
     private TRMTPotions() {}
 
     public static void register() {
-        // Awkward Potion + Feather → Potion of Lightness (3 min)
-        BrewingRecipeRegistry.registerPotionRecipe(Potions.AWKWARD, Items.FEATHER, LIGHTNESS);
-        // Potion of Lightness + Redstone → Long Potion of Lightness (8 min)
-        BrewingRecipeRegistry.registerPotionRecipe(LIGHTNESS, Items.REDSTONE, LONG_LIGHTNESS);
-        // Splash conversion (Potion + Gunpowder → Splash Potion) is handled by vanilla globally.
+        LIGHTNESS = Registry.register(
+                BuiltInRegistries.POTION,
+                Identifier.fromNamespaceAndPath("trmt", "lightness"),
+                new Potion("trmt.lightness", new MobEffectInstance(TRMTEffects.LIGHTNESS_ENTRY, 3600))
+        );
+        LONG_LIGHTNESS = Registry.register(
+                BuiltInRegistries.POTION,
+                Identifier.fromNamespaceAndPath("trmt", "long_lightness"),
+                new Potion("trmt.lightness", new MobEffectInstance(TRMTEffects.LIGHTNESS_ENTRY, 9600))
+        );
+
+        FabricPotionBrewingBuilder.BUILD.register(builder -> {
+            Holder<Potion> lightnessEntry = BuiltInRegistries.POTION.wrapAsHolder(LIGHTNESS);
+            Holder<Potion> longLightnessEntry = BuiltInRegistries.POTION.wrapAsHolder(LONG_LIGHTNESS);
+            builder.registerPotionRecipe(Potions.AWKWARD, Ingredient.of(Items.FEATHER), lightnessEntry);
+            builder.registerPotionRecipe(lightnessEntry, Ingredient.of(Items.REDSTONE), longLightnessEntry);
+        });
     }
 }

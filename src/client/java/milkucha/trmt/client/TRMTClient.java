@@ -2,106 +2,91 @@ package milkucha.trmt.client;
 
 import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.debug.ErosionDebugHud;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.client.render.ErodedGrassBlockModels;
-import milkucha.trmt.network.TRMTPackets;
+import milkucha.trmt.network.SyncChunkPayload;
+import milkucha.trmt.network.UpdateStagePayload;
+import milkucha.trmt.network.VersionCheckPayload;
+import milkucha.trmt.network.VersionResponsePayload;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
-import net.fabricmc.fabric.api.client.networking.v1.ClientLoginNetworking;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.minecraft.item.BlockItem;
-import net.minecraft.util.ActionResult;
-import milkucha.trmt.block.ErodedSandBlock;
+import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationNetworking;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.client.rendering.v1.BlockColorRegistry;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.BlockItem;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.color.world.BiomeColors;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-
+import net.minecraft.client.color.block.BlockTintSource;
+import net.minecraft.client.renderer.BiomeColors;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.state.BlockState;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
 
 public class TRMTClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		TRMTClientConfig.load();
 
-		// Respond to the server's login version query with our own version.
-		ClientLoginNetworking.registerGlobalReceiver(TRMTPackets.VERSION_CHECK, (client, handler, buf, listenerAdder) -> {
-			buf.readString(32767); // consume server version — server makes the comparison decision
-			PacketByteBuf response = PacketByteBufs.create();
-			response.writeString(
-				FabricLoader.getInstance().getModContainer(TRMT.MOD_ID)
-					.map(c -> c.getMetadata().getVersion().getFriendlyString())
-					.orElse("0.0.0")
-			);
-			return CompletableFuture.completedFuture(response);
-		});
-
-		// Suppress client-side prediction of block placement above sunken eroded sand (mirrors server rule).
-		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-			var placePos = hitResult.getBlockPos().offset(hitResult.getSide());
-			var below = world.getBlockState(placePos.down());
-			if (below.isOf(TRMTBlocks.ERODED_SAND)
-					&& below.get(ErodedSandBlock.STAGE) > 0
-					&& player.getStackInHand(hand).getItem() instanceof BlockItem) {
-				return ActionResult.FAIL;
-			}
-			return ActionResult.PASS;
+		// Respond to the server's configuration-phase version query with our own version.
+		ClientConfigurationNetworking.registerGlobalReceiver(VersionCheckPayload.ID, (payload, context) -> {
+			String myVersion = FabricLoader.getInstance().getModContainer(TRMT.MOD_ID)
+				.map(c -> c.getMetadata().getVersion().getFriendlyString())
+				.orElse("0.0.0");
+			context.responseSender().sendPacket(new VersionResponsePayload(myVersion));
 		});
 
 		ErodedGrassBlockModels.register();
-		// Eroded grass models have transparent overlay pixels — must use CUTOUT_MIPPED.
-		BlockRenderLayerMap.INSTANCE.putBlock(TRMTBlocks.ERODED_GRASS_BLOCK, RenderLayer.getCutoutMipped());
-		// Eroded sand is nonOpaque(); without an explicit render layer it defaults to SOLID,
-		// which causes the damage-overlay renderer to produce white pixels when breaking.
-		BlockRenderLayerMap.INSTANCE.putBlock(TRMTBlocks.ERODED_SAND, RenderLayer.getCutoutMipped());
-		// Apply biome grass tint (same as vanilla grass_block) so eroded grass is not gray.
-		ColorProviderRegistry.BLOCK.register(
-				(state, world, pos, tintIndex) -> world != null && pos != null
-						? BiomeColors.getGrassColor(world, pos)
-						: 0x79C05A, // default plains grass color fallback (item rendering)
+		BlockColorRegistry.register(
+				List.of(new BlockTintSource() {
+					@Override
+					public int color(BlockState state) {
+						return 0x79C05A;
+					}
+
+					@Override
+					public int colorInWorld(BlockState state, BlockAndTintGetter world, BlockPos pos) {
+						return BiomeColors.getAverageGrassColor(world, pos);
+					}
+				}),
 				TRMTBlocks.ERODED_GRASS_BLOCK
 		);
 		ErosionDebugHud.register();
 
-		// Full chunk sync received on join.
-		ClientPlayNetworking.registerGlobalReceiver(TRMTPackets.SYNC_CHUNK, (client, handler, buf, responseSender) -> {
-			int chunkX = buf.readInt();
-			int chunkZ = buf.readInt();
-			int count  = buf.readInt();
-			Map<BlockPos, ClientErosionCache.Entry> chunkEntries = new HashMap<>(count);
-			for (int i = 0; i < count; i++) {
-				BlockPos pos                = buf.readBlockPos();
-				int      stage              = buf.readInt();
-				float    walkedOnCount      = buf.readFloat();
-				float    threshold          = buf.readFloat();
-				long     lastTouchedGameTime = buf.readLong();
-				chunkEntries.put(pos, new ClientErosionCache.Entry(stage, walkedOnCount, threshold, lastTouchedGameTime));
+		// Suppress client-side block-placement prediction above sunken eroded sand (stages 1–4).
+		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+			var placePos = hitResult.getBlockPos().relative(hitResult.getDirection());
+			var below = world.getBlockState(placePos.below());
+			if (below.is(TRMTBlocks.ERODED_SAND)
+					&& below.getValue(ErodedSandBlock.STAGE) > 0
+					&& player.getItemInHand(hand).getItem() instanceof BlockItem) {
+				return InteractionResult.FAIL;
 			}
-			ChunkPos chunkPos = new ChunkPos(chunkX, chunkZ);
-			client.execute(() -> ClientErosionCache.getInstance().setChunk(chunkPos, chunkEntries));
+			return InteractionResult.PASS;
+		});
+
+		// Full chunk sync received on join.
+		ClientPlayNetworking.registerGlobalReceiver(SyncChunkPayload.ID, (payload, context) -> {
+			Map<BlockPos, ClientErosionCache.Entry> chunkEntries = new HashMap<>(payload.entries().size());
+			for (SyncChunkPayload.Entry e : payload.entries()) {
+				chunkEntries.put(e.pos(), new ClientErosionCache.Entry(e.stage(), e.walkedOnCount(), e.threshold(), e.lastTouchedGameTime()));
+			}
+			ChunkPos chunkPos = new ChunkPos(payload.chunkX(), payload.chunkZ());
+			context.client().execute(() -> ClientErosionCache.getInstance().setChunk(chunkPos, chunkEntries));
 		});
 
 		// Single-block stage update (advance or reset).
-		ClientPlayNetworking.registerGlobalReceiver(TRMTPackets.UPDATE_STAGE, (client, handler, buf, responseSender) -> {
-			BlockPos pos                = buf.readBlockPos();
-			int      stage              = buf.readInt();
-			float    walkedOnCount      = buf.readFloat();
-			float    threshold          = buf.readFloat();
-			long     lastTouchedGameTime = buf.readLong();
-			client.execute(() ->
-				ClientErosionCache.getInstance().setEntry(pos, stage, walkedOnCount, threshold, lastTouchedGameTime)
-			);
-		});
+		ClientPlayNetworking.registerGlobalReceiver(UpdateStagePayload.ID, (payload, context) ->
+			context.client().execute(() ->
+				ClientErosionCache.getInstance().setEntry(payload.pos(), payload.stage(), payload.walkedOnCount(), payload.threshold(), payload.lastTouchedGameTime())
+			)
+		);
 
 		// Clear cached stages when disconnecting so stale data never leaks into the next session.
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->

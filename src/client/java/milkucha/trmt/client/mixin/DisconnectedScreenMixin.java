@@ -1,14 +1,15 @@
 package milkucha.trmt.client.mixin;
 
 import milkucha.trmt.network.TRMTPackets;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.Element;
-import net.minecraft.client.gui.screen.DisconnectedScreen;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.Text;
-import net.minecraft.text.TranslatableTextContent;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.DisconnectionDetails;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.util.Util;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -21,41 +22,37 @@ import java.net.URI;
 @Mixin(DisconnectedScreen.class)
 public abstract class DisconnectedScreenMixin extends Screen {
 
-    @Shadow private Text reason;
-    @Unique private ButtonWidget trmt$downloadButton;
+    @Final @Shadow private DisconnectionDetails details;
+    @Unique private Button trmt$backButton;
+    @Unique private Button trmt$downloadButton;
 
-    protected DisconnectedScreenMixin(Text title) {
+    protected DisconnectedScreenMixin(Component title) {
         super(title);
     }
 
     @Inject(method = "init()V", at = @At("TAIL"))
     private void trmt$addUpdateButton(CallbackInfo ci) {
+        trmt$backButton = null;
         trmt$downloadButton = null;
-        if (this.reason == null
-                || !(this.reason.getContent() instanceof TranslatableTextContent tc)
-                || !tc.getKey().startsWith("trmt.disconnect")) return;
-        for (Element child : this.children()) {
-            if (!(child instanceof ButtonWidget backBtn)) continue;
-            trmt$downloadButton = this.addDrawableChild(
-                ButtonWidget.builder(
-                    Text.translatable("trmt.button.download_update"),
-                    btn -> Util.getOperatingSystem().open(URI.create(TRMTPackets.MODRINTH_URL))
-                ).dimensions(backBtn.getX(), backBtn.getY() + 25, backBtn.getWidth(), 20).build()
+        if (this.details == null || !(this.details.reason().getContents() instanceof TranslatableContents tc)
+                || !tc.getKey().equals("trmt.disconnect.outdated")) return;
+        for (GuiEventListener child : this.children()) {
+            if (!(child instanceof Button backBtn)) continue;
+            trmt$backButton = backBtn;
+            trmt$downloadButton = this.addRenderableWidget(
+                Button.builder(
+                    Component.translatable("trmt.button.download_update"),
+                    btn -> Util.getPlatform().openUri(URI.create(TRMTPackets.MODRINTH_URL))
+                ).bounds(backBtn.getX(), backBtn.getY() + 25, backBtn.getWidth(), 20).build()
             );
             return;
         }
     }
 
-    // Sync position to the back button every frame so any resize is corrected immediately.
-    @Inject(method = "render", at = @At("HEAD"))
-    private void trmt$syncButtonPosition(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        if (trmt$downloadButton == null) return;
-        for (Element child : this.children()) {
-            if (child instanceof ButtonWidget backBtn && backBtn != trmt$downloadButton) {
-                ((ClickableWidgetPositionAccessor) trmt$downloadButton).trmt$setX(backBtn.getX());
-                ((ClickableWidgetPositionAccessor) trmt$downloadButton).trmt$setY(backBtn.getY() + 25);
-                return;
-            }
-        }
+    @Inject(method = "repositionElements()V", at = @At("TAIL"))
+    private void trmt$repositionUpdateButton(CallbackInfo ci) {
+        if (trmt$downloadButton == null || trmt$backButton == null) return;
+        trmt$downloadButton.setPosition(trmt$backButton.getX(), trmt$backButton.getY() + 25);
     }
+
 }

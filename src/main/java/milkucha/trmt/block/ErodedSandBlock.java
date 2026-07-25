@@ -6,159 +6,149 @@ import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ChunkErosionMap;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.ShapeContext;
-import net.minecraft.block.Waterloggable;
-import net.minecraft.fluid.Fluid;
-import net.minecraft.fluid.FluidState;
-import net.minecraft.fluid.Fluids;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.state.StateManager;
-import net.minecraft.state.property.BooleanProperty;
-import net.minecraft.state.property.DirectionProperty;
-import net.minecraft.state.property.IntProperty;
-import net.minecraft.state.property.Properties;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.random.Random;
-import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.world.BlockView;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldAccess;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SimpleWaterloggedBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.level.redstone.Orientation;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.Nullable;
 
-public class ErodedSandBlock extends Block implements Waterloggable {
+public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
 
-    public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;
-    public static final IntProperty STAGE = IntProperty.of("stage", 0, 4);
-    public static final BooleanProperty WATERLOGGED = Properties.WATERLOGGED;
+    public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
+    public static final IntegerProperty STAGE = IntegerProperty.create("stage", 0, 4);
+    public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
 
     private static final VoxelShape[] COLLISION_SHAPES = {
-        Block.createCuboidShape(0, 0, 0, 16, 16, 16), // stage 0
-        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 1
-        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 2
-        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 3
-        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 4
+        Block.box(0, 0, 0, 16, 16, 16), // stage 0 — full height
+        Block.box(0, 0, 0, 16, 10, 16), // stage 1
+        Block.box(0, 0, 0, 16, 10, 16), // stage 2
+        Block.box(0, 0, 0, 16, 10, 16), // stage 3
+        Block.box(0, 0, 0, 16, 10, 16), // stage 4
     };
 
     private static final VoxelShape[] OUTLINE_SHAPES = {
-        Block.createCuboidShape(0, 0, 0, 16, 16, 16), // stage 0
-        Block.createCuboidShape(0, 0, 0, 16, 14, 16), // stage 1 — matches model height
-        Block.createCuboidShape(0, 0, 0, 16, 14, 16), // stage 2 — matches model height
-        Block.createCuboidShape(0, 0, 0, 16, 12, 16), // stage 3 — matches model height
-        Block.createCuboidShape(0, 0, 0, 16, 10, 16), // stage 4 — matches model height (same as collision)
+        Block.box(0, 0, 0, 16, 16, 16), // stage 0 — full height
+        Block.box(0, 0, 0, 16, 14, 16), // stage 1
+        Block.box(0, 0, 0, 16, 14, 16), // stage 2
+        Block.box(0, 0, 0, 16, 12, 16), // stage 3
+        Block.box(0, 0, 0, 16, 10, 16), // stage 4
     };
 
-    public ErodedSandBlock(Settings settings) {
+    public ErodedSandBlock(Properties settings) {
         super(settings);
-        setDefaultState(getStateManager().getDefaultState()
-                .with(FACING, Direction.SOUTH)
-                .with(STAGE, 0)
-                .with(WATERLOGGED, false));
+        registerDefaultState(getStateDefinition().any()
+                .setValue(FACING, Direction.SOUTH)
+                .setValue(STAGE, 0)
+                .setValue(WATERLOGGED, false));
     }
 
     @Override
-    protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(FACING, STAGE, WATERLOGGED);
     }
 
-    // --- Waterloggable ---
+    @Override
+    public boolean canPlaceLiquid(@Nullable LivingEntity entity, BlockGetter getter, BlockPos pos, BlockState state, Fluid fluid) {
+        return !state.getValue(WATERLOGGED) && state.getValue(STAGE) > 0 && fluid == Fluids.WATER;
+    }
+
+    @Override
+    public boolean placeLiquid(LevelAccessor world, BlockPos pos, BlockState state, FluidState fluidState) {
+        if (state.getValue(WATERLOGGED) || state.getValue(STAGE) == 0) return false;
+        if (!world.isClientSide()) {
+            world.setBlock(pos, state.setValue(WATERLOGGED, true), Block.UPDATE_ALL);
+            world.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(world));
+        }
+        return true;
+    }
 
     @Override
     public FluidState getFluidState(BlockState state) {
-        return state.get(WATERLOGGED) ? Fluids.WATER.getStill(false) : super.getFluidState(state);
-    }
-
-    /** Only sunken stages (1–4) can be waterlogged; stage 0 is full-height and needs no fill. */
-    @Override
-    public boolean canFillWithFluid(BlockView world, BlockPos pos, BlockState state, Fluid fluid) {
-        return state.get(STAGE) > 0 && !state.get(WATERLOGGED) && fluid == Fluids.WATER;
+        return state.getValue(WATERLOGGED) ? Fluids.WATER.defaultFluidState() : super.getFluidState(state);
     }
 
     @Override
-    public boolean tryFillWithFluid(WorldAccess world, BlockPos pos, BlockState state, FluidState fluidState) {
-        if (state.get(STAGE) > 0 && !state.get(WATERLOGGED)) {
-            if (!world.isClient()) {
-                world.setBlockState(pos, state.with(WATERLOGGED, true), Block.NOTIFY_ALL);
-                world.scheduleFluidTick(pos, fluidState.getFluid(), fluidState.getFluid().getTickRate(world));
-            }
-            return true;
+    public BlockState updateShape(BlockState state, LevelReader world, ScheduledTickAccess tickAccess,
+                                   BlockPos pos, Direction direction, BlockPos neighborPos,
+                                   BlockState neighborState, RandomSource random) {
+        if (state.getValue(WATERLOGGED)) {
+            tickAccess.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(world));
         }
-        return false;
+        return super.updateShape(state, world, tickAccess, pos, direction, neighborPos, neighborState, random);
     }
 
     @Override
-    public ItemStack tryDrainFluid(WorldAccess world, BlockPos pos, BlockState state) {
-        if (state.get(STAGE) > 0 && state.get(WATERLOGGED)) {
-            world.setBlockState(pos, state.with(WATERLOGGED, false), Block.NOTIFY_ALL);
-            return new ItemStack(Items.WATER_BUCKET);
+    public void neighborChanged(BlockState state, Level world, BlockPos pos, Block sourceBlock,
+                                 @Nullable Orientation wireOrientation, boolean notify) {
+        super.neighborChanged(state, world, pos, sourceBlock, wireOrientation, notify);
+        if (!world.isClientSide() && world.getBlockState(pos.above()).canOcclude()) {
+            world.setBlock(pos, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
         }
-        return ItemStack.EMPTY;
-    }
-
-    /** Keep water ticking while this block is waterlogged so fluid propagation stays correct. */
-    @Override
-    public BlockState getStateForNeighborUpdate(BlockState state, Direction direction, BlockState neighborState,
-                                                WorldAccess world, BlockPos pos, BlockPos neighborPos) {
-        if (state.get(WATERLOGGED)) {
-            world.scheduleFluidTick(pos, Fluids.WATER, Fluids.WATER.getTickRate(world));
-        }
-        return super.getStateForNeighborUpdate(state, direction, neighborState, world, pos, neighborPos);
-    }
-
-    // --- Block overrides ---
-
-    @Override
-    public void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
-        super.neighborUpdate(state, world, pos, sourceBlock, sourcePos, notify);
-        if (world.isClient) return;
-        if (!world.getBlockState(pos.up()).isOpaque()) return;
-        world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
-        ErosionMapManager.getInstance().removeEntry(pos);
     }
 
     @Override
-    public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
-        ErosionMapManager manager = ErosionMapManager.getInstance();
-        if (world.getBlockState(pos.up()).isOpaque()) {
-            world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
+    public void randomTick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
+        if (world.getBlockState(pos.above()).canOcclude()) {
+            world.setBlock(pos, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
             return;
         }
+
         if (!TRMTConfig.get().deErosion.sandEnabled) return;
-        ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
+
+        ErosionMapManager manager = ErosionMapManager.getInstance();
+        ChunkErosionMap chunkMap = manager.getChunkMap(ChunkPos.containing(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
 
-        int stage = state.get(STAGE);
-        long currentTime = world.getTime();
+        int stage = state.getValue(STAGE);
+        long currentTime = world.getGameTime();
         long timeout = BlockThresholds.getSandDeErosionTimeout(stage);
         if (BlockThresholds.isIsolated(world, pos, manager)) timeout /= 2;
         if (entry != null && currentTime - entry.getLastTouchedGameTime() <= timeout) return;
         long newCooldownTime = (entry != null) ? entry.getLastTouchedGameTime() + timeout : currentTime;
 
         if (stage > 0) {
-            // Preserve WATERLOGGED for stages that remain sunken (> 1); drop it at stage 0 (full height).
-            boolean keepWaterlogged = stage > 1 && state.get(WATERLOGGED);
-            world.setBlockState(pos, state.with(STAGE, stage - 1).with(WATERLOGGED, keepWaterlogged), Block.NOTIFY_ALL);
+            boolean waterlogged = state.getValue(WATERLOGGED);
+            BlockState newState = state.setValue(STAGE, stage - 1);
+            // Stage 0 cannot be waterlogged; clear the flag when reverting to it.
+            newState = newState.setValue(WATERLOGGED, stage - 1 > 0 && waterlogged);
+            world.setBlock(pos, newState, Block.UPDATE_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, newCooldownTime);
         } else {
-            world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
+            world.setBlock(pos, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
             manager.removeEntry(pos);
         }
     }
 
     @Override
-    public VoxelShape getOutlineShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
-        return OUTLINE_SHAPES[state.get(STAGE)];
+    public VoxelShape getShape(BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
+        return OUTLINE_SHAPES[state.getValue(STAGE)];
     }
 
     @Override
-    public VoxelShape getCollisionShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
-        return COLLISION_SHAPES[state.get(STAGE)];
+    public VoxelShape getCollisionShape(BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
+        return COLLISION_SHAPES[state.getValue(STAGE)];
     }
 }

@@ -2,9 +2,8 @@ package milkucha.trmt;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.fabricmc.loader.api.FabricLoader;
-
 import milkucha.trmt.erosion.BlockThresholds;
+import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -47,6 +46,12 @@ public final class TRMTConfig {
         public boolean vegetationEnabled = true;
     }
 
+    public static class DeErosionToggles {
+        public boolean grassEnabled = true;
+        public boolean dirtEnabled  = true;
+        public boolean sandEnabled  = true;
+    }
+
     public static class VegetationThreshold extends MinMax {
         public float dropChance;
         VegetationThreshold(float min, float max, float dropChance) {
@@ -73,7 +78,7 @@ public final class TRMTConfig {
     }
 
     public static class DirtDeErosion {
-        public float erodedDirt       = 8f;
+        public float erodedDirt       =  8f;
         public float erodedCoarseDirt = 13f;
     }
 
@@ -91,12 +96,6 @@ public final class TRMTConfig {
         public SandDeErosion  sand  = new SandDeErosion();
     }
 
-    public static class DeErosionToggles {
-        public boolean grassEnabled = true;
-        public boolean dirtEnabled  = true;
-        public boolean sandEnabled  = true;
-    }
-
     // ── top-level fields ───────────────────────────────────────────────────
 
     public ErosionToggles       erosion              = new ErosionToggles();
@@ -104,7 +103,7 @@ public final class TRMTConfig {
     public Multipliers          erosionMultipliers   = new Multipliers();
     public ErosionThresholds    erosionThresholds    = new ErosionThresholds();
     public List<String> erodableVegetation = Arrays.asList(
-        "minecraft:grass", "minecraft:tall_grass",
+        "minecraft:short_grass", "minecraft:tall_grass",
         "minecraft:dandelion", "minecraft:poppy", "minecraft:blue_orchid", "minecraft:allium",
         "minecraft:azure_bluet", "minecraft:red_tulip", "minecraft:orange_tulip",
         "minecraft:white_tulip", "minecraft:pink_tulip", "minecraft:oxeye_daisy",

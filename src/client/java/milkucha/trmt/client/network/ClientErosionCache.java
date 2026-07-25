@@ -1,11 +1,10 @@
 package milkucha.trmt.client.network;
 
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ChunkPos;
 
 /**
  * Client-side cache of erosion data received from the server.
@@ -49,7 +48,7 @@ public final class ClientErosionCache {
 
     /** Returns the full entry for {@code pos}, or null if unknown / not eroded. */
     public Entry getEntry(BlockPos pos) {
-        Map<BlockPos, Entry> chunk = chunks.get(new ChunkPos(pos));
+        Map<BlockPos, Entry> chunk = chunks.get(ChunkPos.containing(pos));
         if (chunk == null) return null;
         return chunk.get(pos);
     }
@@ -68,7 +67,7 @@ public final class ClientErosionCache {
      * stage ≤ 0 clears the entry.
      */
     public void setEntry(BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {
-        ChunkPos chunkPos = new ChunkPos(pos);
+        ChunkPos chunkPos = ChunkPos.containing(pos);
         if (stage <= 0) {
             Map<BlockPos, Entry> chunk = chunks.get(chunkPos);
             if (chunk != null) {
@@ -77,7 +76,7 @@ public final class ClientErosionCache {
             }
         } else {
             chunks.computeIfAbsent(chunkPos, k -> new ConcurrentHashMap<>())
-                  .put(pos.toImmutable(), new Entry(stage, walkedOnCount, threshold, lastTouchedGameTime));
+                  .put(pos.immutable(), new Entry(stage, walkedOnCount, threshold, lastTouchedGameTime));
         }
     }
 

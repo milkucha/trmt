@@ -1,35 +1,36 @@
 package milkucha.trmt;
 
+import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.ErosionMapManager;
-import milkucha.trmt.network.TRMTPackets;
+import milkucha.trmt.network.SyncChunkPayload;
+import milkucha.trmt.network.UpdateStagePayload;
+import milkucha.trmt.network.VersionCheckPayload;
+import milkucha.trmt.network.VersionResponsePayload;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.minecraft.item.BlockItem;
-import net.minecraft.util.ActionResult;
-import milkucha.trmt.block.ErodedSandBlock;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerLoginNetworking;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.ClickEvent;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.World;
-import net.minecraft.world.chunk.ChunkStatus;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.Permissions;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TRMT implements ModInitializer {
 	public static final String MOD_ID = "trmt";
@@ -41,88 +42,91 @@ public class TRMT implements ModInitializer {
 		TRMTEffects.register();
 		TRMTPotions.register();
 		TRMTBlocks.register();
-		// Load (or create) persistent erosion state once the server and its worlds are ready.
+
+		PayloadTypeRegistry.clientboundConfiguration().register(VersionCheckPayload.ID, VersionCheckPayload.CODEC);
+		PayloadTypeRegistry.serverboundConfiguration().register(VersionResponsePayload.ID, VersionResponsePayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(SyncChunkPayload.ID, SyncChunkPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(UpdateStagePayload.ID, UpdateStagePayload.CODEC);
+
+		// During configuration, send our version; client responds with its own version.
+		ServerConfigurationConnectionEvents.CONFIGURE.register((handler, server) -> {
+			if (ServerConfigurationNetworking.canSend(handler, VersionCheckPayload.ID)) {
+				ServerConfigurationNetworking.send(handler, new VersionCheckPayload(getModVersion()));
+			}
+		});
+		ServerConfigurationNetworking.registerGlobalReceiver(VersionResponsePayload.ID,
+			(payload, context) -> {
+				String clientVer = payload.version();
+				String serverVer = getModVersion();
+				if (isClientOutdated(clientVer, serverVer)) {
+					context.packetListener().disconnect(Component.translatable(
+						"trmt.disconnect.outdated", clientVer, serverVer
+					));
+				}
+			});
+
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
 			ErosionMapManager manager = ErosionMapManager.getInstance();
 			manager.loadState(server);
 			manager.migrateGrassEntries(server);
 		});
-		// Send full erosion data to each player when they join (covers existing erosion they'd otherwise miss).
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
 				ErosionMapManager.getInstance().sendFullSyncToPlayer(handler.player));
-		// Reset the erosion manager when the server stops so state does not bleed between sessions.
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> ErosionMapManager.reset());
-// Clear the erosion entry when any block is broken so a freshly placed block always starts from zero.
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) ->
 				ErosionMapManager.getInstance().removeEntry(pos));
 
-		// Prevent blocks from being placed above sunken eroded sand (stages 1-4) from any angle.
-		// Stage 0 is full-height and has no visual glitch, so it is not restricted.
+		// Prevent block placement above sunken eroded sand (stages 1–4) to avoid AO darkening.
 		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-			var placePos = hitResult.getBlockPos().offset(hitResult.getSide());
-			var below = world.getBlockState(placePos.down());
-			if (below.isOf(TRMTBlocks.ERODED_SAND)
-					&& below.get(ErodedSandBlock.STAGE) > 0
-					&& player.getStackInHand(hand).getItem() instanceof BlockItem) {
-				return ActionResult.FAIL;
+			var placePos = hitResult.getBlockPos().relative(hitResult.getDirection());
+			var below = world.getBlockState(placePos.below());
+			if (below.is(TRMTBlocks.ERODED_SAND)
+					&& below.getValue(ErodedSandBlock.STAGE) > 0
+					&& player.getItemInHand(hand).getItem() instanceof BlockItem) {
+				return InteractionResult.FAIL;
 			}
-			return ActionResult.PASS;
+			return InteractionResult.PASS;
 		});
-
-		// During login, send server version; disconnect client if its version is older.
-		ServerLoginConnectionEvents.QUERY_START.register((handler, server, sender, synchronizer) -> {
-			PacketByteBuf buf = PacketByteBufs.create();
-			buf.writeString(getModVersion());
-			sender.sendPacket(TRMTPackets.VERSION_CHECK, buf);
-		});
-		ServerLoginNetworking.registerGlobalReceiver(TRMTPackets.VERSION_CHECK,
-			(server, handler, understood, buf, synchronizer, responseSender) -> {
-				if (!understood) return;
-				String clientVer = buf.readString(32767);
-				String serverVer = getModVersion();
-				if (isClientOutdated(clientVer, serverVer)) {
-					server.execute(() -> handler.disconnect(
-						Text.translatable("trmt.disconnect.outdated", clientVer, serverVer)
-					));
-				}
-			});
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
-				dispatcher.register(CommandManager.literal("trmt")
-						.then(CommandManager.literal("reloadconfig")
-								.requires(src -> src.hasPermissionLevel(2))
+				dispatcher.register(Commands.literal("trmt")
+						.then(Commands.literal("reloadconfig")
+								.requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
 								.executes(ctx -> {
 									TRMTConfig.load();
-									ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] Config reloaded."), true);
+									ctx.getSource().sendSuccess(() -> Component.literal("[TRMT] Config reloaded."), true);
 									return 1;
 								}))
-						.then(CommandManager.literal("convert-to-vanilla")
-								.requires(src -> src.hasPermissionLevel(2))
+						.then(Commands.literal("convert-to-vanilla")
+								.requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
 								.executes(ctx -> {
-									ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] WARNING: This will convert all existing eroded blocks in all currently loaded chunks to their vanilla counterparts. This cannot be undone. ")
-											.append(Text.literal("[Click to confirm]")
-													.styled(s -> s
-															.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/trmt convert-to-vanilla confirm"))
-															.withFormatting(Formatting.YELLOW)
-															.withUnderline(true))), false);
+									ctx.getSource().sendSuccess(() -> Component.literal(
+											"[TRMT] WARNING: This will convert all existing eroded blocks in all currently loaded chunks to their vanilla counterparts. This cannot be undone. ")
+											.append(Component.literal("[Click to confirm]")
+													.withStyle(s -> s
+															.withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand(
+																	"/trmt convert-to-vanilla confirm"))
+															.withColor(net.minecraft.ChatFormatting.YELLOW)
+															.withUnderlined(true))), false);
 									return 1;
 								})
-								.then(CommandManager.literal("confirm")
+								.then(Commands.literal("confirm")
 										.executes(ctx -> {
 											ErosionMapManager.getInstance().convertAllErodedToVanilla(ctx.getSource().getServer());
-											ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] All eroded blocks in loaded chunks converted to their vanilla counterparts."), true);
+											ctx.getSource().sendSuccess(() -> Component.literal(
+													"[TRMT] All eroded blocks in loaded chunks converted to their vanilla counterparts."), true);
 											return 1;
 										})))
-						.then(CommandManager.literal("eroded-chunks")
-								.requires(src -> src.hasPermissionLevel(2))
+						.then(Commands.literal("eroded-chunks")
+								.requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
 								.executes(ctx -> {
-									ServerWorld overworld = ctx.getSource().getServer().getWorld(World.OVERWORLD);
+									ServerLevel overworld = ctx.getSource().getServer().getLevel(net.minecraft.world.level.Level.OVERWORLD);
 									Set<ChunkPos> allChunks = ErosionMapManager.getInstance().getErodedChunkPositions();
 
 									List<ChunkPos> unloaded = new ArrayList<>();
 									int loadedCount = 0;
 									for (ChunkPos cp : allChunks) {
-										if (overworld.getChunk(cp.x, cp.z, ChunkStatus.FULL, false) != null) {
+										if (overworld != null && overworld.getChunk(cp.x(), cp.z(), ChunkStatus.FULL, false) != null) {
 											loadedCount++;
 										} else {
 											unloaded.add(cp);
@@ -132,26 +136,26 @@ public class TRMT implements ModInitializer {
 									int total = allChunks.size();
 									int unloadedCount = unloaded.size();
 									int loadedFinal = loadedCount;
-									ctx.getSource().sendFeedback(() -> Text.literal(
+									ctx.getSource().sendSuccess(() -> Component.literal(
 											"[TRMT] Eroded chunks: " + total + " chunk(s) total — " + loadedFinal + " loaded, " + unloadedCount + " unloaded."), false);
 
 									if (unloaded.isEmpty()) {
-										ctx.getSource().sendFeedback(() -> Text.literal(
+										ctx.getSource().sendSuccess(() -> Component.literal(
 												"[TRMT] All eroded chunks are currently loaded."), false);
 									} else {
 										LOGGER.info("[TRMT] Unloaded chunks with erosion data ({}):", unloadedCount);
 										for (ChunkPos cp : unloaded) {
-											LOGGER.info("[TRMT]   {} {}", cp.getStartX(), cp.getStartZ());
+											LOGGER.info("[TRMT]   {} {}", cp.getMinBlockX(), cp.getMinBlockZ());
 										}
 										if (unloadedCount <= 20) {
-											ctx.getSource().sendFeedback(() -> Text.literal(
+											ctx.getSource().sendSuccess(() -> Component.literal(
 													"[TRMT] Unloaded chunk coordinates:"), false);
 											for (ChunkPos cp : unloaded) {
-												int bx = cp.getStartX(), bz = cp.getStartZ();
-												ctx.getSource().sendFeedback(() -> Text.literal("  " + bx + " " + bz), false);
+												int bx = cp.getMinBlockX(), bz = cp.getMinBlockZ();
+												ctx.getSource().sendSuccess(() -> Component.literal("  " + bx + " " + bz), false);
 											}
 										} else {
-											ctx.getSource().sendFeedback(() -> Text.literal(
+											ctx.getSource().sendSuccess(() -> Component.literal(
 													"[TRMT] " + unloadedCount + " unloaded chunks — full list printed to server console."), false);
 										}
 									}
