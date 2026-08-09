@@ -243,25 +243,24 @@ public class ErosionMapManager {
 
     // --- Networking ---
 
-    public void sendFullSyncToPlayer(ServerPlayer player) {
+    public void sendChunkSyncToPlayer(ServerPlayer player, ChunkPos chunkPos) {
         if (state == null) return;
-        for (Map.Entry<ChunkPos, ChunkErosionMap> chunkEntry : state.getAllChunkMaps().entrySet()) {
-            ChunkPos chunkPos = chunkEntry.getKey();
-            Map<BlockPos, ErosionEntry> entries = chunkEntry.getValue().getEntries();
-            if (entries.isEmpty()) continue;
 
-            List<TRMTNetwork.SyncChunkMessage.Entry> payloadEntries = new ArrayList<>(entries.size());
-            for (Map.Entry<BlockPos, ErosionEntry> e : entries.entrySet()) {
-                payloadEntries.add(new TRMTNetwork.SyncChunkMessage.Entry(
-                        e.getKey(),
-                        e.getValue().getErosionStage(),
-                        e.getValue().getWalkedOnCount(),
-                        e.getValue().getThreshold(),
-                        e.getValue().getLastTouchedGameTime()
-                ));
-            }
-            TRMTNetwork.sendSyncChunk(player, chunkPos.x, chunkPos.z, payloadEntries);
+        ChunkErosionMap map = state.getChunkMap(chunkPos);
+        Map<BlockPos, ErosionEntry> entries = map != null ? map.getEntries() : Collections.emptyMap();
+        List<TRMTNetwork.SyncChunkMessage.Entry> payloadEntries = new ArrayList<>(entries.size());
+
+        for (Map.Entry<BlockPos, ErosionEntry> e : entries.entrySet()) {
+            payloadEntries.add(new TRMTNetwork.SyncChunkMessage.Entry(
+                    e.getKey(),
+                    e.getValue().getErosionStage(),
+                    e.getValue().getWalkedOnCount(),
+                    e.getValue().getThreshold(),
+                    e.getValue().getLastTouchedGameTime()
+            ));
         }
+
+        TRMTNetwork.sendSyncChunk(player, chunkPos.x, chunkPos.z, payloadEntries);
     }
 
     private void broadcastStageUpdate(BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {
