@@ -2,7 +2,7 @@ plugins {
 	id 'eclipse'
 	id 'idea'
 	id 'maven-publish'
-	id 'net.neoforged.gradle.userdev' version '7.1.36'
+	id 'net.neoforged.moddev' version '2.0.142'
 }
 
 version = mod_version
@@ -15,22 +15,32 @@ java {
 	}
 }
 
-runs {
-	configureEach {
-		workingDirectory project.file('run')
-		systemProperty 'neoforge.logging.markers', 'REGISTRIES'
-		systemProperty 'neoforge.logging.console.level', 'debug'
-		modSource project.sourceSets.main
+neoForge {
+	version = neoforge_version
+
+	runs {
+		configureEach {
+			gameDirectory = project.file('run')
+			systemProperty 'neoforge.logging.markers', 'REGISTRIES'
+			logLevel = org.slf4j.event.Level.DEBUG
+		}
+
+		client { client() }
+
+		server {
+			server()
+			programArgument '--nogui'
+		}
+
+		gameTestServer {
+			type = 'gameTestServer'
+		}
 	}
 
-	client {}
-
-	server {
-		arguments '--nogui'
-	}
-
-	gameTestServer {
-		arguments '--nogui'
+	mods {
+		"${mod_id}" {
+			sourceSet(sourceSets.main)
+		}
 	}
 }
 
@@ -44,10 +54,6 @@ configurations.all {
 		'org.ow2.asm:asm-tree:9.8',
 		'org.ow2.asm:asm-util:9.8'
 	)
-}
-
-dependencies {
-	implementation "net.neoforged:neoforge:${neoforge_version}"
 }
 
 tasks.named('processResources', ProcessResources).configure {
