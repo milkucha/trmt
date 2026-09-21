@@ -1,0 +1,7 @@
+{
+  "variants": [
+    {"state": "minecraft:eroded_dirt", "model": "trmt:block/eroded_dirt"},
+    {"state": "minecraft:eroded_dirt_2", "model": "trmt:block/eroded_dirt_2"},
+    {"state": "minecraft:eroded_dirt_3", "model": "trmt:block/eroded_dirt_3"}
+  ]
+}

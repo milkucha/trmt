@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:brewing_recipe",
+  "sounds": [
+    {
+      "name": "trmt:potion_brew"
+    }
+  ],
+  "key": "trmt:potion_of_lightness",
+  "ingredients": [
+    {"item": "minecraft:nether_wart"},
+    {"item": "minecraft:feather"}
+  ],
+  "result": {
+    "item": "minecraft:potion",
+    "ingredient": "trmt:potion_of_lightness_effect"
+  }
+}

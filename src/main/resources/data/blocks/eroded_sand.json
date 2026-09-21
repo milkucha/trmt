@@ -1,0 +1,9 @@
+{
+  "variants": [
+    {"state": "minecraft:eroded_sand", "model": "trmt:block/eroded_sand"},
+    {"state": "minecraft:eroded_sand_2", "model": "trmt:block/eroded_sand_2"},
+    {"state": "minecraft:eroded_sand_3", "model": "trmt:block/eroded_sand_3"},
+    {"state": "minecraft:eroded_sand_4", "model": "trmt:block/eroded_sand_4"},
+    {"state": "minecraft:eroded_sand_5", "model": "trmt:block/eroded_sand_5"}
+  ]
+}

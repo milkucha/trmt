@@ -5,11 +5,9 @@
 	"mixins": [
 		"BoneMealItemMixin",
 		"BrushItemMixin",
-		"HoeItemMixin",
 		"MobEntityMixin",
 		"SandBlockMixin",
 		"ServerPlayerEntityMixin",
-		"ShovelItemMixin",
 		"SugarCaneBlockMixin"
 	],
 	"injectors": {

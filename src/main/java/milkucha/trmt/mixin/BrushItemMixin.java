@@ -3,28 +3,25 @@ package milkucha.trmt.mixin;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.ErosionMapManager;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.BrushItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemUsageContext;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BrushItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,71 +32,58 @@ public class BrushItemMixin {
     private static final int BRUSH_TICKS_TO_COMPLETE = 2;
 
     @Shadow
-    private HitResult getHitResult(LivingEntity user) { return null; }
+    private HitResult calculateHitResult(Player player) { return null; }
 
-    // Per-player brush progress on eroded sand. Resets to 0 after each completed cycle
-    // so holding the brush continuously recovers stages one per second.
-    // BrushItem is a singleton so instance fields would be shared — map keyed by UUID instead.
+    // Per-player brush progress on eroded sand. BrushItem is a singleton, so instance fields
+    // would be shared across all players — keep progress in a map keyed by player UUID instead.
     @Unique
     private static final ConcurrentHashMap<UUID, Integer> trmt$brushProgress = new ConcurrentHashMap<>();
 
-    // Each new right-click resets the cycle so releasing and reapplying starts fresh.
-    @Inject(method = "useOnBlock", at = @At("HEAD"))
-    private void trmt$resetProgress(ItemUsageContext context, CallbackInfoReturnable<ActionResult> cir) {
-        PlayerEntity player = context.getPlayer();
-        if (player != null) {
-            trmt$brushProgress.put(player.getUuid(), 0);
-        }
-    }
+    @Inject(method = "onUseTick", at = @At("HEAD"))
+    private void trmt$onBrushTick(Level level, LivingEntity livingEntity, ItemStack itemStack, int ticksRemaining, CallbackInfo ci) {
+        if (level.isClientSide()) return;
+        if (!(livingEntity instanceof Player player)) return;
 
-    @Inject(method = "usageTick", at = @At("HEAD"))
-    private void trmt$onBrushTick(World world, LivingEntity user, ItemStack stack, int remainingUseTicks, CallbackInfo ci) {
-        if (world.isClient()) return;
-        if (!(user instanceof PlayerEntity player)) return;
+        int timeElapsed = 200 - ticksRemaining + 1;
+        if (timeElapsed % 10 != 5) return;
 
-        // Mirror vanilla's brush tick cadence: fires every 10 game ticks.
-        int currentTick = 200 - remainingUseTicks + 1;
-        if (currentTick % 10 != 5) return;
-
-        HitResult hitResult = this.getHitResult(user);
+        HitResult hitResult = this.calculateHitResult(player);
         if (!(hitResult instanceof BlockHitResult blockHitResult) || hitResult.getType() != HitResult.Type.BLOCK) return;
 
         BlockPos pos = blockHitResult.getBlockPos();
-        BlockState state = world.getBlockState(pos);
+        BlockState state = level.getBlockState(pos);
 
-        if (!state.isOf(TRMTBlocks.ERODED_SAND)) {
-            trmt$brushProgress.remove(player.getUuid());
+        if (!state.is(TRMTBlocks.ERODED_SAND)) {
+            trmt$brushProgress.remove(player.getUUID());
             return;
         }
 
-        UUID uuid = player.getUuid();
-        int progress = trmt$brushProgress.getOrDefault(uuid, 0);
-
-        progress++;
+        UUID uuid = player.getUUID();
+        int progress = trmt$brushProgress.getOrDefault(uuid, 0) + 1;
         if (progress < BRUSH_TICKS_TO_COMPLETE) {
             trmt$brushProgress.put(uuid, progress);
             return;
         }
 
-        // 10th brush tick — cycle complete, apply de-erosion.
         ErosionMapManager manager = ErosionMapManager.getInstance();
-        int stage = state.get(ErodedSandBlock.STAGE);
+        int stage = state.getValue(ErodedSandBlock.STAGE);
         if (stage > 0) {
-            boolean keepWaterlogged = stage > 1 && state.get(ErodedSandBlock.WATERLOGGED);
-            world.setBlockState(pos, state.with(ErodedSandBlock.STAGE, stage - 1).with(ErodedSandBlock.WATERLOGGED, keepWaterlogged), Block.NOTIFY_ALL);
+            boolean keepWaterlogged = stage > 1 && state.getValue(ErodedSandBlock.WATERLOGGED);
+            level.setBlock(pos, state.setValue(ErodedSandBlock.STAGE, stage - 1).setValue(ErodedSandBlock.WATERLOGGED, keepWaterlogged), Block.UPDATE_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime());
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, level.getGameTime());
         } else {
-            world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
+            level.setBlock(pos, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
             manager.removeEntry(pos);
         }
 
-        // 1 durability damage, matching vanilla (damage only fires on cycle completion).
-        EquipmentSlot slot = stack.equals(player.getEquippedStack(EquipmentSlot.OFFHAND))
+        EquipmentSlot equippedHand = itemStack.equals(player.getItemBySlot(EquipmentSlot.OFFHAND))
                 ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND;
-        stack.damage(1, player, p -> p.sendEquipmentBreakStatus(slot));
+        itemStack.hurtAndBreak(1, player, equippedHand);
 
-        ((ServerWorld) world).syncWorldEvent(2005, pos, 0);
+        if (level instanceof ServerLevel serverLevel) {
+            serverLevel.levelEvent(2005, pos, 0);
+        }
         trmt$brushProgress.put(uuid, 0);
     }
 }

@@ -1,35 +1,18 @@
 package milkucha.trmt;
 
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.item.Items;
-import net.minecraft.potion.Potion;
-import net.minecraft.potion.Potions;
-import net.minecraft.recipe.BrewingRecipeRegistry;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.util.Identifier;
-
+/**
+ * Manages potion definitions and brewing recipes for TRMT mod.
+ * NOTE: For Minecraft 26.3, all registration must be moved to data components/JSON files.
+ */
 public final class TRMTPotions {
-
-    public static final Potion LIGHTNESS = Registry.register(
-            Registries.POTION,
-            new Identifier("trmt", "lightness"),
-            new Potion("trmt.lightness", new StatusEffectInstance(TRMTEffects.LIGHTNESS, 3600))
-    );
-
-    public static final Potion LONG_LIGHTNESS = Registry.register(
-            Registries.POTION,
-            new Identifier("trmt", "long_lightness"),
-            new Potion("trmt.lightness", new StatusEffectInstance(TRMTEffects.LIGHTNESS, 9600))
-    );
 
     private TRMTPotions() {}
 
+    /**
+     * All potion and brewing recipe registrations are removed from code and must be handled 
+     * entirely through JSON data packs in the 'data' folder for Minecraft 26.3 compatibility.
+     */
     public static void register() {
-        // Awkward Potion + Feather → Potion of Lightness (3 min)
-        BrewingRecipeRegistry.registerPotionRecipe(Potions.AWKWARD, Items.FEATHER, LIGHTNESS);
-        // Potion of Lightness + Redstone → Long Potion of Lightness (8 min)
-        BrewingRecipeRegistry.registerPotionRecipe(LIGHTNESS, Items.REDSTONE, LONG_LIGHTNESS);
-        // Splash conversion (Potion + Gunpowder → Splash Potion) is handled by vanilla globally.
+        // No programmatic registration needed here.
     }
 }

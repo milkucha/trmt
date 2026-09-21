@@ -1,6 +1,6 @@
 package milkucha.trmt.erosion;
 
-import net.minecraft.block.Block;
+import net.minecraft.world.level.block.Block;
 
 /**
  * Holds erosion progress for a single block position inside a chunk.

@@ -1,91 +1,64 @@
 package milkucha.trmt.client.render;
 
-import net.fabricmc.fabric.api.renderer.v1.RendererAccess;
-import net.fabricmc.fabric.api.renderer.v1.material.BlendMode;
-import net.fabricmc.fabric.api.renderer.v1.material.RenderMaterial;
-import net.fabricmc.fabric.api.renderer.v1.render.RenderContext;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.render.model.BakedModel;
-import net.minecraft.client.render.model.BakedQuad;
-import net.minecraft.client.render.model.json.ModelOverrideList;
-import net.minecraft.client.render.model.json.ModelTransformation;
-import net.minecraft.client.texture.Sprite;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.BlockRenderView;
+import net.fabricmc.fabric.api.client.renderer.v1.mesh.QuadEmitter;
+import net.fabricmc.fabric.api.client.renderer.v1.model.FabricBlockStateModel;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+import net.minecraft.client.resources.model.sprite.Material;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.List;
-import java.util.function.Supplier;
+import java.util.function.Predicate;
 
 /**
- * FabricBakedModel wrapper for ErodedGrassBlock block-state models.
- * Applies CUTOUT material to every non-DOWN quad so that transparent pixels in the
- * eroded-top overlay and the grass_block_side_overlay are discarded correctly.
+ * FabricBlockStateModel wrapper for ErodedGrassBlock block-state models.
+ * Applies the CUTOUT chunk layer to every non-DOWN quad so that transparent pixels in
+ * the eroded-top overlay and the grass_block_side_overlay are discarded correctly.
  * Stage texture selection and FACING Y-rotation are already baked into the wrapped
  * model by the block-state system, so this class needs no per-position lookups.
+ *
+ * <p>{@link FabricBlockStateModel} is automatically implemented on every {@link BlockStateModel}
+ * via Mixin interface injection, so {@code emitQuads} below is a valid {@code @Override} even
+ * though this class only declares {@code implements BlockStateModel}.
  */
-public class ErodedGrassBlockModel implements BakedModel {
+public class ErodedGrassBlockModel implements BlockStateModel {
 
-    private final BakedModel wrapped;
-    private static RenderMaterial cutoutMaterial;
+    private final BlockStateModel wrapped;
 
-    private static RenderMaterial cutoutMaterial() {
-        if (cutoutMaterial == null) {
-            cutoutMaterial = RendererAccess.INSTANCE.getRenderer()
-                    .materialFinder()
-                    .blendMode(BlendMode.CUTOUT)
-                    .find();
-        }
-        return cutoutMaterial;
-    }
-
-    public ErodedGrassBlockModel(BakedModel wrapped) {
+    public ErodedGrassBlockModel(BlockStateModel wrapped) {
         this.wrapped = wrapped;
     }
 
     @Override
-    public boolean isVanillaAdapter() { return false; }
+    public void collectParts(RandomSource random, List<BlockStateModelPart> output) {
+        wrapped.collectParts(random, output);
+    }
 
     @Override
-    public void emitBlockQuads(BlockRenderView world, BlockState state, BlockPos pos,
-                               Supplier<net.minecraft.util.math.random.Random> randomSupplier,
-                               RenderContext context) {
-        context.pushTransform(quad -> {
+    public Material.Baked particleMaterial() {
+        return wrapped.particleMaterial();
+    }
+
+    @Override
+    public int materialFlags() {
+        return wrapped.materialFlags();
+    }
+
+    @Override
+    public void emitQuads(QuadEmitter emitter, BlockAndTintGetter level, BlockPos pos, BlockState state,
+                           RandomSource random, Predicate<Direction> cullTest) {
+        emitter.pushTransform(quad -> {
             if (quad.nominalFace() != Direction.DOWN) {
-                quad.material(cutoutMaterial());
+                quad.chunkLayer(ChunkSectionLayer.CUTOUT);
             }
             return true;
         });
-        wrapped.emitBlockQuads(world, state, pos, randomSupplier, context);
-        context.popTransform();
+        ((FabricBlockStateModel) wrapped).emitQuads(emitter, level, pos, state, random, cullTest);
+        emitter.popTransform();
     }
-
-    @Override
-    public void emitItemQuads(ItemStack stack, Supplier<net.minecraft.util.math.random.Random> randomSupplier,
-                               RenderContext context) {
-        wrapped.emitItemQuads(stack, randomSupplier, context);
-    }
-
-    @Override
-    public List<BakedQuad> getQuads(BlockState state, Direction face,
-                                    net.minecraft.util.math.random.Random random) {
-        List<BakedQuad> quads = wrapped.getQuads(state, face, random);
-        // The UP face has two coplanar quads (dirt base + eroded_top overlay).
-        // The break-animation renderer uses getQuads() and bypasses FRAPI/CUTOUT,
-        // causing the two coincident faces to Z-fight and produce white pixels.
-        // Return only the first (dirt base) quad so the damage overlay renders cleanly.
-        if (face == Direction.UP && quads.size() > 1) {
-            return quads.subList(0, 1);
-        }
-        return quads;
-    }
-
-    @Override public boolean useAmbientOcclusion() { return true; }
-    @Override public boolean hasDepth()             { return wrapped.hasDepth(); }
-    @Override public boolean isSideLit()            { return wrapped.isSideLit(); }
-    @Override public boolean isBuiltin()            { return wrapped.isBuiltin(); }
-    @Override public Sprite getParticleSprite()     { return wrapped.getParticleSprite(); }
-    @Override public ModelTransformation getTransformation() { return wrapped.getTransformation(); }
-    @Override public ModelOverrideList getOverrides()        { return wrapped.getOverrides(); }
 }

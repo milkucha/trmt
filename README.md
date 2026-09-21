@@ -4,6 +4,8 @@
 
 # The Roads More Travelled [TRMT]
 
+> **Port status (Minecraft 26.3):** This branch has been ported from 1.20.1 to Minecraft 26.3 (Fabric, Mojang mappings). Core gameplay — erosion, de-erosion, multiplayer sync, bonemeal/brush recovery, block-transformer (hoe/shovel) recovery and the debug HUD — has been verified working in-game. **Potion of Lightness is currently non-functional**: its brewing recipe and effect registration were stubbed out to placeholders during the port pending a rewrite for 26.3's data-driven mob-effect/potion system, and have not been reimplemented yet. See the Roadmap section below.
+
 A dynamic terrain mod that adds a gradual erosion system to the game, slowly transforming the routes you travel more often through into beautiful and realistic (yet still vanilla-friendly!) looking paths. Make your world feel more immersive by etching the story of your explorations onto the landscape.
 
 ## Logic
@@ -65,6 +67,10 @@ Compatible with Xaero's World Map, JourneyMap and VoxelMap. The roads more trave
 </table>
 
 ## FAQ
+_**Is this compatible with the current Minecraft version (26.3)?**_
+
+Yes — this branch has been ported to Minecraft 26.3 on Fabric. All erosion/de-erosion logic, multiplayer sync, bonemeal/brush recovery and hoe/shovel-driven recovery (now implemented via vanilla's data-driven block-transformer system rather than item mixins) have been verified working.
+
 _**Any plans on porting to other mod loaders and platforms?**_
 
 Yes, definitely. NeoForge and Forge support will be included in the next update. When I'm done with those ports I will work on a Paper port and then a Bedrock port.
@@ -98,6 +104,7 @@ _**What happens to the eroded paths if I uninstall the mod?**_
 Eroded blocks can be turned into their vanilla variants by running **/trmt convert-to-vanilla** on loaded chunks. Otherwise they will simply turn into air.
 
 ## Roadmap
+- Re-implement Potion of Lightness for 26.3's data-driven mob-effect/potion system (currently disabled after the port)
 - Port to NeoForge and Forge; Paper; Bedrock
 - Mod compat support: Create Aeronautics, Via Romana, Countered Terrain Slabs
 - Features to be added: more eroded blocks (snow and nether blocks), speed buff on eroded paths, new item to lock eroded/uneroded state

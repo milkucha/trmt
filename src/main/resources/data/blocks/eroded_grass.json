@@ -1,0 +1,6 @@
+{
+  "variants": [
+    {"state": "minecraft:eroded_grass", "model": "trmt:block/eroded_grass"},
+    {"state": "minecraft:eroded_grass_2", "model": "trmt:block/eroded_grass_2"}
+  ]
+}
