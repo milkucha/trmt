@@ -1,9 +1,10 @@
 # Harmony Individual Contributor License Agreement
 
 > **Note on acceptance:** Physical signature is not required. Acceptance of this Agreement is
-> made by posting the statement specified in [CONTRIBUTING.md](CONTRIBUTING.md) as a comment
-> in your pull request. That comment, tied to your verified GitHub identity and timestamped,
-> constitutes your signature for the purposes of this Agreement.
+> made by including the statement specified in [CONTRIBUTING.md](CONTRIBUTING.md) in your pull
+> request, either in its description or as a comment. That statement, posted by you, tied to your
+> verified GitHub identity and timestamped, constitutes your signature for the purposes of this
+> Agreement.
 
 ---
 
