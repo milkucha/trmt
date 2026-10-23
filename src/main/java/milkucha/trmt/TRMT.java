@@ -2,6 +2,7 @@ package milkucha.trmt;
 
 import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.ErosionMapManager;
+import milkucha.trmt.network.HudStatePayload;
 import milkucha.trmt.network.SyncChunkPayload;
 import milkucha.trmt.network.UpdateStagePayload;
 import milkucha.trmt.network.VersionCheckPayload;
@@ -9,12 +10,14 @@ import milkucha.trmt.network.VersionResponsePayload;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -24,6 +27,7 @@ import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +51,7 @@ public class TRMT implements ModInitializer {
 		PayloadTypeRegistry.serverboundConfiguration().register(VersionResponsePayload.ID, VersionResponsePayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(SyncChunkPayload.ID, SyncChunkPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(UpdateStagePayload.ID, UpdateStagePayload.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(HudStatePayload.ID, HudStatePayload.CODEC);
 
 		// During configuration, send our version; client responds with its own version.
 		ServerConfigurationConnectionEvents.CONFIGURE.register((handler, server) -> {
@@ -65,13 +70,24 @@ public class TRMT implements ModInitializer {
 				}
 			});
 
-		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-			ErosionMapManager manager = ErosionMapManager.getInstance();
-			manager.loadState(server);
-			manager.migrateGrassEntries(server);
+		// Load the erosion region files (and migrate the legacy file) while the overworld is created,
+		// i.e. inside initServer() (createLevels), before runServer() starts its tick clock — doing it on
+		// SERVER_STARTED counted the whole load as one long first tick ("Can't keep up!").
+		ServerLevelEvents.LOAD.register((server, world) -> {
+			if (world.dimension() == Level.OVERWORLD) {
+				ErosionMapManager.getInstance().loadState(server);
+			}
 		});
-		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
-				ErosionMapManager.getInstance().sendFullSyncToPlayer(handler.player));
+		// The legacy grass-entry migration places blocks, so it waits until the worlds are fully ready.
+		ServerLifecycleEvents.SERVER_STARTED.register(server ->
+				ErosionMapManager.getInstance().migrateGrassEntries(server));
+		// Per-chunk erosion data is sent when a chunk is sent to a player (ChunkDataSenderMixin),
+		// but only to players whose client reports the debug HUD as on.
+		// Fabric API 0.145 runs play payload handlers on the server thread.
+		ServerPlayNetworking.registerGlobalReceiver(HudStatePayload.ID, (payload, context) ->
+				ErosionMapManager.getInstance().setHudEnabled(context.player(), payload.enabled()));
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
+				ErosionMapManager.getInstance().setHudEnabled(handler.player, false));
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> ErosionMapManager.reset());
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) ->
 				ErosionMapManager.getInstance().removeEntry(pos));

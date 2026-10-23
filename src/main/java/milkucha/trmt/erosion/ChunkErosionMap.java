@@ -60,9 +60,13 @@ public class ChunkErosionMap {
         entries.put(pos.immutable(), entry);
     }
 
-    /** Removes the entry for the given position (e.g. after a block transformation). */
-    public void removeEntry(BlockPos pos) {
-        entries.remove(pos);
+    /**
+     * Removes the entry for the given position (e.g. after a block transformation).
+     *
+     * @return true if an entry was present and removed.
+     */
+    public boolean removeEntry(BlockPos pos) {
+        return entries.remove(pos) != null;
     }
 
     /**

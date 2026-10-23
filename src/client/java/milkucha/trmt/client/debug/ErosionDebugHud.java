@@ -6,7 +6,10 @@ import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.erosion.BlockThresholds;
+import milkucha.trmt.network.HudStatePayload;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.color.block.BlockTintSource;
@@ -56,6 +59,27 @@ public class ErosionDebugHud {
             Identifier.fromNamespaceAndPath("trmt", "erosion_debug_hud"),
             ErosionDebugHud::extractRenderState
         );
+    }
+
+    /**
+     * Turns the HUD on/off at runtime: clears the cache when turning off and tells the server,
+     * which only sends erosion data to HUD-enabled players. Called by the {@code /trmt-hud} client command.
+     */
+    public static void setEnabled(boolean enabled) {
+        TRMTClientConfig.get().debugHud = enabled;
+        if (!enabled) ClientErosionCache.getInstance().clear();
+        // canSend: only if the server registered the hud_state receiver (a server without TRMT, or an
+        // older TRMT, would otherwise just drop an unknown payload; checking keeps it explicit).
+        if (Minecraft.getInstance().getConnection() != null && ClientPlayNetworking.canSend(HudStatePayload.ID)) {
+            ClientPlayNetworking.send(new HudStatePayload(enabled));
+        }
+    }
+
+    /** Sends the HUD state to the server (used on join, when the HUD is enabled in config). */
+    public static void sendHudState(PacketSender sender, boolean enabled) {
+        if (ClientPlayNetworking.canSend(HudStatePayload.ID)) {
+            sender.sendPacket(new HudStatePayload(enabled));
+        }
     }
 
     private static void extractRenderState(GuiGraphicsExtractor context, DeltaTracker tickCounter) {
