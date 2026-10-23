@@ -7,20 +7,24 @@ import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.erosion.BlockThresholds;
+import milkucha.trmt.network.TRMTNetwork;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.Connection;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.network.NetworkDirection;
 
 /**
  * Debug HUD showing a compass-cross of erosion counts centred on the block under the player.
@@ -48,6 +52,28 @@ public class ErosionDebugHud {
     private static final int CELL        = 32;
 
     private ErosionDebugHud() {}
+
+    /**
+     * Turns the HUD on/off at runtime: clears the cache when turning off and tells the server,
+     * which only sends erosion data to HUD-enabled players. Called by the {@code /trmt-hud} client command.
+     */
+    public static void setEnabled(boolean enabled) {
+        TRMTClientConfig.get().debugHud = enabled;
+        if (!enabled) ClientErosionCache.getInstance().clear();
+        ClientPacketListener listener = Minecraft.getInstance().getConnection();
+        if (listener != null) sendHudState(listener.getConnection(), enabled);
+    }
+
+    /**
+     * Sends the HUD state to the server (on login when the HUD is enabled in config, and on /trmt-hud).
+     * Only if the server has the trmt:main channel (a server without TRMT has not; an older TRMT server
+     * would just log an unknown discriminator, see TRMTNetwork.register).
+     */
+    public static void sendHudState(Connection connection, boolean enabled) {
+        if (connection != null && TRMTNetwork.CHANNEL.isRemotePresent(connection)) {
+            TRMTNetwork.CHANNEL.sendTo(new TRMTNetwork.HudStateMessage(enabled), connection, NetworkDirection.PLAY_TO_SERVER);
+        }
+    }
 
     public static void render(GuiGraphics guiGraphics) {
         if (!TRMTClientConfig.get().debugHud) return;

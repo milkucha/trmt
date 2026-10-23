@@ -2,11 +2,11 @@ package milkucha.trmt.network;
 
 import milkucha.trmt.TRMTForge;
 import milkucha.trmt.client.network.ClientErosionCache;
+import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraftforge.fml.ModList;
@@ -50,6 +50,10 @@ public final class TRMTNetwork {
         CHANNEL.registerMessage(id++, VersionResponseMessage.class,
                 VersionResponseMessage::encode, VersionResponseMessage::decode, VersionResponseMessage::handle,
                 Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        // C2S: the client's debug HUD state. Appended last so the existing discriminators (0-3) are unchanged.
+        CHANNEL.registerMessage(id++, HudStateMessage.class,
+                HudStateMessage::encode, HudStateMessage::decode, HudStateMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
     }
 
     public static void sendVersionCheck(ServerPlayer player) {
@@ -84,15 +88,15 @@ public final class TRMTNetwork {
         return result;
     }
 
+    /** Sends one chunk's erosion data. Only called for HUD-enabled players (whose client sent hud_state). */
     public static void sendSyncChunk(ServerPlayer player, int chunkX, int chunkZ, List<SyncChunkMessage.Entry> entries) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncChunkMessage(chunkX, chunkZ, entries));
     }
 
-    public static void broadcastUpdateStage(MinecraftServer server, BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {
-        UpdateStageMessage msg = new UpdateStageMessage(pos, stage, walkedOnCount, threshold, lastTouchedGameTime);
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), msg);
-        }
+    /** Sends a single-block stage update to one (HUD-enabled) player. */
+    public static void sendUpdateStage(ServerPlayer player, BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                new UpdateStageMessage(pos, stage, walkedOnCount, threshold, lastTouchedGameTime));
     }
 
     // ── SyncChunkMessage ──────────────────────────────────────────────────
@@ -250,6 +254,36 @@ public final class TRMTNetwork {
                     player.connection.disconnect(
                             Component.translatable("trmt.disconnect.outdated", msg.clientVersion, serverVer));
                 }
+            });
+            ctx.setPacketHandled(true);
+        }
+    }
+
+    // ── HudStateMessage ───────────────────────────────────────────────────
+    // Client → server: the client's debug HUD state. The server only sends erosion sync while it is on.
+
+    public static class HudStateMessage {
+        final boolean enabled;
+
+        public HudStateMessage(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        static void encode(HudStateMessage msg, FriendlyByteBuf buf) {
+            buf.writeBoolean(msg.enabled);
+        }
+
+        static HudStateMessage decode(FriendlyByteBuf buf) {
+            return new HudStateMessage(buf.readBoolean());
+        }
+
+        static void handle(HudStateMessage msg, Supplier<NetworkEvent.Context> ctxSupplier) {
+            NetworkEvent.Context ctx = ctxSupplier.get();
+            // Forge runs SimpleChannel handlers on the netty thread; the HUD set and chunk lookups need the server thread.
+            ctx.enqueueWork(() -> {
+                ServerPlayer player = ctx.getSender();
+                if (player == null) return;
+                ErosionMapManager.getInstance().setHudEnabled(player, msg.enabled);
             });
             ctx.setPacketHandled(true);
         }

@@ -12,6 +12,10 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/**
+ * Client-only configuration loaded from {@code config/trmt-client.json}.
+ * Edit the JSON file and restart the game to apply changes ({@code debugHud} can also be set in-game with {@code /trmt-hud}).
+ */
 @OnlyIn(Dist.CLIENT)
 public final class TRMTClientConfig {
 
@@ -46,7 +50,7 @@ public final class TRMTClientConfig {
         save();
     }
 
-    private static void save() {
+    public static void save() {
         Path path = configPath();
         try {
             Files.createDirectories(path.getParent());
