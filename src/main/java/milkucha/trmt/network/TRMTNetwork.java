@@ -2,13 +2,13 @@ package milkucha.trmt.network;
 
 import milkucha.trmt.TRMTNeoForge;
 import milkucha.trmt.client.network.ClientErosionCache;
+import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.neoforged.bus.api.IEventBus;
@@ -49,6 +49,15 @@ public final class TRMTNetwork {
                         ClientErosionCache.getInstance().setEntry(
                                 payload.pos(), payload.stage(), payload.walkedOnCount(),
                                 payload.threshold(), payload.lastTouchedGameTime())));
+        // C2S: the client's debug HUD state. The registrar is optional(), so neither side requires the channel;
+        // the client only sends it when connection.hasChannel(HudStatePayload.TYPE) (see ErosionDebugHud).
+        // Default HandlerThread.MAIN: the handler already runs on the server thread.
+        registrar.playToServer(HudStatePayload.TYPE, HudStatePayload.STREAM_CODEC,
+                (payload, ctx) -> {
+                    if (ctx.player() instanceof ServerPlayer player) {
+                        ErosionMapManager.getInstance().setHudEnabled(player, payload.enabled());
+                    }
+                });
         registrar.playToClient(VersionCheckPayload.TYPE, VersionCheckPayload.STREAM_CODEC,
                 (payload, ctx) -> {
                     String clientVer = getModVersion();
@@ -71,15 +80,22 @@ public final class TRMTNetwork {
         PacketDistributor.sendToPlayer(player, new VersionCheckPayload(getModVersion()));
     }
 
+    /**
+     * Sends one chunk's erosion data. Only called for HUD-enabled players (whose client sent hud_state, so it
+     * has the channel); the hasChannel guard is a safety net: NeoForge's send() throws for a missing channel.
+     */
     public static void sendSyncChunk(ServerPlayer player, int chunkX, int chunkZ, List<SyncChunkMessage.Entry> entries) {
+        if (!player.connection.hasChannel(SyncChunkPayload.TYPE)) return;
         Map<BlockPos, SyncChunkMessage.Entry> entryMap = new HashMap<>(entries.size());
         for (SyncChunkMessage.Entry e : entries) entryMap.put(e.pos(), e);
         PacketDistributor.sendToPlayer(player, new SyncChunkPayload(chunkX, chunkZ, entryMap));
     }
 
-    public static void broadcastUpdateStage(MinecraftServer server, BlockPos pos, int stage,
-                                             float walkedOnCount, float threshold, long lastTouchedGameTime) {
-        PacketDistributor.sendToAllPlayers(new UpdateStagePayload(pos, stage, walkedOnCount, threshold, lastTouchedGameTime));
+    /** Sends a single-block stage update to one (HUD-enabled) player. */
+    public static void sendUpdateStage(ServerPlayer player, BlockPos pos, int stage,
+                                       float walkedOnCount, float threshold, long lastTouchedGameTime) {
+        if (!player.connection.hasChannel(UpdateStagePayload.TYPE)) return;
+        PacketDistributor.sendToPlayer(player, new UpdateStagePayload(pos, stage, walkedOnCount, threshold, lastTouchedGameTime));
     }
 
     static String getModVersion() {
@@ -157,6 +173,17 @@ public final class TRMTNetwork {
                     buf.writeFloat(p.threshold); buf.writeLong(p.lastTouchedGameTime);
                 },
                 buf -> new UpdateStagePayload(buf.readBlockPos(), buf.readInt(), buf.readFloat(), buf.readFloat(), buf.readLong())
+        );
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    /** C2S: the client's debug HUD state. The server only sends erosion sync while it is on. */
+    public record HudStatePayload(boolean enabled) implements CustomPacketPayload {
+        public static final Type<HudStatePayload> TYPE =
+                new Type<>(Identifier.fromNamespaceAndPath("trmt", "hud_state"));
+        static final StreamCodec<RegistryFriendlyByteBuf, HudStatePayload> STREAM_CODEC = StreamCodec.of(
+                (buf, p) -> buf.writeBoolean(p.enabled),
+                buf -> new HudStatePayload(buf.readBoolean())
         );
         @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }

@@ -66,6 +66,11 @@ public final class ClientErosionCache {
         }
     }
 
+    /** Drops all data for a chunk (called when the chunk loads or unloads on the client). */
+    public void clearChunk(ChunkPos chunkPos) {
+        chunks.remove(chunkPos);
+    }
+
     public void clear() {
         chunks.clear();
     }
