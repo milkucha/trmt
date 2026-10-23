@@ -25,6 +25,8 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.level.ChunkWatchEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
@@ -42,11 +44,46 @@ public class TRMTNeoForgeEvents {
         builder.addMix(TRMTPotions.LIGHTNESS, Items.REDSTONE, TRMTPotions.LONG_LIGHTNESS);
     }
 
+    /**
+     * Load the erosion region files (and migrate the legacy file) while the overworld is created:
+     * MinecraftServer.createLevels posts LevelEvent.Load for the overworld right after putting it in the
+     * level map, inside loadLevel() and before runServer() starts ticking (same point as home's
+     * ServerWorldEvents.LOAD). ClientLevel also posts LevelEvent.Load, hence the ServerLevel check.
+     */
+    @SubscribeEvent
+    public static void onLevelLoad(LevelEvent.Load event) {
+        if (event.getLevel() instanceof ServerLevel level && level.dimension() == Level.OVERWORLD) {
+            ErosionMapManager.getInstance().loadState(level.getServer());
+        }
+    }
+
+    /**
+     * ServerLevel.save posts LevelEvent.Save inside its {@code if (!noSave)} block (next to saveLevelData),
+     * so it runs on autosave, /save-all and stop, but not under /save-off (stopServer clears noSave first).
+     * Same semantics as home's ServerWorld.saveLevel mixin; no mixin needed on NeoForge.
+     */
+    @SubscribeEvent
+    public static void onLevelSave(LevelEvent.Save event) {
+        if (event.getLevel() instanceof ServerLevel level) {
+            ErosionMapManager.getInstance().onWorldSave(level);
+        }
+    }
+
+    /** The legacy grass-entry migration places blocks, so it waits until the levels are fully ready. */
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
-        ErosionMapManager manager = ErosionMapManager.getInstance();
-        manager.loadState(event.getServer());
-        manager.migrateGrassEntries(event.getServer());
+        ErosionMapManager.getInstance().migrateGrassEntries(event.getServer());
+    }
+
+    /**
+     * Per-chunk erosion data, only for players whose client reports the debug HUD as on.
+     * ChunkWatchEvent.Sent is posted at the end of PlayerChunkSender.sendChunk, right after the
+     * ClientboundLevelChunkWithLightPacket, so our payload reaches the client after the chunk
+     * (ChunkWatchEvent.Watch fires at queue time, before the chunk is sent, and must not be used).
+     */
+    @SubscribeEvent
+    public static void onChunkSent(ChunkWatchEvent.Sent event) {
+        ErosionMapManager.getInstance().sendChunkSyncToPlayer(event.getPlayer(), event.getPos());
     }
 
     @SubscribeEvent
@@ -57,8 +94,14 @@ public class TRMTNeoForgeEvents {
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            ErosionMapManager.getInstance().sendFullSyncToPlayer(player);
             TRMTNetwork.sendVersionCheck(player);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            ErosionMapManager.getInstance().setHudEnabled(player, false);
         }
     }
 

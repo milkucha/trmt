@@ -7,7 +7,9 @@ import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.erosion.BlockThresholds;
+import milkucha.trmt.network.TRMTNetwork;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -48,6 +50,27 @@ public class ErosionDebugHud {
     private static final int CELL        = 32;
 
     private ErosionDebugHud() {}
+
+    /**
+     * Turns the HUD on/off at runtime: clears the cache when turning off and tells the server,
+     * which only sends erosion data to HUD-enabled players. Called by the {@code /trmt-hud} client command.
+     */
+    public static void setEnabled(boolean enabled) {
+        TRMTClientConfig.get().debugHud = enabled;
+        if (!enabled) ClientErosionCache.getInstance().clear();
+        sendHudState(Minecraft.getInstance().getConnection(), enabled);
+    }
+
+    /**
+     * Sends the HUD state to the server (on login when the HUD is enabled in config, and on /trmt-hud).
+     * hasChannel: only if the server registered hud_state (a server without TRMT, or an older TRMT,
+     * lacks it; NeoForge's send() throws UnsupportedOperationException for an unnegotiated channel).
+     */
+    public static void sendHudState(ClientPacketListener connection, boolean enabled) {
+        if (connection != null && connection.hasChannel(TRMTNetwork.HudStatePayload.TYPE)) {
+            connection.send(new TRMTNetwork.HudStatePayload(enabled));
+        }
+    }
 
     public static void render(GuiGraphics guiGraphics) {
         if (!TRMTClientConfig.get().debugHud) return;
