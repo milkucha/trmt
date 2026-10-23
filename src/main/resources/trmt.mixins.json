@@ -5,10 +5,12 @@
 	"mixins": [
 		"BoneMealItemMixin",
 		"BrushItemMixin",
+		"ChunkDataSenderMixin",
 		"HoeItemMixin",
 		"MobEntityMixin",
 		"SandBlockMixin",
 		"ServerPlayerEntityMixin",
+		"ServerWorldMixin",
 		"ShovelItemMixin",
 		"SugarCaneBlockMixin"
 	],
