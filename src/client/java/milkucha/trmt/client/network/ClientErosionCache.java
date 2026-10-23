@@ -54,7 +54,7 @@ public final class ClientErosionCache {
         return chunk.get(pos);
     }
 
-    /** Replaces all data for a chunk (received on join). */
+    /** Replaces all data for a chunk (received when the chunk is sent to this client). */
     public void setChunk(ChunkPos chunkPos, Map<BlockPos, Entry> chunkEntries) {
         if (chunkEntries.isEmpty()) {
             chunks.remove(chunkPos);
@@ -79,6 +79,11 @@ public final class ClientErosionCache {
             chunks.computeIfAbsent(chunkPos, k -> new ConcurrentHashMap<>())
                   .put(pos.toImmutable(), new Entry(stage, walkedOnCount, threshold, lastTouchedGameTime));
         }
+    }
+
+    /** Drops all data for a chunk (called when the chunk loads or unloads on the client). */
+    public void clearChunk(ChunkPos chunkPos) {
+        chunks.remove(chunkPos);
     }
 
     /** Clears all cached data (called on server disconnect). */

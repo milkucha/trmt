@@ -7,7 +7,11 @@ import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.erosion.BlockThresholds;
+import milkucha.trmt.network.TRMTPackets;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
@@ -17,6 +21,7 @@ import net.minecraft.client.render.model.BakedModel;
 import net.minecraft.client.render.model.BakedQuad;
 import net.minecraft.client.texture.Sprite;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.random.Random;
@@ -48,6 +53,27 @@ public class ErosionDebugHud {
 
     public static void register() {
         HudRenderCallback.EVENT.register(ErosionDebugHud::render);
+    }
+
+    /**
+     * Turns the HUD on/off at runtime: clears the cache when turning off and tells the server,
+     * which only sends erosion data to HUD-enabled players. Called by the {@code /trmt-hud} client command.
+     */
+    public static void setEnabled(boolean enabled) {
+        TRMTClientConfig.get().debugHud = enabled;
+        if (!enabled) ClientErosionCache.getInstance().clear();
+        if (MinecraftClient.getInstance().getNetworkHandler() != null) {
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeBoolean(enabled);
+            ClientPlayNetworking.send(TRMTPackets.HUD_STATE, buf);
+        }
+    }
+
+    /** Sends the HUD state to the server (used on join, when the HUD is enabled in config). */
+    public static void sendHudState(PacketSender sender, boolean enabled) {
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeBoolean(enabled);
+        sender.sendPacket(TRMTPackets.HUD_STATE, buf);
     }
 
     private static void render(DrawContext context, float tickDelta) {

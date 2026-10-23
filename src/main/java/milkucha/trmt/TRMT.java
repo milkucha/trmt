@@ -5,6 +5,7 @@ import milkucha.trmt.network.TRMTPackets;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.item.BlockItem;
@@ -14,6 +15,7 @@ import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.command.CommandManager;
@@ -41,15 +43,25 @@ public class TRMT implements ModInitializer {
 		TRMTEffects.register();
 		TRMTPotions.register();
 		TRMTBlocks.register();
-		// Load (or create) persistent erosion state once the server and its worlds are ready.
-		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-			ErosionMapManager manager = ErosionMapManager.getInstance();
-			manager.loadState(server);
-			manager.migrateGrassEntries(server);
+		// Load the erosion region files (and migrate the legacy file) while the overworld is created,
+		// i.e. inside setupServer(), before runServer() starts its tick clock — doing it on SERVER_STARTED
+		// counted the whole load as one long first tick ("Can't keep up!").
+		ServerWorldEvents.LOAD.register((server, world) -> {
+			if (world.getRegistryKey() == World.OVERWORLD) {
+				ErosionMapManager.getInstance().loadState(server);
+			}
 		});
-		// Send full erosion data to each player when they join (covers existing erosion they'd otherwise miss).
-		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
-				ErosionMapManager.getInstance().sendFullSyncToPlayer(handler.player));
+		// The legacy grass-entry migration places blocks, so it waits until the worlds are fully ready.
+		ServerLifecycleEvents.SERVER_STARTED.register(server ->
+				ErosionMapManager.getInstance().migrateGrassEntries(server));
+		// Per-chunk erosion data is sent when a player starts watching a chunk (ThreadedAnvilChunkStorageMixin),
+		// but only to players whose client reports the debug HUD as on.
+		ServerPlayNetworking.registerGlobalReceiver(TRMTPackets.HUD_STATE, (server, player, handler, buf, responseSender) -> {
+			boolean enabled = buf.readBoolean();
+			server.execute(() -> ErosionMapManager.getInstance().setHudEnabled(player, enabled));
+		});
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
+				ErosionMapManager.getInstance().setHudEnabled(handler.player, false));
 		// Reset the erosion manager when the server stops so state does not bleed between sessions.
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> ErosionMapManager.reset());
 // Clear the erosion entry when any block is broken so a freshly placed block always starts from zero.

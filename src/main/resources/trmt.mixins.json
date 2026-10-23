@@ -9,8 +9,10 @@
 		"MobEntityMixin",
 		"SandBlockMixin",
 		"ServerPlayerEntityMixin",
+		"ServerWorldMixin",
 		"ShovelItemMixin",
-		"SugarCaneBlockMixin"
+		"SugarCaneBlockMixin",
+		"ThreadedAnvilChunkStorageMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

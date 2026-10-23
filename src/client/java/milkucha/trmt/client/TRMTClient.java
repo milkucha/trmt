@@ -8,6 +8,10 @@ import milkucha.trmt.client.render.ErodedGrassBlockModels;
 import milkucha.trmt.network.TRMTPackets;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientLoginNetworking;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.item.BlockItem;
@@ -21,6 +25,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.color.world.BiomeColors;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.network.PacketByteBuf;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 
@@ -73,7 +78,14 @@ public class TRMTClient implements ClientModInitializer {
 		);
 		ErosionDebugHud.register();
 
-		// Full chunk sync received on join.
+		// /trmt-hud: toggles the client-side debug HUD, saved to trmt-client.json.
+		// Separate root from the server's /trmt: Fabric runs a client command whenever its root matches and
+		// only forwards unknown roots to the server, so a client /trmt would swallow /trmt convert-to-vanilla etc.
+		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
+				dispatcher.register(ClientCommandManager.literal("trmt-hud")
+						.executes(ctx -> setHud(ctx.getSource(), !TRMTClientConfig.get().debugHud))));
+
+		// Full erosion data for one chunk, sent by the server right after the chunk itself.
 		ClientPlayNetworking.registerGlobalReceiver(TRMTPackets.SYNC_CHUNK, (client, handler, buf, responseSender) -> {
 			int chunkX = buf.readInt();
 			int chunkZ = buf.readInt();
@@ -103,8 +115,27 @@ public class TRMTClient implements ClientModInitializer {
 			);
 		});
 
+		// Tell the server the HUD is on so it starts sending erosion data (nothing is sent while it is off).
+		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+			if (TRMTClientConfig.get().debugHud) ErosionDebugHud.sendHudState(sender, true);
+		});
+
+		// Drop a chunk's cached entries whenever it (re)loads or unloads, so re-watching a chunk never shows
+		// stale data. The server only sends SYNC_CHUNK for chunks that have data, right after the chunk packet.
+		ClientChunkEvents.CHUNK_LOAD.register((world, chunk) ->
+				ClientErosionCache.getInstance().clearChunk(chunk.getPos()));
+		ClientChunkEvents.CHUNK_UNLOAD.register((world, chunk) ->
+				ClientErosionCache.getInstance().clearChunk(chunk.getPos()));
+
 		// Clear cached stages when disconnecting so stale data never leaks into the next session.
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
 				ClientErosionCache.getInstance().clear());
+	}
+
+	private static int setHud(FabricClientCommandSource source, boolean enabled) {
+		ErosionDebugHud.setEnabled(enabled);
+		TRMTClientConfig.save();
+		source.sendFeedback(Text.literal("[TRMT] Debug HUD " + (enabled ? "on." : "off.")));
+		return 1;
 	}
 }
