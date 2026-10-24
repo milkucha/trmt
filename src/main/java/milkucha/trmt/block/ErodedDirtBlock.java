@@ -62,12 +62,12 @@ public class ErodedDirtBlock extends Block {
                 ? Blocks.COARSE_DIRT.getDefaultState()
                 : Blocks.DIRT.getDefaultState();
         world.setBlockState(pos, revertTo, Block.NOTIFY_ALL);
-        ErosionMapManager.getInstance().removeEntry(pos);
+        ErosionMapManager.get(world).removeEntry(pos);
     }
 
     @Override
     public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
-        ErosionMapManager manager = ErosionMapManager.getInstance();
+        ErosionMapManager manager = ErosionMapManager.get(world);
         if (world.getBlockState(pos.up()).isOpaque()) {
             BlockState revertTo = state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)
                     ? Blocks.COARSE_DIRT.getDefaultState()

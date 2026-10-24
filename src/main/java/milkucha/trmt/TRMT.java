@@ -24,7 +24,6 @@ import net.minecraft.text.ClickEvent;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.World;
 import net.minecraft.world.chunk.ChunkStatus;
 
 import java.util.ArrayList;
@@ -43,30 +42,26 @@ public class TRMT implements ModInitializer {
 		TRMTEffects.register();
 		TRMTPotions.register();
 		TRMTBlocks.register();
-		// Load the erosion region files (and migrate the legacy file) while the overworld is created,
-		// i.e. inside setupServer(), before runServer() starts its tick clock — doing it on SERVER_STARTED
-		// counted the whole load as one long first tick ("Can't keep up!").
-		ServerWorldEvents.LOAD.register((server, world) -> {
-			if (world.getRegistryKey() == World.OVERWORLD) {
-				ErosionMapManager.getInstance().loadState(server);
-			}
-		});
+		// Load each dimension's erosion region files (the overworld also migrates the legacy file) while
+		// that world is created, i.e. inside setupServer(), before runServer() starts its tick clock — doing
+		// it on SERVER_STARTED counted the whole load as one long first tick ("Can't keep up!").
+		ServerWorldEvents.LOAD.register((server, world) -> ErosionMapManager.loadState(world));
 		// The legacy grass-entry migration places blocks, so it waits until the worlds are fully ready.
 		ServerLifecycleEvents.SERVER_STARTED.register(server ->
-				ErosionMapManager.getInstance().migrateGrassEntries(server));
+				ErosionMapManager.migrateGrassEntries(server));
 		// Per-chunk erosion data is sent when a player starts watching a chunk (ThreadedAnvilChunkStorageMixin),
 		// but only to players whose client reports the debug HUD as on.
 		ServerPlayNetworking.registerGlobalReceiver(TRMTPackets.HUD_STATE, (server, player, handler, buf, responseSender) -> {
 			boolean enabled = buf.readBoolean();
-			server.execute(() -> ErosionMapManager.getInstance().setHudEnabled(player, enabled));
+			server.execute(() -> ErosionMapManager.setHudEnabled(player, enabled));
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
-				ErosionMapManager.getInstance().setHudEnabled(handler.player, false));
+				ErosionMapManager.setHudEnabled(handler.player, false));
 		// Reset the erosion manager when the server stops so state does not bleed between sessions.
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> ErosionMapManager.reset());
 // Clear the erosion entry when any block is broken so a freshly placed block always starts from zero.
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) ->
-				ErosionMapManager.getInstance().removeEntry(pos));
+				ErosionMapManager.get(world).removeEntry(pos));
 
 		// Prevent blocks from being placed above sunken eroded sand (stages 1-4) from any angle.
 		// Stage 0 is full-height and has no visual glitch, so it is not restricted.
@@ -121,51 +116,61 @@ public class TRMT implements ModInitializer {
 								})
 								.then(CommandManager.literal("confirm")
 										.executes(ctx -> {
-											ErosionMapManager.getInstance().convertAllErodedToVanilla(ctx.getSource().getServer());
+											ErosionMapManager.convertAllErodedToVanilla(ctx.getSource().getServer());
 											ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] All eroded blocks in loaded chunks converted to their vanilla counterparts."), true);
 											return 1;
 										})))
 						.then(CommandManager.literal("eroded-chunks")
 								.requires(src -> src.hasPermissionLevel(2))
 								.executes(ctx -> {
-									ServerWorld overworld = ctx.getSource().getServer().getWorld(World.OVERWORLD);
-									Set<ChunkPos> allChunks = ErosionMapManager.getInstance().getErodedChunkPositions();
+									// Each dimension has its own erosion data; report each one with its own loaded-chunk check.
+									boolean any = false;
+									for (ServerWorld world : ctx.getSource().getServer().getWorlds()) {
+										Set<ChunkPos> allChunks = ErosionMapManager.get(world).getErodedChunkPositions();
+										if (allChunks.isEmpty()) continue;
+										any = true;
+										String dim = world.getRegistryKey().getValue().toString();
 
-									List<ChunkPos> unloaded = new ArrayList<>();
-									int loadedCount = 0;
-									for (ChunkPos cp : allChunks) {
-										if (overworld.getChunk(cp.x, cp.z, ChunkStatus.FULL, false) != null) {
-											loadedCount++;
+										List<ChunkPos> unloaded = new ArrayList<>();
+										int loadedCount = 0;
+										for (ChunkPos cp : allChunks) {
+											if (world.getChunk(cp.x, cp.z, ChunkStatus.FULL, false) != null) {
+												loadedCount++;
+											} else {
+												unloaded.add(cp);
+											}
+										}
+
+										int total = allChunks.size();
+										int unloadedCount = unloaded.size();
+										int loadedFinal = loadedCount;
+										ctx.getSource().sendFeedback(() -> Text.literal(
+												"[TRMT] Eroded chunks in " + dim + ": " + total + " chunk(s) total — " + loadedFinal + " loaded, " + unloadedCount + " unloaded."), false);
+
+										if (unloaded.isEmpty()) {
+											ctx.getSource().sendFeedback(() -> Text.literal(
+													"[TRMT] All eroded chunks in " + dim + " are currently loaded."), false);
 										} else {
-											unloaded.add(cp);
+											LOGGER.info("[TRMT] Unloaded chunks with erosion data in {} ({}):", dim, unloadedCount);
+											for (ChunkPos cp : unloaded) {
+												LOGGER.info("[TRMT]   {} {}", cp.getStartX(), cp.getStartZ());
+											}
+											if (unloadedCount <= 20) {
+												ctx.getSource().sendFeedback(() -> Text.literal(
+														"[TRMT] Unloaded chunk coordinates in " + dim + ":"), false);
+												for (ChunkPos cp : unloaded) {
+													int bx = cp.getStartX(), bz = cp.getStartZ();
+													ctx.getSource().sendFeedback(() -> Text.literal("  " + bx + " " + bz), false);
+												}
+											} else {
+												ctx.getSource().sendFeedback(() -> Text.literal(
+														"[TRMT] " + unloadedCount + " unloaded chunks in " + dim + " — full list printed to server console."), false);
+											}
 										}
 									}
-
-									int total = allChunks.size();
-									int unloadedCount = unloaded.size();
-									int loadedFinal = loadedCount;
-									ctx.getSource().sendFeedback(() -> Text.literal(
-											"[TRMT] Eroded chunks: " + total + " chunk(s) total — " + loadedFinal + " loaded, " + unloadedCount + " unloaded."), false);
-
-									if (unloaded.isEmpty()) {
+									if (!any) {
 										ctx.getSource().sendFeedback(() -> Text.literal(
-												"[TRMT] All eroded chunks are currently loaded."), false);
-									} else {
-										LOGGER.info("[TRMT] Unloaded chunks with erosion data ({}):", unloadedCount);
-										for (ChunkPos cp : unloaded) {
-											LOGGER.info("[TRMT]   {} {}", cp.getStartX(), cp.getStartZ());
-										}
-										if (unloadedCount <= 20) {
-											ctx.getSource().sendFeedback(() -> Text.literal(
-													"[TRMT] Unloaded chunk coordinates:"), false);
-											for (ChunkPos cp : unloaded) {
-												int bx = cp.getStartX(), bz = cp.getStartZ();
-												ctx.getSource().sendFeedback(() -> Text.literal("  " + bx + " " + bz), false);
-											}
-										} else {
-											ctx.getSource().sendFeedback(() -> Text.literal(
-													"[TRMT] " + unloadedCount + " unloaded chunks — full list printed to server console."), false);
-										}
+												"[TRMT] Eroded chunks: 0 chunk(s) total."), false);
 									}
 									return 1;
 								}))));
