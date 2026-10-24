@@ -1,10 +1,12 @@
 package milkucha.trmt;
 
 import milkucha.trmt.erosion.ErosionMapManager;
+import milkucha.trmt.erosion.VanillaConversion;
 import milkucha.trmt.network.TRMTPackets;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
@@ -20,9 +22,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.ClickEvent;
 import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.chunk.ChunkStatus;
 
@@ -59,6 +59,9 @@ public class TRMT implements ModInitializer {
 				ErosionMapManager.setHudEnabled(handler.player, false));
 		// Reset the erosion manager when the server stops so state does not bleed between sessions.
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> ErosionMapManager.reset());
+		// /trmt convert-to-vanilla runs a few ms per tick; a server stop ends the run and releases its tickets.
+		ServerTickEvents.END_SERVER_TICK.register(VanillaConversion::onServerTick);
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> VanillaConversion.onServerStopping());
 // Clear the erosion entry when any block is broken so a freshly placed block always starts from zero.
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) ->
 				ErosionMapManager.get(world).removeEntry(pos));
@@ -96,6 +99,19 @@ public class TRMT implements ModInitializer {
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
 				dispatcher.register(CommandManager.literal("trmt")
+						// The root has no permission requirement but every subcommand needs level 2, so without
+						// it /trmt is all a player sees (GH #43: singleplayer with cheats off). Say why.
+						.executes(ctx -> {
+							if (ctx.getSource().hasPermissionLevel(2)) {
+								ctx.getSource().sendFeedback(() -> Text.literal(
+										"[TRMT] Commands: /trmt reloadconfig, /trmt convert-to-vanilla [full], /trmt eroded-chunks"), false);
+							} else {
+								ctx.getSource().sendFeedback(() -> Text.literal(
+										"[TRMT] The /trmt commands need operator permission (cheats). In singleplayer, enable cheats "
+										+ "when creating the world, or use Open to LAN with Allow Cheats: ON, then run the command again."), false);
+							}
+							return 1;
+						})
 						.then(CommandManager.literal("reloadconfig")
 								.requires(src -> src.hasPermissionLevel(2))
 								.executes(ctx -> {
@@ -103,23 +119,18 @@ public class TRMT implements ModInitializer {
 									ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] Config reloaded."), true);
 									return 1;
 								}))
+						// Converts every TRMT block in the world in the background (VanillaConversion, B3).
 						.then(CommandManager.literal("convert-to-vanilla")
 								.requires(src -> src.hasPermissionLevel(2))
-								.executes(ctx -> {
-									ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] WARNING: This will convert all existing eroded blocks in all currently loaded chunks to their vanilla counterparts. This cannot be undone. ")
-											.append(Text.literal("[Click to confirm]")
-													.styled(s -> s
-															.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/trmt convert-to-vanilla confirm"))
-															.withFormatting(Formatting.YELLOW)
-															.withUnderline(true))), false);
-									return 1;
-								})
+								.executes(ctx -> { VanillaConversion.preview(ctx.getSource(), false); return 1; })
 								.then(CommandManager.literal("confirm")
-										.executes(ctx -> {
-											ErosionMapManager.convertAllErodedToVanilla(ctx.getSource().getServer());
-											ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] All eroded blocks in loaded chunks converted to their vanilla counterparts."), true);
-											return 1;
-										})))
+										.executes(ctx -> { VanillaConversion.start(ctx.getSource(), false); return 1; }))
+								.then(CommandManager.literal("full")
+										.executes(ctx -> { VanillaConversion.preview(ctx.getSource(), true); return 1; })
+										.then(CommandManager.literal("confirm")
+												.executes(ctx -> { VanillaConversion.start(ctx.getSource(), true); return 1; })))
+								.then(CommandManager.literal("cancel")
+										.executes(ctx -> { VanillaConversion.cancel(ctx.getSource()); return 1; })))
 						.then(CommandManager.literal("eroded-chunks")
 								.requires(src -> src.hasPermissionLevel(2))
 								.executes(ctx -> {

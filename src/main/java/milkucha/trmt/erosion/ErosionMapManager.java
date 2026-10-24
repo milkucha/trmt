@@ -18,7 +18,9 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
-import net.minecraft.world.chunk.ChunkStatus;
+import net.minecraft.util.math.ChunkSectionPos;
+import net.minecraft.world.chunk.ChunkSection;
+import net.minecraft.world.chunk.WorldChunk;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -282,55 +284,59 @@ public class ErosionMapManager {
     }
 
     /**
-     * Converts all eroded blocks in all currently loaded chunks to their vanilla counterparts,
-     * unconditionally. Intended for use before uninstalling the mod.
+     * Every TRMT block and the vanilla block {@code /trmt convert-to-vanilla} replaces it with.
+     * A new TRMT block must be added here, or the command leaves it in the world.
      */
-    public static void convertAllErodedToVanilla(MinecraftServer server) {
-        int viewDistance = server.getPlayerManager().getViewDistance();
-        for (ServerWorld world : server.getWorlds()) {
-            Set<ChunkPos> scanned = new HashSet<>();
-            for (ServerPlayerEntity player : world.getPlayers()) {
-                ChunkPos playerChunk = player.getChunkPos();
-                for (int dx = -viewDistance; dx <= viewDistance; dx++) {
-                    for (int dz = -viewDistance; dz <= viewDistance; dz++) {
-                        ChunkPos cp = new ChunkPos(playerChunk.x + dx, playerChunk.z + dz);
-                        if (scanned.add(cp) && world.getChunk(cp.x, cp.z, ChunkStatus.FULL, false) != null) {
-                            get(world).convertChunkToVanilla(world, cp);
-                        }
+    public static final Map<Block, Block> VANILLA_EQUIVALENTS = Map.of(
+            TRMTBlocks.ERODED_GRASS_BLOCK, Blocks.GRASS_BLOCK,
+            TRMTBlocks.ERODED_DIRT,        Blocks.DIRT,
+            TRMTBlocks.ERODED_COARSE_DIRT, Blocks.COARSE_DIRT,
+            TRMTBlocks.ERODED_SAND,        Blocks.SAND);
+
+    /**
+     * Replaces every TRMT block in {@code chunk} (a loaded chunk of this manager's world) with its
+     * vanilla equivalent and removes those blocks' erosion entries. Sections whose palette holds no
+     * TRMT block are skipped; the others are scanned completely. Returns the number of blocks replaced.
+     * <p>
+     * No neighbour or shape updates ({@link Block#NOTIFY_LISTENERS} | {@link Block#FORCE_STATE}):
+     * they read the neighbouring blocks, and a neighbour in an unloaded chunk would be loaded
+     * synchronously (or generated) by that read. The vanilla block takes the place of its eroded
+     * form, so the neighbours stay valid without them.
+     */
+    public int convertChunkToVanilla(WorldChunk chunk) {
+        if (world == null) return 0;
+        ChunkSection[] sections = chunk.getSectionArray();
+        int startX = chunk.getPos().getStartX();
+        int startZ = chunk.getPos().getStartZ();
+        int converted = 0;
+        BlockPos.Mutable mutable = new BlockPos.Mutable();
+        for (int i = 0; i < sections.length; i++) {
+            ChunkSection section = sections[i];
+            if (section.isEmpty() || !section.hasAny(s -> VANILLA_EQUIVALENTS.containsKey(s.getBlock()))) continue;
+            int startY = ChunkSectionPos.getBlockCoord(chunk.sectionIndexToCoord(i));
+            for (int y = 0; y < 16; y++) {
+                for (int z = 0; z < 16; z++) {
+                    for (int x = 0; x < 16; x++) {
+                        Block vanilla = VANILLA_EQUIVALENTS.get(section.getBlockState(x, y, z).getBlock());
+                        if (vanilla == null) continue;
+                        mutable.set(startX + x, startY + y, startZ + z);
+                        world.setBlockState(mutable, vanilla.getDefaultState(), Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
+                        removeEntry(mutable.toImmutable());
+                        converted++;
                     }
                 }
             }
         }
+        return converted;
     }
 
-    private void convertChunkToVanilla(ServerWorld world, ChunkPos chunkPos) {
-        int startX = chunkPos.getStartX();
-        int startZ = chunkPos.getStartZ();
-        int minY   = world.getBottomY();
-        int maxY   = world.getTopY();
-
-        BlockPos.Mutable mutable = new BlockPos.Mutable();
-        for (int x = startX; x < startX + 16; x++) {
-            for (int z = startZ; z < startZ + 16; z++) {
-                for (int y = minY; y < maxY; y++) {
-                    mutable.set(x, y, z);
-                    Block block = world.getBlockState(mutable).getBlock();
-                    BlockPos immutable = mutable.toImmutable();
-                    if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
-                        world.setBlockState(immutable, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
-                        removeEntry(immutable);
-                    } else if (block == TRMTBlocks.ERODED_DIRT) {
-                        world.setBlockState(immutable, Blocks.DIRT.getDefaultState(), Block.NOTIFY_ALL);
-                        removeEntry(immutable);
-                    } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
-                        world.setBlockState(immutable, Blocks.COARSE_DIRT.getDefaultState(), Block.NOTIFY_ALL);
-                        removeEntry(immutable);
-                    } else if (block == TRMTBlocks.ERODED_SAND) {
-                        world.setBlockState(immutable, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
-                        removeEntry(immutable);
-                    }
-                }
-            }
+    /** Removes all erosion data of one chunk (after {@code convert-to-vanilla} has visited it). */
+    public void clearChunk(ChunkPos chunkPos) {
+        if (state == null) return;
+        ChunkErosionMap map = state.getChunkMap(chunkPos);
+        if (map == null) return;
+        for (BlockPos pos : new ArrayList<>(map.getEntries().keySet())) {
+            removeEntry(pos);
         }
     }
 
