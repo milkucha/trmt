@@ -52,10 +52,10 @@ import java.util.concurrent.CompletableFuture;
  * {@code /trmt convert-to-vanilla}: replaces every TRMT block in the world, loaded or not, with its
  * vanilla block (B3), a few milliseconds per server tick.
  * <p>
- * Which chunks: by default every chunk with erosion data, in every dimension, plus the Overworld
- * data's coordinates in every other dimension (before B1 every step was recorded under the
- * Overworld). {@code full}: every chunk listed in every dimension's region files, plus the chunks
- * with erosion data.
+ * Which chunks: by default ({@code full}) every chunk listed in every dimension's region files, plus
+ * the chunks with erosion data. {@code quick}: only the chunks with erosion data, in every dimension,
+ * plus the Overworld data's coordinates in every other dimension (before B1 every step was recorded
+ * under the Overworld); it misses TRMT blocks that have no stored data.
  * <p>
  * Per chunk: a loaded chunk is converted at once. Otherwise its saved NBT is scanned on the chunk
  * IO thread ({@code Status} and the section palettes only). A chunk that is missing or not fully
@@ -153,19 +153,19 @@ public final class VanillaConversion {
     /** First step: says how much work a run would be, and how to confirm it. */
     public static void preview(ServerCommandSource source, boolean full) {
         MinecraftServer server = source.getServer();
-        String confirm = "/trmt convert-to-vanilla " + (full ? "full confirm" : "confirm");
+        String confirm = "/trmt convert-to-vanilla " + (full ? "confirm" : "quick confirm");
         if (!full) {
             List<Target> targets = buildDefaultTargets(server);
             int dataChunks = 0;
             for (ServerWorld world : server.getWorlds()) dataChunks += ErosionMapManager.get(world).getErodedChunkPositions().size();
             int crossDimension = targets.size() - dataChunks;
             sendPreview(source, confirm, targets,
-                    "the " + dataChunks + " chunk(s) with erosion data"
+                    "quick mode, only the " + dataChunks + " chunk(s) with stored erosion data"
                             + (crossDimension > 0 ? ", plus up to " + crossDimension + " at the same coordinates in other dimensions "
                             + "(older TRMT versions recorded Nether/End erosion under the Overworld; chunks that were never generated are skipped)" : ""),
                     EST_CHUNKS_PER_SECOND_DEFAULT);
-            source.sendFeedback(() -> Text.literal("[TRMT] Eroded blocks whose erosion data is missing (lost data, older versions, /setblock) "
-                    + "are only found by /trmt convert-to-vanilla full, which scans every generated chunk."), false);
+            source.sendFeedback(() -> Text.literal("[TRMT] Quick mode may miss eroded blocks that have no stored erosion data "
+                    + "(lost data, older versions, /setblock). /trmt convert-to-vanilla scans every generated chunk and finds them all."), false);
         } else {
             source.sendFeedback(() -> Text.literal("[TRMT] Listing the region files of every dimension..."), false);
             listFullTargets(server).whenCompleteAsync((targets, ex) -> {
@@ -221,7 +221,7 @@ public final class VanillaConversion {
                 } else {
                     running = null;
                     TRMT.LOGGER.error("[TRMT] convert-to-vanilla: listing the region files failed", ex);
-                    job.send(Text.literal("[TRMT] convert-to-vanilla full could not list the region files; see the server log."));
+                    job.send(Text.literal("[TRMT] convert-to-vanilla could not list the region files; see the server log."));
                 }
             }, server);
         }
@@ -363,7 +363,7 @@ public final class VanillaConversion {
         this.startNanos = System.nanoTime();
         Set<ServerWorld> dims = new HashSet<>();
         for (Target t : targets) dims.add(t.world());
-        send(Text.literal("[TRMT] convert-to-vanilla" + (full ? " full" : "") + " started: " + targets.size() + " chunk(s) in "
+        send(Text.literal("[TRMT] convert-to-vanilla" + (full ? "" : " quick") + " started: " + targets.size() + " chunk(s) in "
                 + dims.size() + " dimension(s). Progress is reported every 10%. Stop it with /trmt convert-to-vanilla cancel."));
         if (targets.isEmpty()) finishRun();
     }
@@ -494,7 +494,7 @@ public final class VanillaConversion {
         running = null;
         double seconds = (System.nanoTime() - startNanos) / 1e9;
         String rate = seconds > 0 ? String.format(" (%.0f chunks/s)", done / seconds) : "";
-        send(Text.literal("[TRMT] convert-to-vanilla" + (full ? " full" : "") + " finished in " + formatDuration(seconds) + rate
+        send(Text.literal("[TRMT] convert-to-vanilla" + (full ? "" : " quick") + " finished in " + formatDuration(seconds) + rate
                 + ": visited " + done + " chunk(s), " + skippedAbsent + " not generated; converted " + convertedBlocks
                 + " block(s) in " + convertedChunks + " chunk(s)."
                 + (failed > 0 ? " " + failed + " chunk(s) could not be read or loaded (see the log); their erosion data was kept, run it again." : "")));

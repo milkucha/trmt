@@ -104,7 +104,7 @@ public class TRMT implements ModInitializer {
 						.executes(ctx -> {
 							if (ctx.getSource().hasPermissionLevel(2)) {
 								ctx.getSource().sendFeedback(() -> Text.literal(
-										"[TRMT] Commands: /trmt reloadconfig, /trmt convert-to-vanilla [full], /trmt eroded-chunks"), false);
+										"[TRMT] Commands: /trmt reloadconfig, /trmt convert-to-vanilla [quick], /trmt eroded-chunks"), false);
 							} else {
 								ctx.getSource().sendFeedback(() -> Text.literal(
 										"[TRMT] The /trmt commands need operator permission (cheats). In singleplayer, enable cheats "
@@ -120,11 +120,17 @@ public class TRMT implements ModInitializer {
 									return 1;
 								}))
 						// Converts every TRMT block in the world in the background (VanillaConversion, B3).
+						// Default: scan every generated chunk. "quick": only chunks with stored erosion data.
+						// "full" is kept as an alias of the default so older instructions still work.
 						.then(CommandManager.literal("convert-to-vanilla")
 								.requires(src -> src.hasPermissionLevel(2))
-								.executes(ctx -> { VanillaConversion.preview(ctx.getSource(), false); return 1; })
+								.executes(ctx -> { VanillaConversion.preview(ctx.getSource(), true); return 1; })
 								.then(CommandManager.literal("confirm")
-										.executes(ctx -> { VanillaConversion.start(ctx.getSource(), false); return 1; }))
+										.executes(ctx -> { VanillaConversion.start(ctx.getSource(), true); return 1; }))
+								.then(CommandManager.literal("quick")
+										.executes(ctx -> { VanillaConversion.preview(ctx.getSource(), false); return 1; })
+										.then(CommandManager.literal("confirm")
+												.executes(ctx -> { VanillaConversion.start(ctx.getSource(), false); return 1; })))
 								.then(CommandManager.literal("full")
 										.executes(ctx -> { VanillaConversion.preview(ctx.getSource(), true); return 1; })
 										.then(CommandManager.literal("confirm")
