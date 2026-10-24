@@ -2,6 +2,12 @@ package milkucha.trmt;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import net.fabricmc.loader.api.FabricLoader;
 
 import milkucha.trmt.erosion.BlockThresholds;
@@ -11,6 +17,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -131,16 +138,22 @@ public final class TRMTConfig {
         Path path = configPath();
         if (Files.exists(path)) {
             try (Reader reader = Files.newBufferedReader(path)) {
-                TRMTConfig loaded = GSON.fromJson(reader, TRMTConfig.class);
+                TRMTConfig loaded = parse(reader, new TRMTConfig(), TRMTConfig.class, FILE_NAME);
                 if (loaded != null) {
                     instance = loaded;
                     BlockThresholds.invalidateVegetationCache();
-                    // Save back immediately so any fields added since the last run
-                    // are written to disk with their default values.
+                    // Save back immediately so the file shows the values in use: missing or
+                    // invalid entries are written with their defaults, unknown keys are dropped.
                     save();
                     TRMT.LOGGER.info("[TRMT] Config loaded from {}", path);
                     return;
                 }
+            } catch (JsonParseException e) {
+                // Malformed JSON: keep the file so the user can fix it, run on defaults.
+                TRMT.LOGGER.error("[TRMT] {} is not valid JSON, using defaults (file left unchanged): {}", path, e.getMessage());
+                instance = new TRMTConfig();
+                BlockThresholds.invalidateVegetationCache();
+                return;
             } catch (IOException e) {
                 TRMT.LOGGER.error("[TRMT] Failed to read config, using defaults", e);
             }
@@ -161,6 +174,66 @@ public final class TRMTConfig {
         } catch (IOException e) {
             TRMT.LOGGER.error("[TRMT] Failed to write default config", e);
         }
+    }
+
+    /**
+     * Reads a config file on top of {@code defaults}: every key that is missing, {@code null}
+     * or invalid keeps its default value (with a warning for invalid ones), unknown keys are
+     * ignored. Works at the JSON-tree level, so Gson never has to construct a config object
+     * from a partial object (it skips field initialisers for classes without a no-arg
+     * constructor, e.g. {@link MinMax}, leaving 0s). Rules: numbers must be finite and
+     * {@code >= 0}, an object with {@code min}/{@code max} needs {@code min <= max},
+     * {@code dropChance} must be within [0, 1], lists keep only their string entries.
+     *
+     * @return the merged config, or {@code null} if the file is empty or not a JSON object
+     * @throws JsonParseException if the file is not valid JSON
+     */
+    public static <T> T parse(Reader reader, T defaults, Class<T> type, String fileName) {
+        JsonElement user = JsonParser.parseReader(reader);
+        if (!user.isJsonObject()) return null;
+        JsonObject merged = GSON.toJsonTree(defaults).getAsJsonObject();
+        merge(merged, user.getAsJsonObject(), fileName + ": ");
+        return GSON.fromJson(merged, type);
+    }
+
+    private static void merge(JsonObject defaults, JsonObject user, String path) {
+        JsonElement defMin = defaults.get("min"), defMax = defaults.get("max");
+        for (String key : new ArrayList<>(defaults.keySet())) {
+            JsonElement def = defaults.get(key), val = user.get(key);
+            if (val == null || val.isJsonNull()) continue;
+            if (def.isJsonObject() && val.isJsonObject()) {
+                merge(def.getAsJsonObject(), val.getAsJsonObject(), path + key + ".");
+            } else if (def.isJsonArray() && val.isJsonArray()) {
+                JsonArray strings = new JsonArray();
+                for (JsonElement e : val.getAsJsonArray()) {
+                    if (e.isJsonPrimitive() && e.getAsJsonPrimitive().isString()) strings.add(e);
+                    else TRMT.LOGGER.warn("[TRMT] {}{}: ignoring non-string entry {}", path, key, e);
+                }
+                defaults.add(key, strings);
+            } else if (isValid(key, def, val)) {
+                defaults.add(key, val);
+            } else {
+                TRMT.LOGGER.warn("[TRMT] {}{}: invalid value {}, using default {}", path, key, val, def);
+            }
+        }
+        JsonElement min = defaults.get("min"), max = defaults.get("max");
+        if (defMin != null && defMax != null && min.getAsDouble() > max.getAsDouble()) {
+            TRMT.LOGGER.warn("[TRMT] {}min {} > max {}, using default range {}..{}", path, min, max, defMin, defMax);
+            defaults.add("min", defMin);
+            defaults.add("max", defMax);
+        }
+    }
+
+    private static boolean isValid(String key, JsonElement def, JsonElement val) {
+        if (!def.isJsonPrimitive() || !val.isJsonPrimitive()) return false;
+        JsonPrimitive d = def.getAsJsonPrimitive(), v = val.getAsJsonPrimitive();
+        if (d.isBoolean()) return v.isBoolean();
+        if (d.isNumber()) {
+            double x;
+            try { x = v.getAsDouble(); } catch (NumberFormatException e) { return false; } // "1.5" is fine
+            return x >= 0 && x <= Float.MAX_VALUE && !(key.equals("dropChance") && x > 1);
+        }
+        return true;
     }
 
     private static Path configPath() {
