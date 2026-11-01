@@ -130,11 +130,23 @@ public final class TRMTConfig {
 
     // ── load / save ────────────────────────────────────────────────────────
 
+    /** Outcome of {@link #load(boolean)}. */
+    public enum LoadResult { LOADED, DEFAULTS_WRITTEN, INVALID }
+
     /**
      * Loads config from disk, or writes a default config if the file does not exist.
      * Called once from {@link TRMT#onInitialize()}.
      */
     public static void load() {
+        load(false);
+    }
+
+    /**
+     * Loads config from disk. If the file is not valid JSON it is left untouched (so the user can fix
+     * it) and {@link LoadResult#INVALID} is returned: the running config becomes the defaults, or stays
+     * as it was when {@code keepPreviousOnInvalid} is set (used by {@code /trmt reloadconfig}).
+     */
+    public static LoadResult load(boolean keepPreviousOnInvalid) {
         Path path = configPath();
         if (Files.exists(path)) {
             try (Reader reader = Files.newBufferedReader(path)) {
@@ -146,14 +158,18 @@ public final class TRMTConfig {
                     // invalid entries are written with their defaults, unknown keys are dropped.
                     save();
                     TRMT.LOGGER.info("[TRMT] Config loaded from {}", path);
-                    return;
+                    return LoadResult.LOADED;
                 }
             } catch (JsonParseException e) {
-                // Malformed JSON: keep the file so the user can fix it, run on defaults.
-                TRMT.LOGGER.error("[TRMT] {} is not valid JSON, using defaults (file left unchanged): {}", path, e.getMessage());
-                instance = new TRMTConfig();
-                BlockThresholds.invalidateVegetationCache();
-                return;
+                // Malformed JSON: keep the file so the user can fix it; run on defaults (startup) or keep the previous config (reload).
+                if (keepPreviousOnInvalid) {
+                    TRMT.LOGGER.error("[TRMT] {} is not valid JSON, keeping the previous settings (file left unchanged): {}", path, e.getMessage());
+                } else {
+                    TRMT.LOGGER.error("[TRMT] {} is not valid JSON, using defaults (file left unchanged): {}", path, e.getMessage());
+                    instance = new TRMTConfig();
+                    BlockThresholds.invalidateVegetationCache();
+                }
+                return LoadResult.INVALID;
             } catch (IOException e) {
                 TRMT.LOGGER.error("[TRMT] Failed to read config, using defaults", e);
             }
@@ -162,6 +178,7 @@ public final class TRMTConfig {
         // File missing or unreadable — write defaults so the user can edit them.
         save();
         TRMT.LOGGER.info("[TRMT] Default config written to {}", path);
+        return LoadResult.DEFAULTS_WRITTEN;
     }
 
     private static void save() {
