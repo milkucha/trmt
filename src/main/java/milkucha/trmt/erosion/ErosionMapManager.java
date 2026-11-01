@@ -3,6 +3,7 @@ package milkucha.trmt.erosion;
 import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.block.ErodedGrassBlock;
+import milkucha.trmt.TestLog;
 import milkucha.trmt.network.TRMTPackets;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
@@ -337,6 +338,7 @@ public class ErosionMapManager {
      * On enable, sends the erosion data for the chunks the player is already watching.
      */
     public void setHudEnabled(ServerPlayerEntity player, boolean enabled) {
+        TestLog.line(() -> "hud player=" + player.getName().getString() + " enabled=" + enabled);
         if (!enabled) {
             hudPlayers.remove(player.getUuid());
         } else if (hudPlayers.add(player.getUuid())) {
@@ -390,6 +392,17 @@ public class ErosionMapManager {
             buf.writeLong(e.getValue().getLastTouchedGameTime());
         }
         ServerPlayNetworking.send(player, TRMTPackets.SYNC_CHUNK, buf);
+        TestLog.line(() -> "server-sync player=" + player.getName().getString() + " dim=" + player.getServerWorld().getRegistryKey().getValue()
+                + " chunk=" + chunkPos.x + "," + chunkPos.z + " entries=" + entries.size());
+        if (TestLog.enabled()) {
+            TestLog.ChunkSummary summary = new TestLog.ChunkSummary();
+            for (Map.Entry<BlockPos, ErosionEntry> e : entries.entrySet()) {
+                ErosionEntry v = e.getValue();
+                summary.add(e.getKey(), v.getErosionStage(), v.getWalkedOnCount(), v.getThreshold(), v.getLastTouchedGameTime());
+            }
+            summary.log("server", "player=" + player.getName().getString() + " dim=" + player.getServerWorld().getRegistryKey().getValue()
+                    + " chunk=" + chunkPos.x + "," + chunkPos.z);
+        }
     }
 
     /**
@@ -409,6 +422,10 @@ public class ErosionMapManager {
                 buf.writeFloat(threshold);
                 buf.writeLong(lastTouchedGameTime);
                 ServerPlayNetworking.send(player, TRMTPackets.UPDATE_STAGE, buf);
+                TestLog.line(() -> "server-sync player=" + player.getName().getString() + " dim=" + world.getRegistryKey().getValue()
+                        + " chunk=" + (pos.getX() >> 4) + "," + (pos.getZ() >> 4) + " entries=1");
+                TestLog.line(() -> "server-entry player=" + player.getName().getString() + " "
+                        + TestLog.entry(pos, stage, walkedOnCount, threshold, lastTouchedGameTime));
             }
         }
     }
