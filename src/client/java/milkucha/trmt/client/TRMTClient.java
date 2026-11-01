@@ -5,6 +5,7 @@ import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.client.debug.ErosionDebugHud;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.client.render.ErodedGrassBlockModels;
+import milkucha.trmt.TestLog;
 import milkucha.trmt.network.TRMTPackets;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
@@ -100,7 +101,19 @@ public class TRMTClient implements ClientModInitializer {
 				chunkEntries.put(pos, new ClientErosionCache.Entry(stage, walkedOnCount, threshold, lastTouchedGameTime));
 			}
 			ChunkPos chunkPos = new ChunkPos(chunkX, chunkZ);
-			client.execute(() -> ClientErosionCache.getInstance().setChunk(chunkPos, chunkEntries));
+			client.execute(() -> {
+				ClientErosionCache.getInstance().setChunk(chunkPos, chunkEntries);
+				TestLog.line(() -> "client-sync dim=" + (client.world != null ? client.world.getRegistryKey().getValue() : "?")
+						+ " chunk=" + chunkX + "," + chunkZ + " entries=" + count);
+				if (TestLog.enabled()) {
+					TestLog.ChunkSummary summary = new TestLog.ChunkSummary();
+					for (Map.Entry<BlockPos, ClientErosionCache.Entry> e : chunkEntries.entrySet()) {
+						ClientErosionCache.Entry v = e.getValue();
+						summary.add(e.getKey(), v.stage, v.walkedOnCount, v.threshold, v.lastTouchedGameTime);
+					}
+					summary.log("client", "chunk=" + chunkX + "," + chunkZ);
+				}
+			});
 		});
 
 		// Single-block stage update (advance or reset).
@@ -110,9 +123,12 @@ public class TRMTClient implements ClientModInitializer {
 			float    walkedOnCount      = buf.readFloat();
 			float    threshold          = buf.readFloat();
 			long     lastTouchedGameTime = buf.readLong();
-			client.execute(() ->
-				ClientErosionCache.getInstance().setEntry(pos, stage, walkedOnCount, threshold, lastTouchedGameTime)
-			);
+			client.execute(() -> {
+				ClientErosionCache.getInstance().setEntry(pos, stage, walkedOnCount, threshold, lastTouchedGameTime);
+				TestLog.line(() -> "client-sync dim=" + (client.world != null ? client.world.getRegistryKey().getValue() : "?")
+						+ " chunk=" + (pos.getX() >> 4) + "," + (pos.getZ() >> 4) + " entries=1");
+				TestLog.line(() -> "client-entry " + TestLog.entry(pos, stage, walkedOnCount, threshold, lastTouchedGameTime));
+			});
 		});
 
 		// Tell the server the HUD is on so it starts sending erosion data (nothing is sent while it is off).
