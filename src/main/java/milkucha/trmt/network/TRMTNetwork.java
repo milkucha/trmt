@@ -1,6 +1,7 @@
 package milkucha.trmt.network;
 
 import milkucha.trmt.TRMTForge;
+import milkucha.trmt.TestLog;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.core.BlockPos;
@@ -154,6 +155,16 @@ public final class TRMTNetwork {
                             new ClientErosionCache.Entry(e.stage(), e.walkedOnCount(), e.threshold(), e.lastTouchedGameTime()));
                 }
                 ClientErosionCache.getInstance().setChunk(chunkPos, chunkEntries);
+                TestLog.line(() -> "client-sync dim=" + net.minecraft.client.Minecraft.getInstance().level.dimension().location()
+                        + " chunk=" + msg.chunkX + "," + msg.chunkZ + " entries=" + msg.entries.size());
+                if (TestLog.enabled()) {
+                    TestLog.ChunkSummary summary = new TestLog.ChunkSummary();
+                    for (Map.Entry<BlockPos, ClientErosionCache.Entry> e : chunkEntries.entrySet()) {
+                        ClientErosionCache.Entry v = e.getValue();
+                        summary.add(e.getKey(), v.stage, v.walkedOnCount, v.threshold, v.lastTouchedGameTime);
+                    }
+                    summary.log("client", "chunk=" + msg.chunkX + "," + msg.chunkZ);
+                }
             });
             ctx.setPacketHandled(true);
         }
@@ -192,9 +203,14 @@ public final class TRMTNetwork {
 
         static void handle(UpdateStageMessage msg, Supplier<NetworkEvent.Context> ctxSupplier) {
             NetworkEvent.Context ctx = ctxSupplier.get();
-            ctx.enqueueWork(() ->
-                    ClientErosionCache.getInstance().setEntry(
-                            msg.pos, msg.stage, msg.walkedOnCount, msg.threshold, msg.lastTouchedGameTime));
+            ctx.enqueueWork(() -> {
+                ClientErosionCache.getInstance().setEntry(
+                        msg.pos, msg.stage, msg.walkedOnCount, msg.threshold, msg.lastTouchedGameTime);
+                TestLog.line(() -> "client-sync dim=" + net.minecraft.client.Minecraft.getInstance().level.dimension().location()
+                        + " chunk=" + (msg.pos.getX() >> 4) + "," + (msg.pos.getZ() >> 4) + " entries=1");
+                TestLog.line(() -> "client-entry " + TestLog.entry(msg.pos, msg.stage, msg.walkedOnCount,
+                        msg.threshold, msg.lastTouchedGameTime));
+            });
             ctx.setPacketHandled(true);
         }
     }
