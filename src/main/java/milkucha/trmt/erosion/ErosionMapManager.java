@@ -394,6 +394,15 @@ public class ErosionMapManager {
         ServerPlayNetworking.send(player, TRMTPackets.SYNC_CHUNK, buf);
         TestLog.line(() -> "server-sync player=" + player.getName().getString() + " dim=" + player.getServerWorld().getRegistryKey().getValue()
                 + " chunk=" + chunkPos.x + "," + chunkPos.z + " entries=" + entries.size());
+        if (TestLog.enabled()) {
+            TestLog.ChunkSummary summary = new TestLog.ChunkSummary();
+            for (Map.Entry<BlockPos, ErosionEntry> e : entries.entrySet()) {
+                ErosionEntry v = e.getValue();
+                summary.add(e.getKey(), v.getErosionStage(), v.getWalkedOnCount(), v.getThreshold(), v.getLastTouchedGameTime());
+            }
+            summary.log("server", "player=" + player.getName().getString() + " dim=" + player.getServerWorld().getRegistryKey().getValue()
+                    + " chunk=" + chunkPos.x + "," + chunkPos.z);
+        }
     }
 
     /**
@@ -415,6 +424,8 @@ public class ErosionMapManager {
                 ServerPlayNetworking.send(player, TRMTPackets.UPDATE_STAGE, buf);
                 TestLog.line(() -> "server-sync player=" + player.getName().getString() + " dim=" + world.getRegistryKey().getValue()
                         + " chunk=" + (pos.getX() >> 4) + "," + (pos.getZ() >> 4) + " entries=1");
+                TestLog.line(() -> "server-entry player=" + player.getName().getString() + " "
+                        + TestLog.entry(pos, stage, walkedOnCount, threshold, lastTouchedGameTime));
             }
         }
     }

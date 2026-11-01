@@ -105,6 +105,14 @@ public class TRMTClient implements ClientModInitializer {
 				ClientErosionCache.getInstance().setChunk(chunkPos, chunkEntries);
 				TestLog.line(() -> "client-sync dim=" + (client.world != null ? client.world.getRegistryKey().getValue() : "?")
 						+ " chunk=" + chunkX + "," + chunkZ + " entries=" + count);
+				if (TestLog.enabled()) {
+					TestLog.ChunkSummary summary = new TestLog.ChunkSummary();
+					for (Map.Entry<BlockPos, ClientErosionCache.Entry> e : chunkEntries.entrySet()) {
+						ClientErosionCache.Entry v = e.getValue();
+						summary.add(e.getKey(), v.stage, v.walkedOnCount, v.threshold, v.lastTouchedGameTime);
+					}
+					summary.log("client", "chunk=" + chunkX + "," + chunkZ);
+				}
 			});
 		});
 
@@ -119,6 +127,7 @@ public class TRMTClient implements ClientModInitializer {
 				ClientErosionCache.getInstance().setEntry(pos, stage, walkedOnCount, threshold, lastTouchedGameTime);
 				TestLog.line(() -> "client-sync dim=" + (client.world != null ? client.world.getRegistryKey().getValue() : "?")
 						+ " chunk=" + (pos.getX() >> 4) + "," + (pos.getZ() >> 4) + " entries=1");
+				TestLog.line(() -> "client-entry " + TestLog.entry(pos, stage, walkedOnCount, threshold, lastTouchedGameTime));
 			});
 		});
 
