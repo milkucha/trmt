@@ -2,6 +2,7 @@ package milkucha.trmt.client;
 
 import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.TestLog;
 import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.debug.ErosionDebugHud;
 import milkucha.trmt.client.network.ClientErosionCache;
@@ -26,6 +27,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.client.renderer.BiomeColors;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.ChunkPos;
@@ -90,15 +92,34 @@ public class TRMTClient implements ClientModInitializer {
 				chunkEntries.put(e.pos(), new ClientErosionCache.Entry(e.stage(), e.walkedOnCount(), e.threshold(), e.lastTouchedGameTime()));
 			}
 			ChunkPos chunkPos = new ChunkPos(payload.chunkX(), payload.chunkZ());
-			context.client().execute(() -> ClientErosionCache.getInstance().setChunk(chunkPos, chunkEntries));
+			Minecraft mc = context.client();
+			int chunkX = payload.chunkX(), chunkZ = payload.chunkZ(), count = payload.entries().size();
+			mc.execute(() -> {
+				ClientErosionCache.getInstance().setChunk(chunkPos, chunkEntries);
+				TestLog.line(() -> "client-sync dim=" + (mc.level != null ? mc.level.dimension().identifier() : "?")
+						+ " chunk=" + chunkX + "," + chunkZ + " entries=" + count);
+				if (TestLog.enabled()) {
+					TestLog.ChunkSummary summary = new TestLog.ChunkSummary();
+					for (Map.Entry<BlockPos, ClientErosionCache.Entry> e : chunkEntries.entrySet()) {
+						ClientErosionCache.Entry v = e.getValue();
+						summary.add(e.getKey(), v.stage, v.walkedOnCount, v.threshold, v.lastTouchedGameTime);
+					}
+					summary.log("client", "chunk=" + chunkX + "," + chunkZ);
+				}
+			});
 		});
 
 		// Single-block stage update (advance or reset).
-		ClientPlayNetworking.registerGlobalReceiver(UpdateStagePayload.ID, (payload, context) ->
-			context.client().execute(() ->
-				ClientErosionCache.getInstance().setEntry(payload.pos(), payload.stage(), payload.walkedOnCount(), payload.threshold(), payload.lastTouchedGameTime())
-			)
-		);
+		ClientPlayNetworking.registerGlobalReceiver(UpdateStagePayload.ID, (payload, context) -> {
+			Minecraft mc = context.client();
+			mc.execute(() -> {
+				BlockPos pos = payload.pos();
+				ClientErosionCache.getInstance().setEntry(pos, payload.stage(), payload.walkedOnCount(), payload.threshold(), payload.lastTouchedGameTime());
+				TestLog.line(() -> "client-sync dim=" + (mc.level != null ? mc.level.dimension().identifier() : "?")
+						+ " chunk=" + (pos.getX() >> 4) + "," + (pos.getZ() >> 4) + " entries=1");
+				TestLog.line(() -> "client-entry " + TestLog.entry(pos, payload.stage(), payload.walkedOnCount(), payload.threshold(), payload.lastTouchedGameTime()));
+			});
+		});
 
 		// Tell the server the HUD is on so it starts sending erosion data (nothing is sent while it is off).
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
