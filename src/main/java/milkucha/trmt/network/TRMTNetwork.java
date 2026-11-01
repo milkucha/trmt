@@ -1,6 +1,7 @@
 package milkucha.trmt.network;
 
 import milkucha.trmt.TRMTNeoForge;
+import milkucha.trmt.TestLog;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.core.BlockPos;
@@ -43,12 +44,28 @@ public final class TRMTNetwork {
                                 new ClientErosionCache.Entry(d.stage(), d.walkedOnCount(), d.threshold(), d.lastTouchedGameTime()));
                     }
                     ClientErosionCache.getInstance().setChunk(chunkPos, entries);
+                    TestLog.line(() -> "client-sync dim=" + ctx.player().level().dimension().identifier()
+                            + " chunk=" + payload.chunkX() + "," + payload.chunkZ() + " entries=" + payload.entries().size());
+                    if (TestLog.enabled()) {
+                        TestLog.ChunkSummary summary = new TestLog.ChunkSummary();
+                        for (Map.Entry<BlockPos, ClientErosionCache.Entry> e : entries.entrySet()) {
+                            ClientErosionCache.Entry v = e.getValue();
+                            summary.add(e.getKey(), v.stage, v.walkedOnCount, v.threshold, v.lastTouchedGameTime);
+                        }
+                        summary.log("client", "chunk=" + payload.chunkX() + "," + payload.chunkZ());
+                    }
                 }));
         registrar.playToClient(UpdateStagePayload.TYPE, UpdateStagePayload.STREAM_CODEC,
-                (payload, ctx) -> ctx.enqueueWork(() ->
-                        ClientErosionCache.getInstance().setEntry(
-                                payload.pos(), payload.stage(), payload.walkedOnCount(),
-                                payload.threshold(), payload.lastTouchedGameTime())));
+                (payload, ctx) -> ctx.enqueueWork(() -> {
+                    ClientErosionCache.getInstance().setEntry(
+                            payload.pos(), payload.stage(), payload.walkedOnCount(),
+                            payload.threshold(), payload.lastTouchedGameTime());
+                    BlockPos pos = payload.pos();
+                    TestLog.line(() -> "client-sync dim=" + ctx.player().level().dimension().identifier()
+                            + " chunk=" + (pos.getX() >> 4) + "," + (pos.getZ() >> 4) + " entries=1");
+                    TestLog.line(() -> "client-entry " + TestLog.entry(pos, payload.stage(), payload.walkedOnCount(),
+                            payload.threshold(), payload.lastTouchedGameTime()));
+                }));
         // C2S: the client's debug HUD state. The registrar is optional(), so neither side requires the channel;
         // the client only sends it when connection.hasChannel(HudStatePayload.TYPE) (see ErosionDebugHud).
         // Default HandlerThread.MAIN: the handler already runs on the server thread.
@@ -84,18 +101,20 @@ public final class TRMTNetwork {
      * Sends one chunk's erosion data. Only called for HUD-enabled players (whose client sent hud_state, so it
      * has the channel); the hasChannel guard is a safety net: NeoForge's send() throws for a missing channel.
      */
-    public static void sendSyncChunk(ServerPlayer player, int chunkX, int chunkZ, List<SyncChunkMessage.Entry> entries) {
-        if (!player.connection.hasChannel(SyncChunkPayload.TYPE)) return;
+    public static boolean sendSyncChunk(ServerPlayer player, int chunkX, int chunkZ, List<SyncChunkMessage.Entry> entries) {
+        if (!player.connection.hasChannel(SyncChunkPayload.TYPE)) return false;
         Map<BlockPos, SyncChunkMessage.Entry> entryMap = new HashMap<>(entries.size());
         for (SyncChunkMessage.Entry e : entries) entryMap.put(e.pos(), e);
         PacketDistributor.sendToPlayer(player, new SyncChunkPayload(chunkX, chunkZ, entryMap));
+        return true;
     }
 
     /** Sends a single-block stage update to one (HUD-enabled) player. */
-    public static void sendUpdateStage(ServerPlayer player, BlockPos pos, int stage,
+    public static boolean sendUpdateStage(ServerPlayer player, BlockPos pos, int stage,
                                        float walkedOnCount, float threshold, long lastTouchedGameTime) {
-        if (!player.connection.hasChannel(UpdateStagePayload.TYPE)) return;
+        if (!player.connection.hasChannel(UpdateStagePayload.TYPE)) return false;
         PacketDistributor.sendToPlayer(player, new UpdateStagePayload(pos, stage, walkedOnCount, threshold, lastTouchedGameTime));
+        return true;
     }
 
     static String getModVersion() {

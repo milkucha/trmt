@@ -1,6 +1,7 @@
 package milkucha.trmt.client.debug;
 
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.TestLog;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.TRMTClientConfig;
@@ -34,6 +35,9 @@ public class ErosionDebugHud {
     private static final int MARGIN      = 4;
     private static final int CELL        = 32;
 
+    /** Last {@code client-hud-state} text per cell (N, W, centre, E, S), so a line is logged only when it changes. */
+    private static final String[] lastLogged = new String[5];
+
     private ErosionDebugHud() {}
 
     /**
@@ -42,6 +46,8 @@ public class ErosionDebugHud {
      */
     public static void setEnabled(boolean enabled) {
         TRMTClientConfig.get().debugHud = enabled;
+        TestLog.line(() -> "client-hud enabled=" + enabled);
+        java.util.Arrays.fill(lastLogged, null);
         if (!enabled) ClientErosionCache.getInstance().clear();
         sendHudState(Minecraft.getInstance().getConnection(), enabled);
     }
@@ -72,18 +78,18 @@ public class ErosionDebugHud {
         int x0 = MARGIN;
         int y0 = guiGraphics.guiHeight() - MARGIN - totalHeight;
 
-        renderCell(guiGraphics, world, center.north(),     x0 + CELL,         y0,            tr); // -z
-        renderCell(guiGraphics, world, center.west(),      x0,                y0 + CELL,     tr); // -x
-        renderCell(guiGraphics, world, center,             x0 + CELL,         y0 + CELL,     tr); // *
-        renderCell(guiGraphics, world, center.east(),      x0 + 2 * CELL,     y0 + CELL,     tr); // +x
-        renderCell(guiGraphics, world, center.south(),     x0 + CELL,         y0 + 2 * CELL, tr); // +z
+        renderCell(guiGraphics, world, center.north(),     x0 + CELL,         y0,            tr, 0, "N"); // -z
+        renderCell(guiGraphics, world, center.west(),      x0,                y0 + CELL,     tr, 1, "W"); // -x
+        renderCell(guiGraphics, world, center,             x0 + CELL,         y0 + CELL,     tr, 2, "C"); // *
+        renderCell(guiGraphics, world, center.east(),      x0 + 2 * CELL,     y0 + CELL,     tr, 3, "E"); // +x
+        renderCell(guiGraphics, world, center.south(),     x0 + CELL,         y0 + 2 * CELL, tr, 4, "S"); // +z
 
         String coords = center.getX() + " " + center.getY() + " " + center.getZ();
         guiGraphics.text(tr, coords, x0, y0 + 3 * CELL + 4, TEXT_COLOR, true);
     }
 
     private static void renderCell(GuiGraphicsExtractor guiGraphics, ClientLevel world,
-                                   BlockPos pos, int x, int y, Font tr) {
+                                   BlockPos pos, int x, int y, Font tr, int cellIndex, String cellName) {
         Minecraft client = Minecraft.getInstance();
         BlockState state = world.getBlockState(pos);
 
@@ -108,6 +114,7 @@ public class ErosionDebugHud {
                 ? String.format("%.1f/%.1f", cellEntry.walkedOnCount, cellEntry.threshold)
                 : "0.0/-";
         drawCentered(guiGraphics, tr, countLabel, x, y, 0, COUNT_COLOR);
+        logHudState(cellIndex, cellName, pos, cellEntry, countLabel);
 
         String ageLabel = cellEntry != null
                 ? "age:" + (currentTime - cellEntry.lastTouchedGameTime)
@@ -124,6 +131,20 @@ public class ErosionDebugHud {
             outLabel = "out:" + timeout + (isolated ? " I" : "");
         }
         drawCentered(guiGraphics, tr, outLabel, x, y, lineH * 2, OUT_COLOR);
+    }
+
+    /** Test log: the values this cell draws (stage, raw count/threshold, the line-1 label), only when they change. */
+    private static void logHudState(int cellIndex, String cellName, BlockPos pos,
+                                    ClientErosionCache.Entry entry, String countLabel) {
+        if (!TestLog.enabled()) return;
+        String text = "cell=" + cellName + " pos=" + pos.getX() + "," + pos.getY() + "," + pos.getZ()
+                + " stage=" + (entry != null ? entry.stage : 0)
+                + " walked=" + (entry != null ? String.valueOf(entry.walkedOnCount) : "-")
+                + " threshold=" + (entry != null ? String.valueOf(entry.threshold) : "-")
+                + " label=" + countLabel;
+        if (text.equals(lastLogged[cellIndex])) return;
+        lastLogged[cellIndex] = text;
+        TestLog.line(() -> "client-hud-state " + text);
     }
 
     private static void drawCentered(GuiGraphicsExtractor guiGraphics, Font tr,

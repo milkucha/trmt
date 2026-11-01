@@ -3,6 +3,7 @@ package milkucha.trmt.erosion;
 import com.mojang.logging.LogUtils;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
+import milkucha.trmt.TestLog;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.network.TRMTNetwork;
@@ -339,6 +340,7 @@ public class ErosionMapManager {
      * On enable, sends the erosion data for the chunks the player is already watching.
      */
     public void setHudEnabled(ServerPlayer player, boolean enabled) {
+        TestLog.line(() -> "hud player=" + player.getName().getString() + " enabled=" + enabled);
         if (!enabled) {
             hudPlayers.remove(player.getUUID());
         } else if (hudPlayers.add(player.getUUID())) {
@@ -386,7 +388,18 @@ public class ErosionMapManager {
                     e.getValue().getLastTouchedGameTime()
             ));
         }
-        TRMTNetwork.sendSyncChunk(player, chunkPos.x(), chunkPos.z(), payloadEntries);
+        if (!TRMTNetwork.sendSyncChunk(player, chunkPos.x(), chunkPos.z(), payloadEntries)) return;
+        TestLog.line(() -> "server-sync player=" + player.getName().getString() + " dim=" + player.level().dimension().identifier()
+                + " chunk=" + chunkPos.x() + "," + chunkPos.z() + " entries=" + entries.size());
+        if (TestLog.enabled()) {
+            TestLog.ChunkSummary summary = new TestLog.ChunkSummary();
+            for (Map.Entry<BlockPos, ErosionEntry> e : entries.entrySet()) {
+                ErosionEntry v = e.getValue();
+                summary.add(e.getKey(), v.getErosionStage(), v.getWalkedOnCount(), v.getThreshold(), v.getLastTouchedGameTime());
+            }
+            summary.log("server", "player=" + player.getName().getString() + " dim=" + player.level().dimension().identifier()
+                    + " chunk=" + chunkPos.x() + "," + chunkPos.z());
+        }
     }
 
     /**
@@ -400,7 +413,11 @@ public class ErosionMapManager {
         for (ServerLevel world : server.getAllLevels()) {
             for (ServerPlayer player : world.getChunkSource().chunkMap.getPlayers(chunkPos, false)) {
                 if (!hudPlayers.contains(player.getUUID())) continue;
-                TRMTNetwork.sendUpdateStage(player, pos, stage, walkedOnCount, threshold, lastTouchedGameTime);
+                if (!TRMTNetwork.sendUpdateStage(player, pos, stage, walkedOnCount, threshold, lastTouchedGameTime)) continue;
+                TestLog.line(() -> "server-sync player=" + player.getName().getString() + " dim=" + world.dimension().identifier()
+                        + " chunk=" + (pos.getX() >> 4) + "," + (pos.getZ() >> 4) + " entries=1");
+                TestLog.line(() -> "server-entry player=" + player.getName().getString() + " "
+                        + TestLog.entry(pos, stage, walkedOnCount, threshold, lastTouchedGameTime));
             }
         }
     }
