@@ -2,6 +2,7 @@ package milkucha.trmt.client.debug;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.TestLog;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.TRMTClientConfig;
@@ -61,6 +62,7 @@ public class ErosionDebugHud {
      */
     public static void setEnabled(boolean enabled) {
         TRMTClientConfig.get().debugHud = enabled;
+        TestLog.line(() -> "client-hud enabled=" + enabled);
         if (!enabled) ClientErosionCache.getInstance().clear();
         if (MinecraftClient.getInstance().getNetworkHandler() != null) {
             PacketByteBuf buf = PacketByteBufs.create();
