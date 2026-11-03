@@ -103,7 +103,7 @@ public class ServerPlayerEntityMixin {
         }
 
         boolean tracked = (erosion.grassEnabled && (state.is(Blocks.GRASS_BLOCK) || state.is(TRMTBlocks.ERODED_GRASS_BLOCK.get())))
-                || (erosion.dirtEnabled && (state.is(Blocks.DIRT) || state.is(TRMTBlocks.ERODED_DIRT.get())))
+                || (erosion.dirtEnabled && (state.is(Blocks.DIRT) || state.is(TRMTBlocks.ERODED_DIRT.get()) || state.is(TRMTBlocks.ERODED_COARSE_DIRT.get())))
                 || (erosion.sandEnabled && (state.is(Blocks.SAND) || state.is(TRMTBlocks.ERODED_SAND.get())))
                 || (erosion.leavesEnabled && BlockThresholds.isLeaves(block));
 
@@ -134,7 +134,7 @@ public class ServerPlayerEntityMixin {
         BlockState adjState = world.getBlockState(pos);
         TRMTConfig.ErosionToggles erosion = TRMTConfig.get().erosion;
         if ((erosion.grassEnabled && (adjState.is(Blocks.GRASS_BLOCK) || adjState.is(TRMTBlocks.ERODED_GRASS_BLOCK.get())))
-                || (erosion.dirtEnabled && (adjState.is(Blocks.DIRT) || adjState.is(TRMTBlocks.ERODED_DIRT.get())))
+                || (erosion.dirtEnabled && (adjState.is(Blocks.DIRT) || adjState.is(TRMTBlocks.ERODED_DIRT.get()) || adjState.is(TRMTBlocks.ERODED_COARSE_DIRT.get())))
                 || (erosion.sandEnabled && (adjState.is(Blocks.SAND) || adjState.is(TRMTBlocks.ERODED_SAND.get())))
                 || (erosion.leavesEnabled && BlockThresholds.isLeaves(adjState.getBlock()))) {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
@@ -243,6 +243,7 @@ public class ServerPlayerEntityMixin {
                     TRMTBlocks.ERODED_DIRT.get().defaultBlockState().setValue(ErodedDirtBlock.FACING, facing),
                     Block.UPDATE_ALL);
             manager.removeEntry(pos);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT.get(), world.getGameTime());
             return;
         }
 
@@ -256,6 +257,7 @@ public class ServerPlayerEntityMixin {
                         state.setValue(ErodedDirtBlock.STAGE, currentStage + 1),
                         Block.UPDATE_ALL);
                 manager.removeEntry(pos);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT.get(), world.getGameTime());
                 return;
             }
             // Stage 3 reached — carry rotation forward to eroded_coarse_dirt.
@@ -263,9 +265,11 @@ public class ServerPlayerEntityMixin {
                     TRMTBlocks.ERODED_COARSE_DIRT.get().defaultBlockState().setValue(ErodedDirtBlock.FACING, facing),
                     Block.UPDATE_ALL);
             manager.removeEntry(pos);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_COARSE_DIRT.get(), world.getGameTime());
             return;
         }
 
+        // eroded_coarse_dirt is the final stage: it returns here, its step (onStep) only refreshes the de-erosion timer.
         if (!state.is(Blocks.DIRT)) return;
         if (world.getBlockState(pos.above()).is(Blocks.WATER)) return;
         Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
@@ -275,6 +279,7 @@ public class ServerPlayerEntityMixin {
                         .setValue(ErodedDirtBlock.STAGE, 1),
                 Block.UPDATE_ALL);
         manager.removeEntry(pos);
+        manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT.get(), world.getGameTime());
     }
 
     /**
