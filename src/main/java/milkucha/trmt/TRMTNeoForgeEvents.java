@@ -131,7 +131,11 @@ public class TRMTNeoForgeEvents {
                 .then(Commands.literal("reloadconfig")
                         .requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                         .executes(ctx -> {
-                            TRMTConfig.load();
+                            if (TRMTConfig.load(true) == TRMTConfig.LoadResult.INVALID) {
+                                ctx.getSource().sendFailure(Component.literal("[TRMT] trmt.json is not valid JSON, so nothing was reloaded: the previous settings are still in use. "
+                                        + "Fix the file (the server log names the line and the problem) and run /trmt reloadconfig again."));
+                                return 0;
+                            }
                             ctx.getSource().sendSuccess(() -> Component.literal("[TRMT] Config reloaded."), true);
                             return 1;
                         }))

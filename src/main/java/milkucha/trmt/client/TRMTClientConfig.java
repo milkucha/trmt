@@ -2,6 +2,9 @@ package milkucha.trmt.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
+import milkucha.trmt.TRMTConfig;
+import milkucha.trmt.TRMTNeoForge;
 import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.IOException;
@@ -34,12 +37,15 @@ public final class TRMTClientConfig {
         Path path = configPath();
         if (Files.exists(path)) {
             try (Reader reader = Files.newBufferedReader(path)) {
-                TRMTClientConfig loaded = GSON.fromJson(reader, TRMTClientConfig.class);
+                TRMTClientConfig loaded = TRMTConfig.parse(reader, new TRMTClientConfig(), TRMTClientConfig.class, FILE_NAME);
                 if (loaded != null) {
                     instance = loaded;
                     save();
                     return;
                 }
+            } catch (JsonParseException e) {
+                TRMTNeoForge.LOGGER.error("[TRMT] {} is not valid JSON, using defaults (file left unchanged): {}", path, e.getMessage());
+                return;
             } catch (IOException e) {
                 // Fall through to write defaults.
             }
