@@ -79,7 +79,7 @@ public class MobEntityMixin {
         Block block = state.getBlock();
 
         boolean tracked = (erosion.grassEnabled && (state.is(Blocks.GRASS_BLOCK) || state.is(TRMTBlocks.ERODED_GRASS_BLOCK)))
-                || (erosion.dirtEnabled && (state.is(Blocks.DIRT) || state.is(TRMTBlocks.ERODED_DIRT)))
+                || (erosion.dirtEnabled && (state.is(Blocks.DIRT) || state.is(TRMTBlocks.ERODED_DIRT) || state.is(TRMTBlocks.ERODED_COARSE_DIRT)))
                 || (erosion.sandEnabled && (state.is(Blocks.SAND) || state.is(TRMTBlocks.ERODED_SAND)))
                 || (erosion.leavesEnabled && BlockThresholds.isLeaves(block));
 
@@ -180,6 +180,7 @@ public class MobEntityMixin {
                     TRMTBlocks.ERODED_DIRT.defaultBlockState().setValue(ErodedDirtBlock.FACING, facing),
                     Block.UPDATE_ALL);
             manager.removeEntry(pos);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getGameTime());
             return;
         }
 
@@ -190,15 +191,18 @@ public class MobEntityMixin {
             if (currentStage < 3) {
                 world.setBlock(pos, state.setValue(ErodedDirtBlock.STAGE, currentStage + 1), Block.UPDATE_ALL);
                 manager.removeEntry(pos);
+                manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getGameTime());
                 return;
             }
             world.setBlock(pos,
                     TRMTBlocks.ERODED_COARSE_DIRT.defaultBlockState().setValue(ErodedDirtBlock.FACING, facing),
                     Block.UPDATE_ALL);
             manager.removeEntry(pos);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_COARSE_DIRT, world.getGameTime());
             return;
         }
 
+        // eroded_coarse_dirt is the final stage: it returns here, its step (onStep) only refreshes the de-erosion timer.
         if (!state.is(Blocks.DIRT)) return;
         if (world.getBlockState(pos.above()).is(Blocks.WATER)) return;
         Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
@@ -208,6 +212,7 @@ public class MobEntityMixin {
                         .setValue(ErodedDirtBlock.STAGE, 1),
                 Block.UPDATE_ALL);
         manager.removeEntry(pos);
+        manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getGameTime());
     }
 
     @Unique
