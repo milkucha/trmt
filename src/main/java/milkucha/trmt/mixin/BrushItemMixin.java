@@ -82,7 +82,7 @@ public class BrushItemMixin {
         }
 
         // 10th brush tick — cycle complete, apply de-erosion.
-        ErosionMapManager manager = ErosionMapManager.getInstance();
+        ErosionMapManager manager = ErosionMapManager.get(world);
         int stage = state.get(ErodedSandBlock.STAGE);
         if (stage > 0) {
             boolean keepWaterlogged = stage > 1 && state.get(ErodedSandBlock.WATERLOGGED);

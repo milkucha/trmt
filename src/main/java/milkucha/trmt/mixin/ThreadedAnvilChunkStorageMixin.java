@@ -22,6 +22,6 @@ public class ThreadedAnvilChunkStorageMixin {
     @Inject(method = "sendChunkDataPackets", at = @At("TAIL"))
     private void trmt$syncErosionOnChunkSend(ServerPlayerEntity player, MutableObject<ChunkDataS2CPacket> cachedDataPacket,
                                              WorldChunk chunk, CallbackInfo ci) {
-        ErosionMapManager.getInstance().sendChunkSyncToPlayer(player, chunk.getPos());
+        ErosionMapManager.get(chunk.getWorld()).sendChunkSyncToPlayer(player, chunk.getPos());
     }
 }

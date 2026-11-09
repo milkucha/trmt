@@ -53,12 +53,12 @@ public class ErodedGrassBlock extends Block {
         if (world.isClient) return;
         if (!world.getBlockState(pos.up()).isOpaque()) return;
         world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
-        ErosionMapManager.getInstance().removeEntry(pos);
+        ErosionMapManager.get(world).removeEntry(pos);
     }
 
     @Override
     public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
-        ErosionMapManager manager = ErosionMapManager.getInstance();
+        ErosionMapManager manager = ErosionMapManager.get(world);
         if (world.getBlockState(pos.up()).isOpaque()) {
             world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
             manager.removeEntry(pos);
