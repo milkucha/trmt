@@ -63,7 +63,7 @@ public class MobEntityMixin {
         float mult = TRMTConfig.get().erosionMultipliers.player
                 * TRMTConfig.get().erosionMultipliers.leash;
 
-        ErosionMapManager manager = ErosionMapManager.getInstance();
+        ErosionMapManager manager = ErosionMapManager.get(world);
         long gameTime = world.getGameTime();
         TRMTConfig.ErosionToggles erosion = TRMTConfig.get().erosion;
 

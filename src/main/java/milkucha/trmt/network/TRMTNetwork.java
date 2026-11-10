@@ -72,7 +72,7 @@ public final class TRMTNetwork {
         registrar.playToServer(HudStatePayload.TYPE, HudStatePayload.STREAM_CODEC,
                 (payload, ctx) -> {
                     if (ctx.player() instanceof ServerPlayer player) {
-                        ErosionMapManager.getInstance().setHudEnabled(player, payload.enabled());
+                        ErosionMapManager.setHudEnabled(player, payload.enabled());
                     }
                 });
         registrar.playToClient(VersionCheckPayload.TYPE, VersionCheckPayload.STREAM_CODEC,
