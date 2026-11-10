@@ -2,6 +2,7 @@ package milkucha.trmt;
 
 import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.ErosionMapManager;
+import milkucha.trmt.erosion.VanillaConversion;
 import milkucha.trmt.network.HudStatePayload;
 import milkucha.trmt.network.SyncChunkPayload;
 import milkucha.trmt.network.UpdateStagePayload;
@@ -11,6 +12,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -27,7 +29,6 @@ import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,27 +71,26 @@ public class TRMT implements ModInitializer {
 				}
 			});
 
-		// Load the erosion region files (and migrate the legacy file) while the overworld is created,
-		// i.e. inside initServer() (createLevels), before runServer() starts its tick clock — doing it on
-		// SERVER_STARTED counted the whole load as one long first tick ("Can't keep up!").
-		ServerLevelEvents.LOAD.register((server, world) -> {
-			if (world.dimension() == Level.OVERWORLD) {
-				ErosionMapManager.getInstance().loadState(server);
-			}
-		});
+		// Load each dimension's erosion region files (the overworld also migrates the legacy file) while
+		// that world is created, i.e. inside initServer() (createLevels), before runServer() starts its tick
+		// clock — doing it on SERVER_STARTED counted the whole load as one long first tick ("Can't keep up!").
+		ServerLevelEvents.LOAD.register((server, world) -> ErosionMapManager.loadState(world));
 		// The legacy grass-entry migration places blocks, so it waits until the worlds are fully ready.
 		ServerLifecycleEvents.SERVER_STARTED.register(server ->
-				ErosionMapManager.getInstance().migrateGrassEntries(server));
+				ErosionMapManager.migrateGrassEntries(server));
 		// Per-chunk erosion data is sent when a chunk is sent to a player (ChunkDataSenderMixin),
 		// but only to players whose client reports the debug HUD as on.
 		// Fabric API 0.145 runs play payload handlers on the server thread.
 		ServerPlayNetworking.registerGlobalReceiver(HudStatePayload.ID, (payload, context) ->
-				ErosionMapManager.getInstance().setHudEnabled(context.player(), payload.enabled()));
+				ErosionMapManager.setHudEnabled(context.player(), payload.enabled()));
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
-				ErosionMapManager.getInstance().setHudEnabled(handler.player, false));
+				ErosionMapManager.setHudEnabled(handler.player, false));
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> ErosionMapManager.reset());
+		// /trmt convert-to-vanilla runs a few ms per tick; a server stop ends the run and releases its tickets.
+		ServerTickEvents.END_SERVER_TICK.register(VanillaConversion::onServerTick);
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> VanillaConversion.onServerStopping());
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) ->
-				ErosionMapManager.getInstance().removeEntry(pos));
+				ErosionMapManager.get(world).removeEntry(pos));
 
 		// Prevent block placement above sunken eroded sand (stages 1–4) to avoid AO darkening.
 		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
@@ -106,6 +106,19 @@ public class TRMT implements ModInitializer {
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
 				dispatcher.register(Commands.literal("trmt")
+						// The root has no permission requirement but every subcommand needs the gamemaster permission, so
+						// without it /trmt is all a player sees (GH #43: singleplayer with cheats off). Say why.
+						.executes(ctx -> {
+							if (ctx.getSource().permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) {
+								ctx.getSource().sendSuccess(() -> Component.literal(
+										"[TRMT] Commands: /trmt reloadconfig, /trmt convert-to-vanilla [quick], /trmt eroded-chunks"), false);
+							} else {
+								ctx.getSource().sendSuccess(() -> Component.literal(
+										"[TRMT] The /trmt commands need operator permission (cheats). In singleplayer, enable cheats "
+										+ "when creating the world, or use Open to LAN with Allow Cheats: ON, then run the command again."), false);
+							}
+							return 1;
+						})
 						.then(Commands.literal("reloadconfig")
 								.requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
 								.executes(ctx -> {
@@ -117,67 +130,75 @@ public class TRMT implements ModInitializer {
 									ctx.getSource().sendSuccess(() -> Component.literal("[TRMT] Config reloaded."), true);
 									return 1;
 								}))
+						// Converts every TRMT block in the world in the background (VanillaConversion, B3).
+						// Default: scan every generated chunk. "quick": only chunks with stored erosion data.
+						// "full" is kept as an alias of the default so older instructions still work.
 						.then(Commands.literal("convert-to-vanilla")
 								.requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
-								.executes(ctx -> {
-									ctx.getSource().sendSuccess(() -> Component.literal(
-											"[TRMT] WARNING: This will convert all existing eroded blocks in all currently loaded chunks to their vanilla counterparts. This cannot be undone. ")
-											.append(Component.literal("[Click to confirm]")
-													.withStyle(s -> s
-															.withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand(
-																	"/trmt convert-to-vanilla confirm"))
-															.withColor(net.minecraft.ChatFormatting.YELLOW)
-															.withUnderlined(true))), false);
-									return 1;
-								})
+								.executes(ctx -> { VanillaConversion.preview(ctx.getSource(), true); return 1; })
 								.then(Commands.literal("confirm")
-										.executes(ctx -> {
-											ErosionMapManager.getInstance().convertAllErodedToVanilla(ctx.getSource().getServer());
-											ctx.getSource().sendSuccess(() -> Component.literal(
-													"[TRMT] All eroded blocks in loaded chunks converted to their vanilla counterparts."), true);
-											return 1;
-										})))
+										.executes(ctx -> { VanillaConversion.start(ctx.getSource(), true); return 1; }))
+								.then(Commands.literal("quick")
+										.executes(ctx -> { VanillaConversion.preview(ctx.getSource(), false); return 1; })
+										.then(Commands.literal("confirm")
+												.executes(ctx -> { VanillaConversion.start(ctx.getSource(), false); return 1; })))
+								.then(Commands.literal("full")
+										.executes(ctx -> { VanillaConversion.preview(ctx.getSource(), true); return 1; })
+										.then(Commands.literal("confirm")
+												.executes(ctx -> { VanillaConversion.start(ctx.getSource(), true); return 1; })))
+								.then(Commands.literal("cancel")
+										.executes(ctx -> { VanillaConversion.cancel(ctx.getSource()); return 1; })))
 						.then(Commands.literal("eroded-chunks")
 								.requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
 								.executes(ctx -> {
-									ServerLevel overworld = ctx.getSource().getServer().getLevel(net.minecraft.world.level.Level.OVERWORLD);
-									Set<ChunkPos> allChunks = ErosionMapManager.getInstance().getErodedChunkPositions();
+									// Each dimension has its own erosion data; report each one with its own loaded-chunk check.
+									boolean any = false;
+									for (ServerLevel world : ctx.getSource().getServer().getAllLevels()) {
+										Set<ChunkPos> allChunks = ErosionMapManager.get(world).getErodedChunkPositions();
+										if (allChunks.isEmpty()) continue;
+										any = true;
+										String dim = world.dimension().identifier().toString();
 
-									List<ChunkPos> unloaded = new ArrayList<>();
-									int loadedCount = 0;
-									for (ChunkPos cp : allChunks) {
-										if (overworld != null && overworld.getChunk(cp.x(), cp.z(), ChunkStatus.FULL, false) != null) {
-											loadedCount++;
+										List<ChunkPos> unloaded = new ArrayList<>();
+										int loadedCount = 0;
+										for (ChunkPos cp : allChunks) {
+											if (world.getChunk(cp.x(), cp.z(), ChunkStatus.FULL, false) != null) {
+												loadedCount++;
+											} else {
+												unloaded.add(cp);
+											}
+										}
+
+										int total = allChunks.size();
+										int unloadedCount = unloaded.size();
+										int loadedFinal = loadedCount;
+										ctx.getSource().sendSuccess(() -> Component.literal(
+												"[TRMT] Eroded chunks in " + dim + ": " + total + " chunk(s) total — " + loadedFinal + " loaded, " + unloadedCount + " unloaded."), false);
+
+										if (unloaded.isEmpty()) {
+											ctx.getSource().sendSuccess(() -> Component.literal(
+													"[TRMT] All eroded chunks in " + dim + " are currently loaded."), false);
 										} else {
-											unloaded.add(cp);
+											LOGGER.info("[TRMT] Unloaded chunks with erosion data in {} ({}):", dim, unloadedCount);
+											for (ChunkPos cp : unloaded) {
+												LOGGER.info("[TRMT]   {} {}", cp.getMinBlockX(), cp.getMinBlockZ());
+											}
+											if (unloadedCount <= 20) {
+												ctx.getSource().sendSuccess(() -> Component.literal(
+														"[TRMT] Unloaded chunk coordinates in " + dim + ":"), false);
+												for (ChunkPos cp : unloaded) {
+													int bx = cp.getMinBlockX(), bz = cp.getMinBlockZ();
+													ctx.getSource().sendSuccess(() -> Component.literal("  " + bx + " " + bz), false);
+												}
+											} else {
+												ctx.getSource().sendSuccess(() -> Component.literal(
+														"[TRMT] " + unloadedCount + " unloaded chunks in " + dim + " — full list printed to server console."), false);
+											}
 										}
 									}
-
-									int total = allChunks.size();
-									int unloadedCount = unloaded.size();
-									int loadedFinal = loadedCount;
-									ctx.getSource().sendSuccess(() -> Component.literal(
-											"[TRMT] Eroded chunks: " + total + " chunk(s) total — " + loadedFinal + " loaded, " + unloadedCount + " unloaded."), false);
-
-									if (unloaded.isEmpty()) {
+									if (!any) {
 										ctx.getSource().sendSuccess(() -> Component.literal(
-												"[TRMT] All eroded chunks are currently loaded."), false);
-									} else {
-										LOGGER.info("[TRMT] Unloaded chunks with erosion data ({}):", unloadedCount);
-										for (ChunkPos cp : unloaded) {
-											LOGGER.info("[TRMT]   {} {}", cp.getMinBlockX(), cp.getMinBlockZ());
-										}
-										if (unloadedCount <= 20) {
-											ctx.getSource().sendSuccess(() -> Component.literal(
-													"[TRMT] Unloaded chunk coordinates:"), false);
-											for (ChunkPos cp : unloaded) {
-												int bx = cp.getMinBlockX(), bz = cp.getMinBlockZ();
-												ctx.getSource().sendSuccess(() -> Component.literal("  " + bx + " " + bz), false);
-											}
-										} else {
-											ctx.getSource().sendSuccess(() -> Component.literal(
-													"[TRMT] " + unloadedCount + " unloaded chunks — full list printed to server console."), false);
-										}
+												"[TRMT] Eroded chunks: 0 chunk(s) total."), false);
 									}
 									return 1;
 								}))));

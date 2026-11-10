@@ -88,7 +88,7 @@ public class ServerPlayerEntityMixin {
         float mult = TRMTConfig.get().erosionMultipliers.player
                 * (mounted ? TRMTConfig.get().erosionMultipliers.mounted : 1.0f);
 
-        ErosionMapManager manager = ErosionMapManager.getInstance();
+        ErosionMapManager manager = ErosionMapManager.get(world);
         long gameTime = world.getGameTime();
         TRMTConfig.ErosionToggles erosion = TRMTConfig.get().erosion;
 

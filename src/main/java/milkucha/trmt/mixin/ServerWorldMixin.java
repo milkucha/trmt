@@ -19,6 +19,6 @@ public abstract class ServerWorldMixin {
 
     @Inject(method = "saveLevelData", at = @At("TAIL"))
     private void trmt$saveErosionRegions(boolean flush, CallbackInfo ci) {
-        ErosionMapManager.getInstance().onWorldSave((ServerLevel) (Object) this);
+        ErosionMapManager.onWorldSave((ServerLevel) (Object) this);
     }
 }
