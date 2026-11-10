@@ -33,12 +33,12 @@ import java.util.zip.GZIPOutputStream;
  * &lt;world&gt;/data/trmt/erosion/&lt;ns&gt;/&lt;path&gt;/r.&lt;rx&gt;.&lt;rz&gt;.dat   {DataVersion:int, chunks:[{cx, cz, entries:[
  *                                                              {x, y, z, block, count, threshold, lastTime, stage}]}]}
  * </pre>
- * {@code <ns>/<path>} is the dimension id. Erosion is not dimension-scoped yet (bug B1), so
- * everything lives under {@code minecraft/overworld}. Regions are 32x32 chunks (vanilla regions).
+ * {@code <ns>/<path>} is the dimension id: each dimension has its own region files (B1 / GH #69),
+ * loaded when that level loads and saved with that level. Regions are 32x32 chunks (vanilla regions).
  * All files are GZIP-compressed and written via temp file + atomic move.
  * <p>
  * The legacy single file {@code <world>/data/trmt_erosion.dat} (vanilla SavedData, key
- * {@code trmt_erosion}) is migrated once when {@code index.dat} does not exist yet.
+ * {@code trmt_erosion}) is migrated once, into the overworld, when {@code index.dat} does not exist yet.
  */
 public class ErosionRegionStorage {
 
@@ -72,8 +72,15 @@ public class ErosionRegionStorage {
 
     // --- Loading / migration ---
 
-    /** Fills {@code state} from disk. Called once at server start. */
-    public void load(ErosionPersistentState state) {
+    /**
+     * Fills {@code state} with {@code dimension}'s data from disk. Called once per level when it loads.
+     * Only the overworld load checks the index and migrates the legacy file (old data is overworld data).
+     */
+    public void load(ErosionPersistentState state, ResourceKey<Level> dimension) {
+        if (dimension != Level.OVERWORLD) {
+            loadRegions(state, dimension);
+            return;
+        }
         Path index = root.resolve("index.dat");
         if (Files.exists(index)) {
             try {
@@ -172,7 +179,7 @@ public class ErosionRegionStorage {
                 }
             }
         }
-        if (ok && migrationPending) finishMigration();
+        if (ok && migrationPending && dimension == Level.OVERWORLD) finishMigration();
         return ok;
     }
 
