@@ -32,7 +32,7 @@ public class BoneMealItemMixin {
         BlockState state = world.getBlockState(pos);
         Block block = state.getBlock();
 
-        ErosionMapManager manager = ErosionMapManager.getInstance();
+        ErosionMapManager manager = ErosionMapManager.get(world);
         long currentTime = serverWorld.getGameTime();
 
         if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {

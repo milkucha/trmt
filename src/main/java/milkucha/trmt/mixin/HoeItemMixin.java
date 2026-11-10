@@ -56,7 +56,7 @@ public class HoeItemMixin {
         if (!world.isClientSide()) {
             world.setBlock(pos, Blocks.FARMLAND.defaultBlockState(),
                     Block.UPDATE_ALL | Block.UPDATE_IMMEDIATE);
-            ErosionMapManager.getInstance().removeEntry(pos);
+            ErosionMapManager.get(world).removeEntry(pos);
             if (player != null) {
                 context.getItemInHand().hurtAndBreak(1, player,
                         context.getHand() == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);

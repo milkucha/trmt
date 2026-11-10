@@ -55,7 +55,7 @@ public class ErodedGrassBlock extends Block {
         super.neighborChanged(state, world, pos, block, orientation, movedByPiston);
         if (!world.isClientSide() && world.getBlockState(pos.above()).canOcclude()) {
             world.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
-            ErosionMapManager.getInstance().removeEntry(pos);
+            ErosionMapManager.get(world).removeEntry(pos);
         }
     }
 
@@ -63,12 +63,12 @@ public class ErodedGrassBlock extends Block {
     public void randomTick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
         if (world.getBlockState(pos.above()).canOcclude()) {
             world.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
-            ErosionMapManager.getInstance().removeEntry(pos);
+            ErosionMapManager.get(world).removeEntry(pos);
             return;
         }
         if (!TRMTConfig.get().deErosion.grassEnabled) return;
 
-        ErosionMapManager manager = ErosionMapManager.getInstance();
+        ErosionMapManager manager = ErosionMapManager.get(world);
         ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
 
