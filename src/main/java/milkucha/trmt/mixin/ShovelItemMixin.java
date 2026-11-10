@@ -42,7 +42,7 @@ public class ShovelItemMixin {
         if (!world.isClientSide) {
             world.setBlock(pos, Blocks.DIRT_PATH.defaultBlockState(),
                     Block.UPDATE_ALL | Block.UPDATE_IMMEDIATE);
-            ErosionMapManager.getInstance().removeEntry(pos);
+            ErosionMapManager.get(world).removeEntry(pos);
             if (player != null) {
                 context.getItemInHand().hurtAndBreak(1, player, p -> p.broadcastBreakEvent(
                         context.getHand() == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND));

@@ -299,7 +299,7 @@ public final class TRMTNetwork {
             ctx.enqueueWork(() -> {
                 ServerPlayer player = ctx.getSender();
                 if (player == null) return;
-                ErosionMapManager.getInstance().setHudEnabled(player, msg.enabled);
+                ErosionMapManager.setHudEnabled(player, msg.enabled);
             });
             ctx.setPacketHandled(true);
         }
