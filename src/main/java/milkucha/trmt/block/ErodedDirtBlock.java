@@ -61,7 +61,7 @@ public class ErodedDirtBlock extends Block {
                 ? Blocks.COARSE_DIRT.getDefaultState()
                 : Blocks.DIRT.getDefaultState();
         world.setBlockState(pos, revertTo, Block.NOTIFY_ALL);
-        ErosionMapManager.getInstance().removeEntry(pos);
+        ErosionMapManager.get(world).removeEntry(pos);
     }
 
     @Override
@@ -71,12 +71,12 @@ public class ErodedDirtBlock extends Block {
                     ? Blocks.COARSE_DIRT.getDefaultState()
                     : Blocks.DIRT.getDefaultState();
             world.setBlockState(pos, revertTo, Block.NOTIFY_ALL);
-            ErosionMapManager.getInstance().removeEntry(pos);
+            ErosionMapManager.get(world).removeEntry(pos);
             return;
         }
         if (!milkucha.trmt.TRMTConfig.get().deErosion.dirtEnabled) return;
 
-        ErosionMapManager manager = ErosionMapManager.getInstance();
+        ErosionMapManager manager = ErosionMapManager.get(world);
         ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
 

@@ -99,19 +99,19 @@ public class ErodedSandBlock extends Block implements Waterloggable {
         if (world.isClient) return;
         if (!world.getBlockState(pos.up()).isOpaque()) return;
         world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
-        ErosionMapManager.getInstance().removeEntry(pos);
+        ErosionMapManager.get(world).removeEntry(pos);
     }
 
     @Override
     public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
         if (world.getBlockState(pos.up()).isOpaque()) {
             world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
-            ErosionMapManager.getInstance().removeEntry(pos);
+            ErosionMapManager.get(world).removeEntry(pos);
             return;
         }
         if (!TRMTConfig.get().deErosion.sandEnabled) return;
 
-        ErosionMapManager manager = ErosionMapManager.getInstance();
+        ErosionMapManager manager = ErosionMapManager.get(world);
         ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
 

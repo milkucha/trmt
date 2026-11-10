@@ -11,17 +11,21 @@ import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
+import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
-import net.minecraft.world.chunk.ChunkStatus;
+import net.minecraft.world.chunk.ChunkSection;
+import net.minecraft.world.chunk.WorldChunk;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -29,56 +33,67 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Server-side singleton that holds all per-chunk erosion maps for the current world session.
+ * Per-dimension erosion data for the current world session: one manager per loaded server world
+ * (B1 / GH #69 — the same x/z in two dimensions are separate blocks). Get it with {@link #get(World)}
+ * for the world the step / tick / interaction happened in.
  * Holds the map in {@link ErosionPersistentState}; {@link ErosionRegionStorage} persists it per region.
  * Sends erosion data (debug HUD only) to HUD-enabled players watching each chunk via Fabric networking.
  */
 public class ErosionMapManager {
 
-    private static ErosionMapManager INSTANCE;
-
-    /** Loaded when the overworld loads; null until then. */
-    private ErosionPersistentState state;
-    private ErosionRegionStorage storage;
-    private MinecraftServer server;
+    /** One manager per loaded server world, created when that world loads. */
+    private static final Map<RegistryKey<World>, ErosionMapManager> INSTANCES = new HashMap<>();
+    /** Returned for client worlds and for worlds whose data is not loaded; every method is a no-op on it. */
+    private static final ErosionMapManager INACTIVE = new ErosionMapManager(null);
+    /** Shared by all dimensions: one {@code data/trmt/erosion/} folder, index and legacy file per save. */
+    private static ErosionRegionStorage storage;
 
     /** Players whose client has the erosion debug HUD on. Only they receive erosion sync packets. */
-    private final Set<UUID> hudPlayers = new HashSet<>();
+    private static final Set<UUID> hudPlayers = new HashSet<>();
 
-    private ErosionMapManager() {}
+    /** The world this manager's data belongs to; null only for {@link #INACTIVE}. */
+    private final ServerWorld world;
+    /** Null only for {@link #INACTIVE}. */
+    private final ErosionPersistentState state;
 
-    public static ErosionMapManager getInstance() {
-        if (INSTANCE == null) {
-            INSTANCE = new ErosionMapManager();
-        }
-        return INSTANCE;
+    private ErosionMapManager(ServerWorld world) {
+        this.world = world;
+        this.state = world != null ? new ErosionPersistentState() : null;
+    }
+
+    /** Returns the erosion data of {@code world}'s dimension (an inert manager on the client side). */
+    public static ErosionMapManager get(World world) {
+        if (world == null || world.isClient) return INACTIVE;
+        return INSTANCES.getOrDefault(world.getRegistryKey(), INACTIVE);
     }
 
     /**
-     * Called when the overworld is loaded (inside setupServer, before the tick clock starts) to load
-     * the erosion region files, migrating the legacy file if needed.
+     * Called when a server world is loaded (inside setupServer, before the tick clock starts) to load
+     * that dimension's erosion region files. The overworld load also migrates the legacy file.
      */
-    public void loadState(MinecraftServer server) {
-        this.server  = server;
-        this.state   = new ErosionPersistentState();
-        this.storage = ErosionRegionStorage.forServer(server);
-        storage.load(state);
+    public static void loadState(ServerWorld world) {
+        if (storage == null) storage = ErosionRegionStorage.forServer(world.getServer());
+        ErosionMapManager manager = new ErosionMapManager(world);
+        storage.load(manager.state, world.getRegistryKey());
+        INSTANCES.put(world.getRegistryKey(), manager);
     }
 
     /**
      * Called whenever vanilla saves a world's persistent data (autosave, /save-all, server stop;
-     * skipped while saving is disabled with /save-off). Writes only the regions changed since the last save.
+     * skipped while saving is disabled with /save-off). Writes only that dimension's regions
+     * changed since its last save.
      */
-    public void onWorldSave(ServerWorld world) {
-        if (state == null || storage == null) return;
-        // Erosion is not dimension-scoped yet (B1): everything is stored under the overworld.
-        if (world.getRegistryKey() != World.OVERWORLD) return;
-        storage.save(state, World.OVERWORLD);
+    public static void onWorldSave(ServerWorld world) {
+        ErosionMapManager manager = INSTANCES.get(world.getRegistryKey());
+        if (manager == null || storage == null) return;
+        storage.save(manager.state, world.getRegistryKey());
     }
 
     /** Called on server stop to release all in-memory state. */
     public static void reset() {
-        INSTANCE = null;
+        INSTANCES.clear();
+        storage = null;
+        hudPlayers.clear();
     }
 
     // --- Erosion logic ---
@@ -159,10 +174,15 @@ public class ErosionMapManager {
         state.markDirty(chunkPos);
     }
 
-    public void migrateGrassEntries(MinecraftServer server) {
+    /** Runs on every dimension's data. */
+    public static void migrateGrassEntries(MinecraftServer server) {
+        for (ErosionMapManager manager : INSTANCES.values()) {
+            manager.migrateGrassEntries();
+        }
+    }
+
+    private void migrateGrassEntries() {
         if (state == null) return;
-        ServerWorld world = server.getWorld(World.OVERWORLD);
-        if (world == null) return;
 
         List<BlockPos> candidates = new ArrayList<>();
         for (ChunkErosionMap chunk : state.getAllChunkMaps().values()) {
@@ -215,53 +235,60 @@ public class ErosionMapManager {
         };
     }
 
-    public void convertAllErodedToVanilla(MinecraftServer server) {
-        if (state == null) return;
-        int viewDistance = server.getPlayerManager().getViewDistance();
-        for (ServerWorld world : server.getWorlds()) {
-            Set<ChunkPos> scanned = new HashSet<>();
-            for (ServerPlayerEntity player : world.getPlayers()) {
-                ChunkPos playerChunk = player.getChunkPos();
-                for (int dx = -viewDistance; dx <= viewDistance; dx++) {
-                    for (int dz = -viewDistance; dz <= viewDistance; dz++) {
-                        ChunkPos cp = new ChunkPos(playerChunk.x + dx, playerChunk.z + dz);
-                        if (scanned.add(cp) && world.getChunk(cp.x, cp.z, ChunkStatus.FULL, false) != null) {
-                            convertChunkToVanilla(world, cp);
-                        }
+    /**
+     * Every TRMT block and the vanilla block {@code /trmt convert-to-vanilla} replaces it with.
+     * A new TRMT block must be added here, or the command leaves it in the world.
+     */
+    public static final Map<Block, Block> VANILLA_EQUIVALENTS = Map.of(
+            TRMTBlocks.ERODED_GRASS_BLOCK, Blocks.GRASS_BLOCK,
+            TRMTBlocks.ERODED_DIRT,        Blocks.DIRT,
+            TRMTBlocks.ERODED_COARSE_DIRT, Blocks.COARSE_DIRT,
+            TRMTBlocks.ERODED_SAND,        Blocks.SAND);
+
+    /**
+     * Replaces every TRMT block in {@code chunk} (a loaded chunk of this manager's world) with its
+     * vanilla equivalent and removes those blocks' erosion entries. Sections whose palette holds no
+     * TRMT block are skipped; the others are scanned completely. Returns the number of blocks replaced.
+     * <p>
+     * No neighbour or shape updates ({@link Block#NOTIFY_LISTENERS} | {@link Block#FORCE_STATE}):
+     * they read the neighbouring blocks, and a neighbour in an unloaded chunk would be loaded
+     * synchronously (or generated) by that read. The vanilla block takes the place of its eroded
+     * form, so the neighbours stay valid without them.
+     */
+    public int convertChunkToVanilla(WorldChunk chunk) {
+        if (world == null) return 0;
+        ChunkSection[] sections = chunk.getSectionArray();
+        int startX = chunk.getPos().getStartX();
+        int startZ = chunk.getPos().getStartZ();
+        int converted = 0;
+        BlockPos.Mutable mutable = new BlockPos.Mutable();
+        for (int i = 0; i < sections.length; i++) {
+            ChunkSection section = sections[i];
+            if (section.isEmpty() || !section.hasAny(s -> VANILLA_EQUIVALENTS.containsKey(s.getBlock()))) continue;
+            int startY = ChunkSectionPos.getBlockCoord(chunk.sectionIndexToCoord(i));
+            for (int y = 0; y < 16; y++) {
+                for (int z = 0; z < 16; z++) {
+                    for (int x = 0; x < 16; x++) {
+                        Block vanilla = VANILLA_EQUIVALENTS.get(section.getBlockState(x, y, z).getBlock());
+                        if (vanilla == null) continue;
+                        mutable.set(startX + x, startY + y, startZ + z);
+                        world.setBlockState(mutable, vanilla.getDefaultState(), Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
+                        removeEntry(mutable.toImmutable());
+                        converted++;
                     }
                 }
             }
         }
+        return converted;
     }
 
-    private void convertChunkToVanilla(ServerWorld world, ChunkPos chunkPos) {
-        int startX = chunkPos.getStartX();
-        int startZ = chunkPos.getStartZ();
-        int minY   = world.getBottomY();
-        int maxY   = world.getTopY();
-
-        BlockPos.Mutable mutable = new BlockPos.Mutable();
-        for (int x = startX; x < startX + 16; x++) {
-            for (int z = startZ; z < startZ + 16; z++) {
-                for (int y = minY; y < maxY; y++) {
-                    mutable.set(x, y, z);
-                    Block block = world.getBlockState(mutable).getBlock();
-                    BlockPos immutable = mutable.toImmutable();
-                    if (block == TRMTBlocks.ERODED_GRASS_BLOCK) {
-                        world.setBlockState(immutable, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
-                        removeEntry(immutable);
-                    } else if (block == TRMTBlocks.ERODED_DIRT) {
-                        world.setBlockState(immutable, Blocks.DIRT.getDefaultState(), Block.NOTIFY_ALL);
-                        removeEntry(immutable);
-                    } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {
-                        world.setBlockState(immutable, Blocks.COARSE_DIRT.getDefaultState(), Block.NOTIFY_ALL);
-                        removeEntry(immutable);
-                    } else if (block == TRMTBlocks.ERODED_SAND) {
-                        world.setBlockState(immutable, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
-                        removeEntry(immutable);
-                    }
-                }
-            }
+    /** Removes all erosion data of one chunk (after {@code convert-to-vanilla} has visited it). */
+    public void clearChunk(ChunkPos chunkPos) {
+        if (state == null) return;
+        ChunkErosionMap map = state.getChunkMap(chunkPos);
+        if (map == null) return;
+        for (BlockPos pos : new ArrayList<>(map.getEntries().keySet())) {
+            removeEntry(pos);
         }
     }
 
@@ -281,24 +308,24 @@ public class ErosionMapManager {
      * Records whether {@code player}'s debug HUD is on (client sends HUD_STATE; disconnect passes false).
      * On enable, sends the erosion data for the chunks the player is already watching.
      */
-    public void setHudEnabled(ServerPlayerEntity player, boolean enabled) {
+    public static void setHudEnabled(ServerPlayerEntity player, boolean enabled) {
         TestLog.line(() -> "hud player=" + player.getName().getString() + " enabled=" + enabled);
         if (!enabled) {
             hudPlayers.remove(player.getUuid());
         } else if (hudPlayers.add(player.getUuid())) {
-            sendWatchedChunksToPlayer(player);
+            get(player.getServerWorld()).sendWatchedChunksToPlayer(player);
         }
     }
 
     /**
      * Sends SYNC_CHUNK for every chunk with erosion data that {@code player} is currently watching.
+     * (in this manager's world, which must be the player's world).
      * Iterates the player's chunk tracking view ({@code ChunkFilter}, bounded by view distance);
      * {@link PlayerLookup#tracking} excludes chunks still queued in the player's ChunkDataSender,
      * which get their data from ChunkDataSenderMixin when they are actually sent.
      */
     private void sendWatchedChunksToPlayer(ServerPlayerEntity player) {
-        if (state == null || server == null) return;
-        ServerWorld world = player.getServerWorld();
+        if (state == null) return;
         player.getChunkFilter().forEach(chunkPos -> {
             if (state.getChunkMap(chunkPos) == null) return;
             if (PlayerLookup.tracking(world, chunkPos).contains(player)) {
@@ -309,6 +336,7 @@ public class ErosionMapManager {
 
     /**
      * Sends the erosion data for one chunk to a HUD-enabled player that has just been sent that chunk.
+     * Call it on the manager of the chunk's world.
      * Called right after vanilla sends the chunk packet (see ChunkDataSenderMixin),
      * so it is paced by vanilla's chunk batching. Chunks without data send nothing: the client
      * drops its cached entries for a chunk when that chunk loads or unloads on its side.
@@ -345,22 +373,19 @@ public class ErosionMapManager {
     }
 
     /**
-     * Sends a single-block stage update to every HUD-enabled player watching the block's chunk.
-     * The erosion map is not dimension-scoped yet, so watchers of that chunk position in any
-     * world receive it (same data they would get from {@link #sendChunkSyncToPlayer}).
+     * Sends a single-block stage update to every HUD-enabled player watching the block's chunk
+     * in this manager's world (players in other dimensions never receive it).
      */
     private void broadcastStageUpdate(BlockPos pos, int stage, float walkedOnCount, float threshold, long lastTouchedGameTime) {
-        if (server == null || hudPlayers.isEmpty()) return;
+        if (world == null || hudPlayers.isEmpty()) return;
         UpdateStagePayload payload = new UpdateStagePayload(pos, stage, walkedOnCount, threshold, lastTouchedGameTime);
-        for (ServerWorld world : server.getWorlds()) {
-            for (ServerPlayerEntity player : PlayerLookup.tracking(world, pos)) {
-                if (!hudPlayers.contains(player.getUuid())) continue;
-                ServerPlayNetworking.send(player, payload);
-                TestLog.line(() -> "server-sync player=" + player.getName().getString() + " dim=" + world.getRegistryKey().getValue()
-                        + " chunk=" + (pos.getX() >> 4) + "," + (pos.getZ() >> 4) + " entries=1");
-                TestLog.line(() -> "server-entry player=" + player.getName().getString() + " "
-                        + TestLog.entry(pos, stage, walkedOnCount, threshold, lastTouchedGameTime));
-            }
+        for (ServerPlayerEntity player : PlayerLookup.tracking(world, pos)) {
+            if (!hudPlayers.contains(player.getUuid())) continue;
+            ServerPlayNetworking.send(player, payload);
+            TestLog.line(() -> "server-sync player=" + player.getName().getString() + " dim=" + world.getRegistryKey().getValue()
+                    + " chunk=" + (pos.getX() >> 4) + "," + (pos.getZ() >> 4) + " entries=1");
+            TestLog.line(() -> "server-entry player=" + player.getName().getString() + " "
+                    + TestLog.entry(pos, stage, walkedOnCount, threshold, lastTouchedGameTime));
         }
     }
 }

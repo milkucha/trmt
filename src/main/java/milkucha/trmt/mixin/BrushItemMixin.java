@@ -73,7 +73,7 @@ public class BrushItemMixin {
             return;
         }
 
-        ErosionMapManager manager = ErosionMapManager.getInstance();
+        ErosionMapManager manager = ErosionMapManager.get(world);
         int stage = state.get(ErodedSandBlock.STAGE);
         if (stage > 0) {
             BlockState newState = state.with(ErodedSandBlock.STAGE, stage - 1);

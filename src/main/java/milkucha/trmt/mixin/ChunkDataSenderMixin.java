@@ -24,6 +24,6 @@ public class ChunkDataSenderMixin {
     @Inject(method = "sendChunkData", at = @At("TAIL"))
     private static void trmt$syncErosionOnChunkSend(ServerPlayNetworkHandler handler, ServerWorld world,
                                                     WorldChunk chunk, CallbackInfo ci) {
-        ErosionMapManager.getInstance().sendChunkSyncToPlayer(handler.player, chunk.getPos());
+        ErosionMapManager.get(world).sendChunkSyncToPlayer(handler.player, chunk.getPos());
     }
 }
