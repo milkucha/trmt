@@ -110,19 +110,19 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
         if (world.isClientSide()) return;
         if (!world.getBlockState(pos.above()).canOcclude()) return;
         world.setBlock(pos, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
-        ErosionMapManager.getInstance().removeEntry(pos);
+        ErosionMapManager.get(world).removeEntry(pos);
     }
 
     @Override
     public void randomTick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
         if (world.getBlockState(pos.above()).canOcclude()) {
             world.setBlock(pos, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
-            ErosionMapManager.getInstance().removeEntry(pos);
+            ErosionMapManager.get(world).removeEntry(pos);
             return;
         }
         if (!TRMTConfig.get().deErosion.sandEnabled) return;
 
-        ErosionMapManager manager = ErosionMapManager.getInstance();
+        ErosionMapManager manager = ErosionMapManager.get(world);
         ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
 
