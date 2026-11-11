@@ -142,6 +142,7 @@ public class ServerPlayerEntityMixin {
                 || (erosion.leavesEnabled && BlockThresholds.isLeaves(adjState.getBlock()))) {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
             trmt$tryTransform(world, manager, pos);
+            manager.broadcastEntryUpdate(pos, adjState.getBlock());
         }
     }
 

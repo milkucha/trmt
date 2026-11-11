@@ -147,8 +147,8 @@ public class ErosionMapManager {
         if (map.removeEntry(worldPos)) {
             state.removeChunkMapIfEmpty(chunkPos);
             state.markDirty(chunkPos);
+            broadcastStageUpdate(worldPos, 0, 0f, 0f, 0L);
         }
-        broadcastStageUpdate(worldPos, 0, 0f, 0f, 0L);
     }
 
     /**
