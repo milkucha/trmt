@@ -10,6 +10,7 @@
 		"BrushItemMixin",
 		"CactusBlockMixin",
 		"DeadBushBlockMixin",
+		"EatGrassGoalMixin",
 		"FallingBlockEntityMixin",
 		"HoeItemMixin",
 		"MobEntityMixin",
