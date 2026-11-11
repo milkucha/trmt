@@ -33,9 +33,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class ServerPlayerEntityMixin {
 
 
-    /** Last block position this player was standing on. Null while airborne. */
+    /** Last block position this player (or their vehicle) stood on; kept while airborne. */
     @Unique
     private BlockPos trmt$lastGroundPos = null;
+
+    /** Consecutive ticks the player (or their vehicle) has been off the ground. */
+    @Unique
+    private int trmt$airTicks = 0;
 
     @Inject(method = "tick", at = @At("TAIL"))
     private void trmt$onTick(CallbackInfo ci) {
@@ -47,10 +51,11 @@ public class ServerPlayerEntityMixin {
         boolean onGround = mounted ? vehicle.isOnGround() : player.isOnGround();
 
         if (!onGround) {
-            // Airborne (or vehicle airborne) — clear last ground position so the next landing registers.
-            trmt$lastGroundPos = null;
+            if (trmt$airTicks < Integer.MAX_VALUE) trmt$airTicks++;
             return;
         }
+        boolean landedFromJump = trmt$airTicks >= ErosionMapManager.LANDING_MIN_AIR_TICKS;
+        trmt$airTicks = 0;
 
         // getBlockPos() returns the block at the entity's Y coordinate (feet level).
         // The block they are *standing on* is one below.
@@ -65,12 +70,15 @@ public class ServerPlayerEntityMixin {
             groundPos = groundPos.up();
         }
 
-        // Only process when the player (or vehicle) moves onto a new block, not while standing still.
-        if (groundPos.equals(trmt$lastGroundPos)) {
+        // Only process when the player (or vehicle) moves onto a new block column, or lands after a
+        // real jump/fall. Staying in the same column without a real jump is not a step: this covers
+        // standing still, a brief onGround flicker, and sinking when the block below gets lower
+        // (a snow layer removed, a snow block turned into layers, an eroded sand stage).
+        boolean sameColumn = ErosionMapManager.sameColumn(groundPos, trmt$lastGroundPos);
+        trmt$lastGroundPos = groundPos.toImmutable();
+        if (sameColumn && !landedFromJump) {
             return;
         }
-
-        trmt$lastGroundPos = groundPos.toImmutable();
 
         // Sneaking suppresses erosion.
         if (player.isSneaking()) return;
@@ -107,9 +115,10 @@ public class ServerPlayerEntityMixin {
         }
         if (erosion.snowEnabled && aboveState.isOf(Blocks.SNOW)) {
             manager.onStep(abovePos, aboveState.getBlock(), 1.0f * mult, gameTime);
-            trmt$tryReduceSnow(world, manager, abovePos, aboveState);
+            trmt$tryReduceSnow(world, manager, abovePos, aboveState, player);
             manager.broadcastEntryUpdate(abovePos, aboveState.getBlock());
-            return; // snow layer insulates the ground block from direct erosion
+            // The snow layer insulates the ground block, and trails in snow are one block wide (no spread).
+            return;
         }
 
         boolean tracked = (erosion.grassEnabled && (state.isOf(Blocks.GRASS_BLOCK) || state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)))
@@ -125,6 +134,11 @@ public class ServerPlayerEntityMixin {
         manager.onStep(groundPos, block, 1.0f * mult, gameTime);
         trmt$tryTransform(world, manager, groundPos);
         manager.broadcastEntryUpdate(groundPos, block);
+
+        // Trails in snow are one block wide: no spread from a snow block.
+        if (state.isOf(Blocks.SNOW_BLOCK)) {
+            return;
+        }
 
         // Spread erosion to adjacent blocks based on the player's facing direction.
         // Front (the direction the player faces): +0.2
@@ -144,11 +158,13 @@ public class ServerPlayerEntityMixin {
                                            BlockPos pos, float amount, long gameTime) {
         BlockState adjState = world.getBlockState(pos);
         TRMTConfig.ErosionToggles erosion = TRMTConfig.get().erosion;
+        // Snow never takes spread: snow blocks are not spread targets, and a block under a snow
+        // layer is insulated (as it is when stepped on directly).
+        if (erosion.snowEnabled && world.getBlockState(pos.up()).isOf(Blocks.SNOW)) return;
         if ((erosion.grassEnabled && (adjState.isOf(Blocks.GRASS_BLOCK) || adjState.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)))
                 || (erosion.dirtEnabled && (adjState.isOf(Blocks.DIRT) || adjState.isOf(TRMTBlocks.ERODED_DIRT) || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))
                 || (erosion.sandEnabled && (adjState.isOf(Blocks.SAND) || adjState.isOf(TRMTBlocks.ERODED_SAND)))
-                || (erosion.leavesEnabled && BlockThresholds.isLeaves(adjState.getBlock()))
-                || (erosion.snowEnabled && adjState.isOf(Blocks.SNOW_BLOCK))) {
+                || (erosion.leavesEnabled && BlockThresholds.isLeaves(adjState.getBlock()))) {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
             trmt$tryTransform(world, manager, pos);
         }
@@ -183,7 +199,7 @@ public class ServerPlayerEntityMixin {
 
     @Unique
     private static void trmt$tryReduceSnow(World world, ErosionMapManager manager,
-                                            BlockPos pos, BlockState state) {
+                                            BlockPos pos, BlockState state, Entity breaker) {
         ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
         if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
 
@@ -193,7 +209,9 @@ public class ServerPlayerEntityMixin {
         } else {
             float dropChance = TRMTConfig.get().erosionThresholds.snow.dropChance;
             boolean drops = dropChance >= 1.0f || (dropChance > 0.0f && ThreadLocalRandom.current().nextFloat() < dropChance);
-            world.breakBlock(pos, drops);
+            // The vanilla snow loot table only drops when an entity breaks the block
+            // (entity_properties "this"), so the walker must be passed as the breaker.
+            world.breakBlock(pos, drops, breaker);
         }
         manager.removeEntry(pos);
     }

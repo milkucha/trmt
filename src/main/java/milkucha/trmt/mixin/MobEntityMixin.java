@@ -15,6 +15,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.block.SnowBlock;
 import net.minecraft.block.TallPlantBlock;
 import net.minecraft.block.enums.DoubleBlockHalf;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
@@ -32,8 +33,13 @@ import java.util.concurrent.ThreadLocalRandom;
 @Mixin(MobEntity.class)
 public class MobEntityMixin {
 
+    /** Last block position this mob stood on; kept while airborne. */
     @Unique
     private BlockPos trmt$lastGroundPos = null;
+
+    /** Consecutive ticks this mob has been off the ground. */
+    @Unique
+    private int trmt$airTicks = 0;
 
     @Inject(method = "tick", at = @At("TAIL"))
     private void trmt$onTick(CallbackInfo ci) {
@@ -42,9 +48,11 @@ public class MobEntityMixin {
         if (!(mob.getWorld() instanceof ServerWorld)) return;
 
         if (!mob.isOnGround()) {
-            trmt$lastGroundPos = null;
+            if (trmt$airTicks < Integer.MAX_VALUE) trmt$airTicks++;
             return;
         }
+        boolean landedFromJump = trmt$airTicks >= ErosionMapManager.LANDING_MIN_AIR_TICKS;
+        trmt$airTicks = 0;
 
         if (!mob.isLeashed()) return;
 
@@ -58,8 +66,10 @@ public class MobEntityMixin {
             groundPos = groundPos.up();
         }
 
-        if (groundPos.equals(trmt$lastGroundPos)) return;
+        // New block column, or a landing after a real jump/fall (see ServerPlayerEntityMixin).
+        boolean sameColumn = ErosionMapManager.sameColumn(groundPos, trmt$lastGroundPos);
         trmt$lastGroundPos = groundPos.toImmutable();
+        if (sameColumn && !landedFromJump) return;
 
         float mult = TRMTConfig.get().erosionMultipliers.player
                 * TRMTConfig.get().erosionMultipliers.leash;
@@ -77,7 +87,7 @@ public class MobEntityMixin {
         }
         if (erosion.snowEnabled && aboveState.isOf(Blocks.SNOW)) {
             manager.onStep(abovePos, aboveState.getBlock(), 1.0f * mult, gameTime);
-            trmt$tryReduceSnow(world, manager, abovePos, aboveState);
+            trmt$tryReduceSnow(world, manager, abovePos, aboveState, mob);
             manager.broadcastEntryUpdate(abovePos, aboveState.getBlock());
             return; // snow layer insulates the ground block from direct erosion
         }
@@ -126,7 +136,7 @@ public class MobEntityMixin {
 
     @Unique
     private static void trmt$tryReduceSnow(World world, ErosionMapManager manager,
-                                            BlockPos pos, BlockState state) {
+                                            BlockPos pos, BlockState state, Entity breaker) {
         ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
         if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
 
@@ -136,7 +146,8 @@ public class MobEntityMixin {
         } else {
             float dropChance = TRMTConfig.get().erosionThresholds.snow.dropChance;
             boolean drops = dropChance >= 1.0f || (dropChance > 0.0f && ThreadLocalRandom.current().nextFloat() < dropChance);
-            world.breakBlock(pos, drops);
+            // The vanilla snow loot table only drops when an entity breaks the block.
+            world.breakBlock(pos, drops, breaker);
         }
         manager.removeEntry(pos);
     }

@@ -70,7 +70,7 @@ public final class TRMTConfig {
         public MinMax              sand       = new MinMax(1.5f, 3f);
         public VegetationThreshold leaves     = new VegetationThreshold(2f, 3f, 0.1f);
         public VegetationThreshold vegetation = new VegetationThreshold(2f, 3f, 0.2f);
-        public VegetationThreshold snow       = new VegetationThreshold(0.5f, 1.0f, 0f);
+        public VegetationThreshold snow       = new VegetationThreshold(0.4f, 0.9f, 0f);
         public MinMax              snowBlock  = new MinMax(0.5f, 1.0f);
     }
 
@@ -121,6 +121,11 @@ public final class TRMTConfig {
         "minecraft:cornflower", "minecraft:lily_of_the_valley", "minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony"
     );
     public DeErosionTimeoutDays deErosionTimeoutDays = new DeErosionTimeoutDays();
+    /**
+     * Step progress on a block that has not changed yet (grass, dirt, sand, snow, leaves, plants) is
+     * forgotten after this many Minecraft days untouched. 0 = never. Eroded blocks are not affected.
+     */
+    public float entryExpiryDays = 5f;
 
     // ── singleton ──────────────────────────────────────────────────────────
     private static TRMTConfig instance = new TRMTConfig();

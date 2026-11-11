@@ -43,6 +43,20 @@ import java.util.UUID;
  */
 public class ErosionMapManager {
 
+    /**
+     * A landing in the same block column counts as a new step only after at least this many ticks
+     * off the ground (a jump is ~12). Shorter airtime is sinking (a snow layer removed: ~2 ticks,
+     * a snow block turned into 7 layers: ~3) or an onGround flicker while standing still.
+     */
+    public static final int LANDING_MIN_AIR_TICKS = 5;
+
+    private static final long TICKS_PER_DAY = 24000L;
+
+    /** True if both positions are in the same x/z column ({@code b} may be null). */
+    public static boolean sameColumn(BlockPos a, BlockPos b) {
+        return b != null && a.getX() == b.getX() && a.getZ() == b.getZ();
+    }
+
     /** One manager per loaded server world, created when that world loads. */
     private static final Map<RegistryKey<World>, ErosionMapManager> INSTANCES = new HashMap<>();
     /** Returned for client worlds and for worlds whose data is not loaded; every method is a no-op on it. */
@@ -78,6 +92,38 @@ public class ErosionMapManager {
         ErosionMapManager manager = new ErosionMapManager(world);
         storage.load(manager.state, world.getRegistryKey());
         INSTANCES.put(world.getRegistryKey(), manager);
+        manager.pruneExpired(new ArrayList<>(manager.state.getAllChunkMaps().keySet()));
+    }
+
+    /** Called when vanilla loads a chunk into the world: drops that chunk's expired entries. */
+    public static void onChunkLoad(ServerWorld world, ChunkPos chunkPos) {
+        get(world).pruneExpired(List.of(chunkPos));
+    }
+
+    /**
+     * Drops expired entries in the given chunks: progress on a vanilla block (stage 0, not a
+     * {@code trmt:eroded_*} block) untouched for {@code entryExpiryDays}. Entries of eroded blocks
+     * are kept: they are the de-erosion timers. Runs at world load, chunk load and save — never polled.
+     */
+    private void pruneExpired(Iterable<ChunkPos> chunks) {
+        if (state == null) return;
+        float days = milkucha.trmt.TRMTConfig.get().entryExpiryDays;
+        if (days <= 0) return;
+        long cutoff = world.getTime() - (long) (days * TICKS_PER_DAY);
+        int removed = 0;
+        for (ChunkPos chunkPos : chunks) {
+            ChunkErosionMap map = state.getChunkMap(chunkPos);
+            if (map == null) continue;
+            int n = map.pruneExpired(cutoff);
+            if (n > 0) {
+                removed += n;
+                state.removeChunkMapIfEmpty(chunkPos);
+                state.markDirty(chunkPos);
+            }
+        }
+        if (removed > 0) {
+            TRMT.LOGGER.debug("[TRMT] {}: dropped {} expired erosion entries", world.getRegistryKey().getValue(), removed);
+        }
     }
 
     /**
@@ -88,6 +134,12 @@ public class ErosionMapManager {
     public static void onWorldSave(ServerWorld world) {
         ErosionMapManager manager = INSTANCES.get(world.getRegistryKey());
         if (manager == null || storage == null) return;
+        // Regions about to be written: drop their expired entries first.
+        List<ChunkPos> dirtyChunks = new ArrayList<>();
+        for (long region : manager.state.getDirtyRegions()) {
+            dirtyChunks.addAll(manager.state.getRegionChunks(region));
+        }
+        manager.pruneExpired(dirtyChunks);
         storage.save(manager.state, world.getRegistryKey());
     }
 
