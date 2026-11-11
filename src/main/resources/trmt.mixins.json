@@ -5,13 +5,14 @@
 	"mixins": [
 		"BoneMealItemMixin",
 		"BrushItemMixin",
-		"GrassBlockMixin",
 		"HoeItemMixin",
 		"MobEntityMixin",
 		"SandBlockMixin",
 		"ServerPlayerEntityMixin",
+		"ServerWorldMixin",
 		"ShovelItemMixin",
-		"SugarCaneBlockMixin"
+		"SugarCaneBlockMixin",
+		"ThreadedAnvilChunkStorageMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

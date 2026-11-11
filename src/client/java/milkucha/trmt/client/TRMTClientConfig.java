@@ -2,6 +2,9 @@ package milkucha.trmt.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
+import milkucha.trmt.TRMT;
+import milkucha.trmt.TRMTConfig;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
@@ -13,7 +16,7 @@ import java.nio.file.Path;
 /**
  * Client-only configuration loaded from {@code config/trmt-client.json}.
  * Contains settings that only affect the local client (display preferences, HUD toggles).
- * Edit the JSON file and restart the game to apply changes.
+ * Edit the JSON file and restart the game to apply changes ({@code debugHud} can also be set in-game with {@code /trmt-hud}).
  */
 public final class TRMTClientConfig {
 
@@ -38,12 +41,15 @@ public final class TRMTClientConfig {
         Path path = configPath();
         if (Files.exists(path)) {
             try (Reader reader = Files.newBufferedReader(path)) {
-                TRMTClientConfig loaded = GSON.fromJson(reader, TRMTClientConfig.class);
+                TRMTClientConfig loaded = TRMTConfig.parse(reader, new TRMTClientConfig(), TRMTClientConfig.class, FILE_NAME);
                 if (loaded != null) {
                     instance = loaded;
                     save();
                     return;
                 }
+            } catch (JsonParseException e) {
+                TRMT.LOGGER.error("[TRMT] {} is not valid JSON, using defaults (file left unchanged): {}", path, e.getMessage());
+                return;
             } catch (IOException e) {
                 // Fall through to write defaults.
             }
@@ -51,7 +57,7 @@ public final class TRMTClientConfig {
         save();
     }
 
-    private static void save() {
+    public static void save() {
         Path path = configPath();
         try {
             Files.createDirectories(path.getParent());

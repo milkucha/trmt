@@ -2,12 +2,17 @@ package milkucha.trmt.client.debug;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import milkucha.trmt.TRMTBlocks;
+import milkucha.trmt.TestLog;
 import milkucha.trmt.block.ErodedGrassBlock;
 import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.erosion.BlockThresholds;
+import milkucha.trmt.network.TRMTPackets;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
@@ -17,6 +22,7 @@ import net.minecraft.client.render.model.BakedModel;
 import net.minecraft.client.render.model.BakedQuad;
 import net.minecraft.client.texture.Sprite;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.random.Random;
@@ -46,8 +52,34 @@ public class ErosionDebugHud {
     private static final int MARGIN      = 4;
     private static final int CELL        = 32;
 
+    /** Last {@code client-hud-state} text per cell (N, W, centre, E, S), so a line is logged only when it changes. */
+    private static final String[] lastLogged = new String[5];
+
     public static void register() {
         HudRenderCallback.EVENT.register(ErosionDebugHud::render);
+    }
+
+    /**
+     * Turns the HUD on/off at runtime: clears the cache when turning off and tells the server,
+     * which only sends erosion data to HUD-enabled players. Called by the {@code /trmt-hud} client command.
+     */
+    public static void setEnabled(boolean enabled) {
+        TRMTClientConfig.get().debugHud = enabled;
+        TestLog.line(() -> "client-hud enabled=" + enabled);
+        java.util.Arrays.fill(lastLogged, null);
+        if (!enabled) ClientErosionCache.getInstance().clear();
+        if (MinecraftClient.getInstance().getNetworkHandler() != null) {
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeBoolean(enabled);
+            ClientPlayNetworking.send(TRMTPackets.HUD_STATE, buf);
+        }
+    }
+
+    /** Sends the HUD state to the server (used on join, when the HUD is enabled in config). */
+    public static void sendHudState(PacketSender sender, boolean enabled) {
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeBoolean(enabled);
+        sender.sendPacket(TRMTPackets.HUD_STATE, buf);
     }
 
     private static void render(DrawContext context, float tickDelta) {
@@ -65,18 +97,18 @@ public class ErosionDebugHud {
         int x0 = MARGIN;
         int y0 = context.getScaledWindowHeight() - MARGIN - totalHeight;
 
-        renderCell(context, world, center.north(), x0 + CELL,     y0,            tr); // -z
-        renderCell(context, world, center.west(),  x0,            y0 + CELL,     tr); // -x
-        renderCell(context, world, center,         x0 + CELL,     y0 + CELL,     tr); // *
-        renderCell(context, world, center.east(),  x0 + 2 * CELL, y0 + CELL,     tr); // +x
-        renderCell(context, world, center.south(), x0 + CELL,     y0 + 2 * CELL, tr); // +z
+        renderCell(context, world, center.north(), x0 + CELL,     y0,            tr, 0, "N"); // -z
+        renderCell(context, world, center.west(),  x0,            y0 + CELL,     tr, 1, "W"); // -x
+        renderCell(context, world, center,         x0 + CELL,     y0 + CELL,     tr, 2, "C"); // *
+        renderCell(context, world, center.east(),  x0 + 2 * CELL, y0 + CELL,     tr, 3, "E"); // +x
+        renderCell(context, world, center.south(), x0 + CELL,     y0 + 2 * CELL, tr, 4, "S"); // +z
 
         String coords = center.getX() + " " + center.getY() + " " + center.getZ();
         context.drawText(tr, coords, x0, y0 + 3 * CELL + 4, TEXT_COLOR, true);
     }
 
     private static void renderCell(DrawContext context, ClientWorld world,
-                                   BlockPos pos, int x, int y, TextRenderer tr) {
+                                   BlockPos pos, int x, int y, TextRenderer tr, int cellIndex, String cellName) {
         MinecraftClient client = MinecraftClient.getInstance();
         BlockState state = world.getBlockState(pos);
 
@@ -103,6 +135,7 @@ public class ErosionDebugHud {
                 ? String.format("%.1f/%.1f", cellEntry.walkedOnCount, cellEntry.threshold)
                 : "0.0/-";
         drawCenteredScaled(context, tr, countLabel, x, y, 0, COUNT_COLOR);
+        logHudState(cellIndex, cellName, pos, cellEntry, countLabel);
 
         // Line 2: age — ticks since last touch
         String ageLabel = cellEntry != null
@@ -123,6 +156,20 @@ public class ErosionDebugHud {
         drawCenteredScaled(context, tr, outLabel, x, y, lineH * 2, OUT_COLOR);
 
         context.getMatrices().pop();
+    }
+
+    /** Test log: the values this cell draws (stage, raw count/threshold, the line-1 label), only when they change. */
+    private static void logHudState(int cellIndex, String cellName, BlockPos pos,
+                                    ClientErosionCache.Entry entry, String countLabel) {
+        if (!TestLog.enabled()) return;
+        String text = "cell=" + cellName + " pos=" + pos.getX() + "," + pos.getY() + "," + pos.getZ()
+                + " stage=" + (entry != null ? entry.stage : 0)
+                + " walked=" + (entry != null ? String.valueOf(entry.walkedOnCount) : "-")
+                + " threshold=" + (entry != null ? String.valueOf(entry.threshold) : "-")
+                + " label=" + countLabel;
+        if (text.equals(lastLogged[cellIndex])) return;
+        lastLogged[cellIndex] = text;
+        TestLog.line(() -> "client-hud-state " + text);
     }
 
     /** Draws text centered horizontally within the CELL column starting at screen x, at a given line offset (scaled coords). */

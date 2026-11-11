@@ -18,6 +18,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.random.Random;
+import net.minecraft.world.World;
 
 /**
  * Grass block produced by foot-traffic erosion.
@@ -47,9 +48,23 @@ public class ErodedGrassBlock extends Block {
     }
 
     @Override
+    public void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
+        super.neighborUpdate(state, world, pos, sourceBlock, sourcePos, notify);
+        if (world.isClient) return;
+        if (!world.getBlockState(pos.up()).isOpaque()) return;
+        world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
+        ErosionMapManager.get(world).removeEntry(pos);
+    }
+
+    @Override
     public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
+        ErosionMapManager manager = ErosionMapManager.get(world);
+        if (world.getBlockState(pos.up()).isOpaque()) {
+            world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
+            manager.removeEntry(pos);
+            return;
+        }
         if (!TRMTConfig.get().deErosion.grassEnabled) return;
-        ErosionMapManager manager = ErosionMapManager.getInstance();
         ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
 
@@ -59,11 +74,15 @@ public class ErodedGrassBlock extends Block {
         long timeout = BlockThresholds.getGrassDeErosionTimeout(blockStage + 1);
         if (BlockThresholds.isIsolated(world, pos, manager)) timeout /= 2;
         if (entry != null && currentTime - entry.getLastTouchedGameTime() <= timeout) return;
+        long newCooldownTime = (entry != null) ? entry.getLastTouchedGameTime() + timeout : currentTime;
 
         if (blockStage > 0) {
             world.setBlockState(pos, state.with(STAGE, blockStage - 1), Block.NOTIFY_ALL);
             manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, currentTime);
+            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, newCooldownTime);
+            if (random.nextFloat() < 0.05f && world.getBlockState(pos.up()).isAir()) {
+                world.setBlockState(pos.up(), Blocks.GRASS.getDefaultState(), Block.NOTIFY_ALL);
+            }
         } else {
             // Stage 0 → revert to vanilla grass_block.
             world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
