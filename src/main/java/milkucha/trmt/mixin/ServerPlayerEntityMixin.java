@@ -265,7 +265,9 @@ public class ServerPlayerEntityMixin {
             }
             // Stage 3 reached — carry rotation forward to eroded_coarse_dirt.
             world.setBlockState(pos,
-                    TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
+                    TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState()
+                            .with(ErodedDirtBlock.FACING, facing)
+                            .with(ErodedDirtBlock.FROM_DIRT, state.get(ErodedDirtBlock.FROM_DIRT)),
                     Block.NOTIFY_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_COARSE_DIRT, world.getTime());
@@ -279,7 +281,8 @@ public class ServerPlayerEntityMixin {
         world.setBlockState(pos,
                 TRMTBlocks.ERODED_DIRT.getDefaultState()
                         .with(ErodedDirtBlock.FACING, erodedFacing)
-                        .with(ErodedDirtBlock.STAGE, 1),
+                        .with(ErodedDirtBlock.STAGE, 1)
+                        .with(ErodedDirtBlock.FROM_DIRT, true),
                 Block.NOTIFY_ALL);
         manager.removeEntry(pos);
         manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getTime());
