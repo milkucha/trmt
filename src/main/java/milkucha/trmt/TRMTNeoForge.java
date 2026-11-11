@@ -20,5 +20,6 @@ public class TRMTNeoForge {
         TRMTBlocks.BLOCKS.register(modEventBus);
 
         TRMTNetwork.register(modEventBus);
+        TRMTBlockBreakListener.register();
     }
 }

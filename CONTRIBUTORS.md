@@ -4,3 +4,4 @@ The following people have contributed code to The Roads More Travelled (TRMT) un
 
 | Contributor | Contribution |
 |---|---|
+| [@EldritchMoon](https://github.com/EldritchMoon) | NeoForge 26.1.2 crash fix (PR #70) |
