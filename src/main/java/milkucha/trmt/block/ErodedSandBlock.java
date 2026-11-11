@@ -9,6 +9,7 @@ import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.FallingBlock;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.block.Waterloggable;
 import net.minecraft.fluid.Fluid;
@@ -111,6 +112,7 @@ public class ErodedSandBlock extends Block implements Waterloggable {
             if (world instanceof World w && !w.isClient) ErosionMapManager.get(w).removeEntry(pos);
             return Blocks.SAND.getDefaultState();
         }
+        world.scheduleBlockTick(pos, this, FALL_DELAY);
         if (state.get(WATERLOGGED)) {
             world.scheduleFluidTick(pos, Fluids.WATER, Fluids.WATER.getTickRate(world));
         }
@@ -118,6 +120,27 @@ public class ErodedSandBlock extends Block implements Waterloggable {
     }
 
     // --- Block overrides ---
+
+    /** Same delay as vanilla FallingBlock.getFallDelay(). */
+    private static final int FALL_DELAY = 2;
+
+    /** Vanilla sand's support test: nothing solid below (and not below the world). */
+    private static boolean isUnsupported(World world, BlockPos pos) {
+        return FallingBlock.canFallThrough(world.getBlockState(pos.down())) && pos.getY() >= world.getBottomY();
+    }
+
+    @Override
+    public void onBlockAdded(BlockState state, World world, BlockPos pos, BlockState oldState, boolean notify) {
+        world.scheduleBlockTick(pos, this, FALL_DELAY);
+    }
+
+    /** Unsupported eroded sand turns into vanilla sand (erosion lost); vanilla sand then falls by its own rules. */
+    @Override
+    public void scheduledTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
+        if (!isUnsupported(world, pos)) return;
+        world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
+        ErosionMapManager.get(world).removeEntry(pos);
+    }
 
     @Override
     public void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
@@ -131,6 +154,11 @@ public class ErodedSandBlock extends Block implements Waterloggable {
     @Override
     public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
         ErosionMapManager manager = ErosionMapManager.get(world);
+        if (isUnsupported(world, pos)) {
+            world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
+            manager.removeEntry(pos);
+            return;
+        }
         if (BlockThresholds.shouldSandRevert(world, pos)) {
             world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
             manager.removeEntry(pos);
