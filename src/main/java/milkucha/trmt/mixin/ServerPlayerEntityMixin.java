@@ -9,6 +9,8 @@ import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
+import milkucha.trmt.path.PathBuffHolder;
+import milkucha.trmt.path.PathSpeedBuff;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -29,8 +31,16 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ServerPlayerEntity.class)
-public class ServerPlayerEntityMixin {
+public class ServerPlayerEntityMixin implements PathBuffHolder {
 
+    /** Path speed buff state of this player (see {@link PathSpeedBuff}). */
+    @Unique
+    private final PathSpeedBuff.State trmt$pathBuff = new PathSpeedBuff.State();
+
+    @Override
+    public PathSpeedBuff.State trmt$getPathBuff() {
+        return trmt$pathBuff;
+    }
 
     /** Last block position this player was standing on. Null while airborne. */
     @Unique
@@ -44,6 +54,9 @@ public class ServerPlayerEntityMixin {
         Entity vehicle = player.getVehicle();
         boolean mounted = vehicle != null;
         boolean onGround = mounted ? vehicle.isOnGround() : player.isOnGround();
+
+        // Safety net for the path speed buff: drop it if its carrier is no longer what the player stands on/controls.
+        PathSpeedBuff.tickCheck(player, trmt$pathBuff);
 
         if (!onGround) {
             // Airborne (or vehicle airborne) — clear last ground position so the next landing registers.
@@ -70,6 +83,10 @@ public class ServerPlayerEntityMixin {
         }
 
         trmt$lastGroundPos = groundPos.toImmutable();
+
+        // Path speed buff: one evaluation per new ground block. Deliberately before the sneaking and Lightness
+        // returns below (the buff is about the path, not about wearing it) and independent of the erosion toggles.
+        PathSpeedBuff.onNewGroundBlock(player, vehicle, trmt$pathBuff);
 
         // Sneaking suppresses erosion.
         if (player.isSneaking()) return;

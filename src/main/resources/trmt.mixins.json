@@ -5,6 +5,7 @@
 	"mixins": [
 		"BoneMealItemMixin",
 		"BrushItemMixin",
+		"EntityMixin",
 		"HoeItemMixin",
 		"MobEntityMixin",
 		"SandBlockMixin",
