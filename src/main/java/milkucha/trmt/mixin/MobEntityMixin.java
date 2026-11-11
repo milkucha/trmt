@@ -123,7 +123,7 @@ public class MobEntityMixin {
         if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
 
         if (state.isOf(Blocks.SAND)) {
-            if (!world.getBlockState(pos.up()).isAir()) return;
+            if (!BlockThresholds.canSandErodeFurther(world, pos)) return;
             Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
             world.setBlockState(pos,
                     TRMTBlocks.ERODED_SAND.getDefaultState()
@@ -136,7 +136,7 @@ public class MobEntityMixin {
         }
 
         if (state.isOf(TRMTBlocks.ERODED_SAND)) {
-            if (!world.getBlockState(pos.up()).isAir()) return;
+            if (!BlockThresholds.canSandErodeFurther(world, pos)) return;
             int stage = state.get(ErodedSandBlock.STAGE);
             if (stage < 4) {
                 world.setBlockState(pos, state.with(ErodedSandBlock.STAGE, stage + 1), Block.NOTIFY_ALL);

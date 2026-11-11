@@ -104,6 +104,13 @@ public class ErodedSandBlock extends Block implements Waterloggable {
     @Override
     public BlockState getStateForNeighborUpdate(BlockState state, Direction direction, BlockState neighborState,
                                                 WorldAccess world, BlockPos pos, BlockPos neighborPos) {
+        // Reverts as part of the shape update, so it also runs during client placement prediction and
+        // covers every way a block can appear or change above (pistons, falling blocks, trapdoors opening...).
+        if (direction == Direction.UP
+                && BlockThresholds.classifyAboveSand(neighborState, world, neighborPos) == BlockThresholds.SandAbove.TOUCHES_GROUND) {
+            if (world instanceof World w && !w.isClient) ErosionMapManager.get(w).removeEntry(pos);
+            return Blocks.SAND.getDefaultState();
+        }
         if (state.get(WATERLOGGED)) {
             world.scheduleFluidTick(pos, Fluids.WATER, Fluids.WATER.getTickRate(world));
         }
@@ -116,7 +123,7 @@ public class ErodedSandBlock extends Block implements Waterloggable {
     public void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
         super.neighborUpdate(state, world, pos, sourceBlock, sourcePos, notify);
         if (world.isClient) return;
-        if (!world.getBlockState(pos.up()).isOpaque()) return;
+        if (!BlockThresholds.shouldSandRevert(world, pos)) return;
         world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
         ErosionMapManager.get(world).removeEntry(pos);
     }
@@ -124,7 +131,7 @@ public class ErodedSandBlock extends Block implements Waterloggable {
     @Override
     public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
         ErosionMapManager manager = ErosionMapManager.get(world);
-        if (world.getBlockState(pos.up()).isOpaque()) {
+        if (BlockThresholds.shouldSandRevert(world, pos)) {
             world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
             manager.removeEntry(pos);
             return;
