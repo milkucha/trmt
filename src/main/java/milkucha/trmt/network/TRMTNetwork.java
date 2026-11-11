@@ -88,6 +88,7 @@ public final class TRMTNetwork {
     }
 
     public static void sendVersionCheck(ServerPlayer player) {
+        if (!player.connection.hasChannel(VersionCheckPayload.TYPE)) return;
         PacketDistributor.sendToPlayer(player, new VersionCheckPayload(getModVersion()));
     }
 
