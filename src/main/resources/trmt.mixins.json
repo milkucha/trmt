@@ -11,10 +11,10 @@
 		"BrushItemMixin",
 		"CactusBlockMixin",
 		"DeadBushBlockMixin",
+		"EatGrassGoalMixin",
 		"FallingBlockEntityMixin",
 		"HoeItemMixin",
 		"MobEntityMixin",
-		"SandBlockMixin",
 		"ServerPlayerEntityMixin",
 		"ShovelItemMixin",
 		"SugarCaneBlockMixin"
