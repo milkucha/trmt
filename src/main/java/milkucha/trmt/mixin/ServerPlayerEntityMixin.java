@@ -185,7 +185,7 @@ public class ServerPlayerEntityMixin {
 
         // Threshold reached — advance visual stage or transform the block.
         if (state.is(Blocks.SAND)) {
-            if (!world.getBlockState(pos.above()).isAir()) return;
+            if (!BlockThresholds.canSandErodeFurther(world, pos)) return;
             Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
             world.setBlock(pos,
                     TRMTBlocks.ERODED_SAND.defaultBlockState()
@@ -198,7 +198,7 @@ public class ServerPlayerEntityMixin {
         }
 
         if (state.is(TRMTBlocks.ERODED_SAND)) {
-            if (!world.getBlockState(pos.above()).isAir()) return;
+            if (!BlockThresholds.canSandErodeFurther(world, pos)) return;
             int stage = state.getValue(ErodedSandBlock.STAGE);
             if (stage < 4) {
                 world.setBlock(pos, state.setValue(ErodedSandBlock.STAGE, stage + 1), Block.UPDATE_ALL);

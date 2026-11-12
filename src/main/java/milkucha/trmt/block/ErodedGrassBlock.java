@@ -53,7 +53,7 @@ public class ErodedGrassBlock extends Block {
     public void neighborChanged(BlockState state, Level world, BlockPos pos, Block block,
                                 @Nullable Orientation orientation, boolean movedByPiston) {
         super.neighborChanged(state, world, pos, block, orientation, movedByPiston);
-        if (!world.isClientSide() && world.getBlockState(pos.above()).canOcclude()) {
+        if (!world.isClientSide() && BlockThresholds.shouldRevertUnder(world, pos)) {
             world.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
             ErosionMapManager.get(world).removeEntry(pos);
         }
@@ -61,7 +61,7 @@ public class ErodedGrassBlock extends Block {
 
     @Override
     public void randomTick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
-        if (world.getBlockState(pos.above()).canOcclude()) {
+        if (BlockThresholds.shouldRevertUnder(world, pos)) {
             world.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
             ErosionMapManager.get(world).removeEntry(pos);
             return;

@@ -93,6 +93,13 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
     public BlockState updateShape(BlockState state, LevelReader level, ScheduledTickAccess tickAccess,
                                   BlockPos pos, Direction direction, BlockPos neighborPos,
                                   BlockState neighborState, RandomSource random) {
+        // Reverts as part of the shape update, so it also runs during client placement prediction and
+        // covers every way a block can appear or change above (pistons, falling blocks, trapdoors opening...).
+        if (direction == Direction.UP
+                && BlockThresholds.classifyAboveSand(neighborState, level, neighborPos) == BlockThresholds.SandAbove.TOUCHES_GROUND) {
+            if (level instanceof Level w && !w.isClientSide()) ErosionMapManager.get(w).removeEntry(pos);
+            return Blocks.SAND.defaultBlockState();
+        }
         if (state.getValue(WATERLOGGED)) {
             tickAccess.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
         }
@@ -105,7 +112,7 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
     public void neighborChanged(BlockState state, Level world, BlockPos pos, Block block,
                                 @Nullable Orientation orientation, boolean movedByPiston) {
         super.neighborChanged(state, world, pos, block, orientation, movedByPiston);
-        if (!world.isClientSide() && world.getBlockState(pos.above()).canOcclude()) {
+        if (!world.isClientSide() && BlockThresholds.shouldSandRevert(world, pos)) {
             world.setBlock(pos, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
             ErosionMapManager.get(world).removeEntry(pos);
         }
@@ -115,7 +122,7 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
 
     @Override
     public void randomTick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
-        if (world.getBlockState(pos.above()).canOcclude()) {
+        if (BlockThresholds.shouldSandRevert(world, pos)) {
             world.setBlock(pos, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
             ErosionMapManager.get(world).removeEntry(pos);
             return;
