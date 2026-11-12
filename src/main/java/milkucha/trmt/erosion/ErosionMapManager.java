@@ -128,41 +128,13 @@ public class ErosionMapManager {
         if (map.removeEntry(worldPos)) {
             state.removeChunkMapIfEmpty(chunkPos);
             state.markDirty(chunkPos);
+            broadcastStageUpdate(worldPos, 0, 0f, 0f, 0L);
         }
-        broadcastStageUpdate(worldPos, 0, 0f, 0f, 0L);
-    }
-
-    public void markForRerender(BlockPos pos) {
-        if (state == null) return;
-        ChunkErosionMap map = state.getChunkMap(new ChunkPos(pos));
-        if (map == null) return;
-        ErosionEntry entry = map.getEntry(pos);
-        if (entry == null) return;
-        broadcastStageUpdate(pos, entry.getErosionStage(), entry.getWalkedOnCount(), entry.getThreshold(), entry.getLastTouchedGameTime());
     }
 
     public ChunkErosionMap getChunkMap(ChunkPos chunkPos) {
         if (state == null) return null;
         return state.getChunkMap(chunkPos);
-    }
-
-    public void revertGrassStage(BlockPos worldPos, long currentGameTime) {
-        if (state == null) return;
-        ChunkErosionMap map = state.getChunkMap(new ChunkPos(worldPos));
-        if (map == null) return;
-        ErosionEntry entry = map.getEntry(worldPos);
-        if (entry == null) return;
-        entry.revertGrassStage(BlockThresholds.randomThreshold(Blocks.GRASS_BLOCK), currentGameTime);
-        state.markDirty(new ChunkPos(worldPos));
-    }
-
-    public void writeErodedGrassCooldownEntry(BlockPos worldPos, int stage, long currentGameTime) {
-        if (state == null) return;
-        ChunkPos chunkPos = new ChunkPos(worldPos);
-        ChunkErosionMap map = state.computeChunkMap(chunkPos);
-        float threshold = BlockThresholds.randomThreshold(Blocks.GRASS_BLOCK);
-        map.putEntry(worldPos.toImmutable(), new ErosionEntry(Blocks.GRASS_BLOCK, threshold, 0f, currentGameTime, stage));
-        state.markDirty(chunkPos);
     }
 
     public void writeCooldownEntry(BlockPos worldPos, Block block, long currentGameTime) {
