@@ -60,7 +60,7 @@ public class ServerPlayerEntityMixin {
         // too low. Correct by checking one block up when groundPos yields nothing tracked.
         Level world = player.level();
         BlockState groundUpState = world.getBlockState(groundPos.above());
-        if (groundUpState.is(TRMTBlocks.ERODED_SAND) || groundUpState.is(Blocks.SAND)) {
+        if (groundUpState.is(TRMTBlocks.ERODED_SAND)) {
             groundPos = groundPos.above();
         }
 
@@ -141,6 +141,7 @@ public class ServerPlayerEntityMixin {
                 || (erosion.leavesEnabled && BlockThresholds.isLeaves(adjState.getBlock()))) {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
             trmt$tryTransform(world, manager, pos);
+            manager.broadcastEntryUpdate(pos, adjState.getBlock());
         }
     }
 
@@ -264,7 +265,9 @@ public class ServerPlayerEntityMixin {
             }
             // Stage 3 reached — carry rotation forward to eroded_coarse_dirt.
             world.setBlock(pos,
-                    TRMTBlocks.ERODED_COARSE_DIRT.defaultBlockState().setValue(ErodedDirtBlock.FACING, facing),
+                    TRMTBlocks.ERODED_COARSE_DIRT.defaultBlockState()
+                            .setValue(ErodedDirtBlock.FACING, facing)
+                            .setValue(ErodedDirtBlock.FROM_DIRT, state.getValue(ErodedDirtBlock.FROM_DIRT)),
                     Block.UPDATE_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_COARSE_DIRT, world.getGameTime());
@@ -278,7 +281,8 @@ public class ServerPlayerEntityMixin {
         world.setBlock(pos,
                 TRMTBlocks.ERODED_DIRT.defaultBlockState()
                         .setValue(ErodedDirtBlock.FACING, erodedFacing)
-                        .setValue(ErodedDirtBlock.STAGE, 1),
+                        .setValue(ErodedDirtBlock.STAGE, 1)
+                        .setValue(ErodedDirtBlock.FROM_DIRT, true),
                 Block.UPDATE_ALL);
         manager.removeEntry(pos);
         manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getGameTime());
