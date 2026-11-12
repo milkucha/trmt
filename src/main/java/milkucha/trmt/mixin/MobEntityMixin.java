@@ -53,7 +53,7 @@ public class MobEntityMixin {
 
         Level world = mob.level();
         BlockState groundUpState = world.getBlockState(groundPos.above());
-        if (groundUpState.is(TRMTBlocks.ERODED_SAND.get()) || groundUpState.is(Blocks.SAND)) {
+        if (groundUpState.is(TRMTBlocks.ERODED_SAND.get())) {
             groundPos = groundPos.above();
         }
 
@@ -195,7 +195,9 @@ public class MobEntityMixin {
                 return;
             }
             world.setBlock(pos,
-                    TRMTBlocks.ERODED_COARSE_DIRT.get().defaultBlockState().setValue(ErodedDirtBlock.FACING, facing),
+                    TRMTBlocks.ERODED_COARSE_DIRT.get().defaultBlockState()
+                            .setValue(ErodedDirtBlock.FACING, facing)
+                            .setValue(ErodedDirtBlock.FROM_DIRT, state.getValue(ErodedDirtBlock.FROM_DIRT)),
                     Block.UPDATE_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_COARSE_DIRT.get(), world.getGameTime());
@@ -209,7 +211,8 @@ public class MobEntityMixin {
         world.setBlock(pos,
                 TRMTBlocks.ERODED_DIRT.get().defaultBlockState()
                         .setValue(ErodedDirtBlock.FACING, erodedFacing)
-                        .setValue(ErodedDirtBlock.STAGE, 1),
+                        .setValue(ErodedDirtBlock.STAGE, 1)
+                        .setValue(ErodedDirtBlock.FROM_DIRT, true),
                 Block.UPDATE_ALL);
         manager.removeEntry(pos);
         manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT.get(), world.getGameTime());
