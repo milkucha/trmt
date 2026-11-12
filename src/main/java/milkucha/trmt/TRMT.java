@@ -1,6 +1,5 @@
 package milkucha.trmt;
 
-import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.ErosionMapManager;
 import milkucha.trmt.erosion.VanillaConversion;
 import milkucha.trmt.network.HudStatePayload;
@@ -14,7 +13,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
@@ -26,8 +24,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.Permissions;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.slf4j.Logger;
@@ -91,18 +87,6 @@ public class TRMT implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> VanillaConversion.onServerStopping());
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) ->
 				ErosionMapManager.get(world).removeEntry(pos));
-
-		// Prevent block placement above sunken eroded sand (stages 1–4) to avoid AO darkening.
-		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-			var placePos = hitResult.getBlockPos().relative(hitResult.getDirection());
-			var below = world.getBlockState(placePos.below());
-			if (below.is(TRMTBlocks.ERODED_SAND)
-					&& below.getValue(ErodedSandBlock.STAGE) > 0
-					&& player.getItemInHand(hand).getItem() instanceof BlockItem) {
-				return InteractionResult.FAIL;
-			}
-			return InteractionResult.PASS;
-		});
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
 				dispatcher.register(Commands.literal("trmt")
