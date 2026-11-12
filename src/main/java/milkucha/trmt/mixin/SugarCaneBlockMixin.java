@@ -1,9 +1,11 @@
 package milkucha.trmt.mixin;
 
 import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.block.ErodedSandBlock;
+import milkucha.trmt.erosion.BlockThresholds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SugarCaneBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -12,6 +14,7 @@ import net.minecraft.world.level.material.Fluids;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(SugarCaneBlock.class)
@@ -22,12 +25,7 @@ public class SugarCaneBlockMixin {
                                            CallbackInfoReturnable<Boolean> cir) {
         BlockState below = world.getBlockState(pos.below());
 
-        // Eroded sand stage 0 is full-height — allow placement without water check (same as vanilla sand).
-        if (below.is(TRMTBlocks.ERODED_SAND.get()) && below.getValue(ErodedSandBlock.STAGE) == 0) {
-            cir.setReturnValue(true);
-            return;
-        }
-
+        // Eroded sand (any stage) is handled by the is(TagKey) redirects below: it counts as sand, so the vanilla water check applies.
         // Eroded grass/dirt are full-height blocks — allow placement when adjacent water is present (vanilla rule).
         if (below.is(TRMTBlocks.ERODED_GRASS_BLOCK.get())
                 || below.is(TRMTBlocks.ERODED_DIRT.get())
@@ -42,5 +40,13 @@ public class SugarCaneBlockMixin {
             }
             cir.setReturnValue(false);
         }
+    }
+
+    // 26.1: canSurvive calls BlockState.is(TagKey) twice: BlockTags.SUPPORTS_SUGAR_CANE (ordinal 0, on the block below; contains #sand)
+    // and BlockTags.SUPPORTS_SUGAR_CANE_ADJACENTLY (ordinal 1, on the neighbours of the base; frosted ice) - only ordinal 0 is redirected.
+    @Redirect(method = "canSurvive", at = @At(value = "INVOKE", ordinal = 0,
+            target = "Lnet/minecraft/world/level/block/state/BlockState;is(Lnet/minecraft/tags/TagKey;)Z"))
+    private boolean trmt$erodedSandCountsAsSand(BlockState state, TagKey<Block> tag) {
+        return BlockThresholds.isInSandAware(state, tag);
     }
 }
