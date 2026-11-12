@@ -60,7 +60,7 @@ public class ServerPlayerEntityMixin {
         // too low. Correct by checking one block up when groundPos yields nothing tracked.
         World world = player.getWorld();
         BlockState groundUpState = world.getBlockState(groundPos.up());
-        if (groundUpState.isOf(TRMTBlocks.ERODED_SAND) || groundUpState.isOf(Blocks.SAND)) {
+        if (groundUpState.isOf(TRMTBlocks.ERODED_SAND)) {
             groundPos = groundPos.up();
         }
 
