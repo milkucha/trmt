@@ -61,14 +61,14 @@ public class ErodedGrassBlock extends Block {
     public void neighborChanged(BlockState state, Level world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean isMoving) {
         super.neighborChanged(state, world, pos, sourceBlock, sourcePos, isMoving);
         if (world.isClientSide) return;
-        if (!world.getBlockState(pos.above()).canOcclude()) return;
+        if (!BlockThresholds.shouldRevertUnder(world, pos)) return;
         world.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
         ErosionMapManager.get(world).removeEntry(pos);
     }
 
     @Override
     public void randomTick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
-        if (world.getBlockState(pos.above()).canOcclude()) {
+        if (BlockThresholds.shouldRevertUnder(world, pos)) {
             world.setBlock(pos, Blocks.GRASS_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
             ErosionMapManager.get(world).removeEntry(pos);
             return;
