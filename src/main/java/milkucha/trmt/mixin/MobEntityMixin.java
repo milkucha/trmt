@@ -53,7 +53,7 @@ public class MobEntityMixin {
 
         World world = mob.getWorld();
         BlockState groundUpState = world.getBlockState(groundPos.up());
-        if (groundUpState.isOf(TRMTBlocks.ERODED_SAND) || groundUpState.isOf(Blocks.SAND)) {
+        if (groundUpState.isOf(TRMTBlocks.ERODED_SAND)) {
             groundPos = groundPos.up();
         }
 

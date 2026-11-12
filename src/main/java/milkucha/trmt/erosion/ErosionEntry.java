@@ -63,30 +63,4 @@ public class ErosionEntry {
         this.walkedOnCount += amount;
         this.lastTouchedGameTime = currentGameTime;
     }
-
-    /**
-     * Advances grass erosion by one visual stage.
-     * Resets walkedOnCount to 0 and sets a new random threshold for the next stage.
-     */
-    public void advanceGrassStage(float newThreshold) {
-        this.erosionStage++;
-        this.walkedOnCount = 0f;
-        this.threshold = newThreshold;
-    }
-
-    /**
-     * Reverts grass erosion by one visual stage, resets progress, and updates
-     * {@code lastTouchedGameTime} to act as a cooldown against immediate re-reversion.
-     */
-    public void revertGrassStage(float newThreshold, long currentGameTime) {
-        this.erosionStage--;
-        this.walkedOnCount = 0f;
-        this.threshold = newThreshold;
-        this.lastTouchedGameTime = currentGameTime;
-    }
-
-    /** Returns true if this entry carries no meaningful erosion (can be pruned). */
-    public boolean isEmpty() {
-        return walkedOnCount <= 0;
-    }
 }
