@@ -19,6 +19,7 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.FallingBlock;
 import net.minecraft.world.level.block.SimpleWaterloggedBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -100,10 +101,32 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
             if (world instanceof Level w && !w.isClientSide()) ErosionMapManager.get(w).removeEntry(pos);
             return Blocks.SAND.defaultBlockState();
         }
+        tickAccess.scheduleTick(pos, this, FALL_DELAY);
         if (state.getValue(WATERLOGGED)) {
             tickAccess.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(world));
         }
         return super.updateShape(state, world, tickAccess, pos, direction, neighborPos, neighborState, random);
+    }
+
+    /** Same delay as vanilla FallingBlock.getDelayAfterPlace(). */
+    private static final int FALL_DELAY = 2;
+
+    /** Vanilla sand's support test: nothing solid below (and not below the world). */
+    private static boolean isUnsupported(Level world, BlockPos pos) {
+        return FallingBlock.isFree(world.getBlockState(pos.below())) && pos.getY() >= world.getMinY();
+    }
+
+    @Override
+    protected void onPlace(BlockState state, Level world, BlockPos pos, BlockState oldState, boolean movedByPiston) {
+        world.scheduleTick(pos, this, FALL_DELAY);
+    }
+
+    /** Unsupported eroded sand turns into vanilla sand (erosion lost); vanilla sand then falls by its own rules. */
+    @Override
+    protected void tick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
+        if (!isUnsupported(world, pos)) return;
+        world.setBlock(pos, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
+        ErosionMapManager.get(world).removeEntry(pos);
     }
 
     @Override
@@ -118,6 +141,11 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
 
     @Override
     public void randomTick(BlockState state, ServerLevel world, BlockPos pos, RandomSource random) {
+        if (isUnsupported(world, pos)) {
+            world.setBlock(pos, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
+            ErosionMapManager.get(world).removeEntry(pos);
+            return;
+        }
         if (BlockThresholds.shouldSandRevert(world, pos)) {
             world.setBlock(pos, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
             ErosionMapManager.get(world).removeEntry(pos);

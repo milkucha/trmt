@@ -69,13 +69,6 @@ public class ChunkErosionMap {
         return entries.remove(pos) != null;
     }
 
-    /**
-     * Removes any entry whose walkedOnCount has dropped to zero (e.g. after full decay).
-     */
-    public void pruneEmpty() {
-        entries.entrySet().removeIf(e -> e.getValue().isEmpty());
-    }
-
     public boolean isEmpty() {
         return entries.isEmpty();
     }

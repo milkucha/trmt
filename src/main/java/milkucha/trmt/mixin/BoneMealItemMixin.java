@@ -49,7 +49,11 @@ public class BoneMealItemMixin {
         } else if (block == TRMTBlocks.ERODED_DIRT) {
             int stage = state.getValue(ErodedDirtBlock.STAGE);
             Direction facing = state.getValue(ErodedDirtBlock.FACING);
-            if (stage > 0) {
+            if (state.getValue(ErodedDirtBlock.FROM_DIRT) && stage <= 1) {
+                // Worn from plain dirt: fully recovered, back to vanilla dirt (never grass).
+                world.setBlock(pos, Blocks.DIRT.defaultBlockState(), Block.UPDATE_ALL);
+                manager.removeEntry(pos);
+            } else if (stage > 0) {
                 world.setBlock(pos, state.setValue(ErodedDirtBlock.STAGE, stage - 1), Block.UPDATE_ALL);
                 manager.removeEntry(pos);
                 manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime);
@@ -68,7 +72,8 @@ public class BoneMealItemMixin {
             world.setBlock(pos,
                     TRMTBlocks.ERODED_DIRT.defaultBlockState()
                             .setValue(ErodedDirtBlock.FACING, facing)
-                            .setValue(ErodedDirtBlock.STAGE, 3),
+                            .setValue(ErodedDirtBlock.STAGE, 3)
+                            .setValue(ErodedDirtBlock.FROM_DIRT, state.getValue(ErodedDirtBlock.FROM_DIRT)),
                     Block.UPDATE_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, currentTime);
