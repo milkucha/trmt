@@ -18,6 +18,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.redstone.Orientation;
@@ -45,14 +46,20 @@ public class ErodedDirtBlock extends Block {
      */
     public static final IntegerProperty STAGE = IntegerProperty.create("stage", 0, 3);
 
+    /**
+     * True when this eroded dirt was worn from plain dirt (not from grass). Such blocks recover back
+     * to plain dirt instead of grass. Default false, so eroded dirt from older worlds recovers to grass.
+     */
+    public static final BooleanProperty FROM_DIRT = BooleanProperty.create("from_dirt");
+
     public ErodedDirtBlock(BlockBehaviour.Properties properties) {
         super(properties);
-        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.SOUTH).setValue(STAGE, 0));
+        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.SOUTH).setValue(STAGE, 0).setValue(FROM_DIRT, false));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, STAGE);
+        builder.add(FACING, STAGE, FROM_DIRT);
     }
 
     @Override
@@ -95,12 +102,16 @@ public class ErodedDirtBlock extends Block {
 
         if (block == TRMTBlocks.ERODED_COARSE_DIRT.get()) {
             // De-erode to the most eroded dirt stage.
-            world.setBlock(pos, TRMTBlocks.ERODED_DIRT.get().defaultBlockState().setValue(FACING, facing).setValue(STAGE, 3), Block.UPDATE_ALL);
+            world.setBlock(pos, TRMTBlocks.ERODED_DIRT.get().defaultBlockState().setValue(FACING, facing).setValue(STAGE, 3).setValue(FROM_DIRT, state.getValue(FROM_DIRT)), Block.UPDATE_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT.get(), newCooldownTime);
         } else if (block == TRMTBlocks.ERODED_DIRT.get()) {
             int stage = state.getValue(STAGE);
-            if (stage > 0) {
+            if (state.getValue(FROM_DIRT) && stage <= 1) {
+                // Worn from plain dirt: fully recovered, back to vanilla dirt (never grass).
+                world.setBlock(pos, Blocks.DIRT.defaultBlockState(), Block.UPDATE_ALL);
+                manager.removeEntry(pos);
+            } else if (stage > 0) {
                 // Step down one visual stage.
                 world.setBlock(pos, state.setValue(STAGE, stage - 1), Block.UPDATE_ALL);
                 manager.removeEntry(pos);
