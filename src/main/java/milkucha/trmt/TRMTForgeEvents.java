@@ -1,25 +1,19 @@
 package milkucha.trmt;
 
-import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.ErosionMapManager;
 import milkucha.trmt.erosion.VanillaConversion;
 import milkucha.trmt.network.TRMTNetwork;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.event.level.ChunkWatchEvent;
 import net.minecraftforge.event.level.LevelEvent;
@@ -116,20 +110,6 @@ public class TRMTForgeEvents {
     public static void onBlockBreak(BlockEvent.BreakEvent event) {
         if (event.getLevel() instanceof Level level) {
             ErosionMapManager.get(level).removeEntry(event.getPos());
-        }
-    }
-
-    @SubscribeEvent
-    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        net.minecraft.core.Direction face = event.getFace();
-        if (face == null) return;
-        BlockPos placePos = event.getPos().relative(face);
-        BlockState below = event.getLevel().getBlockState(placePos.below());
-        if (below.is(TRMTBlocks.ERODED_SAND.get())
-                && below.getValue(ErodedSandBlock.STAGE) > 0
-                && event.getItemStack().getItem() instanceof BlockItem) {
-            event.setCanceled(true);
-            event.setCancellationResult(InteractionResult.FAIL);
         }
     }
 

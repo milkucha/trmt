@@ -5,8 +5,13 @@
 	"package": "milkucha.trmt.mixin",
 	"compatibilityLevel": "JAVA_17",
 	"mixins": [
+		"BambooSaplingBlockMixin",
+		"BambooStalkBlockMixin",
+		"BlockItemMixin",
 		"BoneMealItemMixin",
 		"BrushItemMixin",
+		"DeadBushBlockMixin",
+		"FallingBlockEntityMixin",
 		"HoeItemMixin",
 		"MobEntityMixin",
 		"SandBlockMixin",

@@ -1,7 +1,6 @@
 package milkucha.trmt.mixin;
 
 import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.block.ErodedSandBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Blocks;
@@ -22,13 +21,8 @@ public class SugarCaneBlockMixin {
                                            CallbackInfoReturnable<Boolean> cir) {
         BlockState below = world.getBlockState(pos.below());
 
-        // Eroded sand stage 0 is full-height — allow placement without water check (same as vanilla sand).
-        if (below.is(TRMTBlocks.ERODED_SAND.get()) && below.getValue(ErodedSandBlock.STAGE) == 0) {
-            cir.setReturnValue(true);
-            return;
-        }
-
         // Eroded grass/dirt are full-height blocks — allow placement when adjacent water is present (vanilla rule).
+        // Eroded sand (any stage) is not handled here: ErodedSandBlock.canSustainPlant answers like vanilla sand, so the vanilla water check applies.
         if (below.is(TRMTBlocks.ERODED_GRASS_BLOCK.get())
                 || below.is(TRMTBlocks.ERODED_DIRT.get())
                 || below.is(TRMTBlocks.ERODED_COARSE_DIRT.get())) {
