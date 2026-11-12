@@ -132,6 +132,10 @@ public class ErosionDebugHud {
             }
         }
 
+        // Text lines at 0.5x scale inside the 32x32 cell (drawCentered works in the scaled coordinates).
+        context.pose().pushMatrix();
+        context.pose().scale(0.5f, 0.5f);
+
         long currentTime = client.level != null ? client.level.getGameTime() : 0L;
         int lineH = tr.lineHeight + 1;
 
@@ -159,6 +163,8 @@ public class ErosionDebugHud {
             outLabel = "out:" + timeout + (isolated ? " I" : "");
         }
         drawCentered(context, tr, outLabel, x, y, lineH * 2, OUT_COLOR);
+
+        context.pose().popMatrix();
     }
 
     /** Test log: the values this cell draws (stage, raw count/threshold, the line-1 label), only when they change. */
@@ -179,8 +185,8 @@ public class ErosionDebugHud {
                                      String text, int cellX, int cellY,
                                      int lineOffset, int color) {
         int textWidth = tr.width(text);
-        int drawX = cellX + (CELL - textWidth) / 2;
-        int drawY = cellY + 2 + lineOffset;
+        int drawX = (cellX * 2) + (CELL * 2 - textWidth) / 2;
+        int drawY = (cellY * 2) + 2 + lineOffset;
         context.text(tr, text, drawX, drawY, color, true);
     }
 
