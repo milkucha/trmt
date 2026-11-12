@@ -1,6 +1,5 @@
 package milkucha.trmt;
 
-import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.ErosionMapManager;
 import milkucha.trmt.erosion.VanillaConversion;
 import milkucha.trmt.network.HudStatePayload;
@@ -14,18 +13,15 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.item.BlockItem;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.chunk.ChunkStatus;
 import org.slf4j.Logger;
@@ -89,18 +85,6 @@ public class TRMT implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> VanillaConversion.onServerStopping());
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) ->
 				ErosionMapManager.get(world).removeEntry(pos));
-
-		// Prevent blocks from being placed above sunken eroded sand (stages 1–4) from any angle.
-		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-			var placePos = hitResult.getBlockPos().offset(hitResult.getSide());
-			var below = world.getBlockState(placePos.down());
-			if (below.isOf(TRMTBlocks.ERODED_SAND)
-					&& below.get(ErodedSandBlock.STAGE) > 0
-					&& player.getStackInHand(hand).getItem() instanceof BlockItem) {
-				return ActionResult.FAIL;
-			}
-			return ActionResult.PASS;
-		});
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
 				dispatcher.register(CommandManager.literal("trmt")

@@ -56,7 +56,7 @@ public class ErodedDirtBlock extends Block {
     public void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
         super.neighborUpdate(state, world, pos, sourceBlock, sourcePos, notify);
         if (world.isClient) return;
-        if (!world.getBlockState(pos.up()).isOpaque()) return;
+        if (!BlockThresholds.shouldRevertUnder(world, pos)) return;
         BlockState revertTo = state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)
                 ? Blocks.COARSE_DIRT.getDefaultState()
                 : Blocks.DIRT.getDefaultState();
@@ -66,7 +66,7 @@ public class ErodedDirtBlock extends Block {
 
     @Override
     public void randomTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
-        if (world.getBlockState(pos.up()).isOpaque()) {
+        if (BlockThresholds.shouldRevertUnder(world, pos)) {
             BlockState revertTo = state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)
                     ? Blocks.COARSE_DIRT.getDefaultState()
                     : Blocks.DIRT.getDefaultState();

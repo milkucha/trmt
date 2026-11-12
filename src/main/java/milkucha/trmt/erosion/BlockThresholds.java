@@ -3,15 +3,26 @@ package milkucha.trmt.erosion;
 import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
+import net.minecraft.block.BambooBlock;
+import net.minecraft.block.BambooShootBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.CactusBlock;
+import net.minecraft.block.DeadBushBlock;
+import net.minecraft.block.FluidBlock;
 import net.minecraft.block.LeavesBlock;
+import net.minecraft.block.SugarCaneBlock;
+import net.minecraft.block.WallBannerBlock;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.tag.BlockTags;
+import net.minecraft.registry.tag.TagKey;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.shape.VoxelShape;
+import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 
 import java.util.HashSet;
@@ -52,6 +63,134 @@ public final class BlockThresholds {
             resolvedVegetation = Set.copyOf(resolved);
         }
         return resolvedVegetation;
+    }
+
+    // -- "block above hides the ground" rules --------------------------------
+
+    private static volatile Set<Block> resolvedRevertAlways = null;
+    private static volatile Set<Block> resolvedRevertNever = null;
+
+    /** Drops the cached {@code revertAlwaysBlocks} / {@code revertNeverBlocks} sets; call whenever the config is (re)loaded. */
+    public static void invalidateRevertCaches() {
+        resolvedRevertAlways = null;
+        resolvedRevertNever = null;
+    }
+
+    private static Set<Block> resolveBlockList(List<String> ids, String key) {
+        Set<Block> resolved = new HashSet<>();
+        if (ids != null) {
+            for (String id : ids) {
+                Identifier identifier = Identifier.tryParse(id);
+                if (identifier == null) {
+                    TRMT.LOGGER.warn("[TRMT] {}: '{}' is not a valid identifier, skipping", key, id);
+                    continue;
+                }
+                Registries.BLOCK.getOrEmpty(identifier).ifPresentOrElse(
+                    resolved::add,
+                    () -> TRMT.LOGGER.warn("[TRMT] {}: unknown block '{}', skipping", key, id)
+                );
+            }
+        }
+        return resolved;
+    }
+
+    private static void resolveRevertSets() {
+        TRMTConfig cfg = TRMTConfig.get();
+        Set<Block> always = resolveBlockList(cfg.revertAlwaysBlocks, "revertAlwaysBlocks");
+        Set<Block> never = resolveBlockList(cfg.revertNeverBlocks, "revertNeverBlocks");
+        for (Block b : never) {
+            if (always.remove(b)) {
+                TRMT.LOGGER.warn("[TRMT] '{}' is in both revertAlwaysBlocks and revertNeverBlocks; revertNeverBlocks wins",
+                        Registries.BLOCK.getId(b));
+            }
+        }
+        resolvedRevertAlways = Set.copyOf(always);
+        resolvedRevertNever = Set.copyOf(never);
+    }
+
+    public static Set<Block> getRevertAlwaysSet() {
+        if (resolvedRevertAlways == null) resolveRevertSets();
+        return resolvedRevertAlways;
+    }
+
+    public static Set<Block> getRevertNeverSet() {
+        if (resolvedRevertNever == null) resolveRevertSets();
+        return resolvedRevertNever;
+    }
+
+    /**
+     * Eroded dirt / coarse dirt / grass: true if the block above hides the ground completely and the
+     * eroded block must revert to vanilla. That is a full-cube outline that is also opaque, plus the
+     * "always" blocks (shulker boxes and {@code revertAlwaysBlocks}); powder snow and
+     * {@code revertNeverBlocks} never revert it (never wins over always). Not used for sand.
+     */
+    public static boolean shouldRevertUnder(BlockView world, BlockPos pos) {
+        BlockPos above = pos.up();
+        BlockState aboveState = world.getBlockState(above);
+        Block block = aboveState.getBlock();
+        if (aboveState.isAir()) return false;
+        if (aboveState.isOf(Blocks.POWDER_SNOW) || getRevertNeverSet().contains(block)) return false;
+        if (aboveState.isIn(BlockTags.SHULKER_BOXES) || getRevertAlwaysSet().contains(block)) return true;
+        return aboveState.isOpaque() && Block.isShapeFullCube(aboveState.getOutlineShape(world, above));
+    }
+
+    /** What the block above an eroded sand block does to it; see {@link #classifyAboveSand}. */
+    public enum SandAbove {
+        /** Air, fluid, moving piston, empty outline: the sand stays as is (erosion needs air above, see {@link #canSandErodeFurther}). */
+        IGNORED,
+        /** The block does not reach the ground (min Y above 0, a fence gate or a wall banner): placeable, sand stays eroded. */
+        RAISED,
+        /** Anything else: the sand reverts to vanilla sand. */
+        TOUCHES_GROUND
+    }
+
+    /** Classifies {@code aboveState} (the state at {@code abovePos}) for the eroded sand below it, any stage. */
+    public static SandAbove classifyAboveSand(BlockState aboveState, BlockView world, BlockPos abovePos) {
+        if (aboveState.isAir() || aboveState.getBlock() instanceof FluidBlock || aboveState.isOf(Blocks.MOVING_PISTON)) {
+            return SandAbove.IGNORED;
+        }
+        VoxelShape shape = aboveState.getOutlineShape(world, abovePos);
+        if (shape.isEmpty()) return SandAbove.IGNORED;
+        // Fence gates and wall banners count as raised regardless of their outline; standing banners do not.
+        if (aboveState.isIn(BlockTags.FENCE_GATES) || aboveState.getBlock() instanceof WallBannerBlock
+                || shape.getMin(Direction.Axis.Y) > 1.0E-6) return SandAbove.RAISED;
+        return SandAbove.TOUCHES_GROUND;
+    }
+
+    /** True if the block above the eroded sand at {@code pos} makes it revert to vanilla sand. */
+    public static boolean shouldSandRevert(BlockView world, BlockPos pos) {
+        BlockPos above = pos.up();
+        return classifyAboveSand(world.getBlockState(above), world, above) == SandAbove.TOUCHES_GROUND;
+    }
+
+    /** True if sand at {@code pos} may advance its erosion: only air above it (a fluid or any other block stops erosion). */
+    public static boolean canSandErodeFurther(BlockView world, BlockPos pos) {
+        return world.getBlockState(pos.up()).isAir();
+    }
+
+    /**
+     * True if placing {@code placed} at {@code pos} on top of eroded sand must be refused: it would touch the
+     * ground (so the sand would have to revert) without being a full cube or a sand plant. Full cubes are
+     * allowed (the sand reverts), blocks that stay clear of the ground are allowed (the sand stays eroded).
+     */
+    public static boolean refusesPlacementOnErodedSand(BlockState placed, BlockView world, BlockPos pos) {
+        if (isSandPlant(placed.getBlock())) return false;
+        if (classifyAboveSand(placed, world, pos) != SandAbove.TOUCHES_GROUND) return false;
+        return !Block.isShapeFullCube(placed.getOutlineShape(world, pos));
+    }
+
+    /** Sugar cane, cactus, dead bush and bamboo (stalk and sapling): the plants that may be planted on sand. */
+    public static boolean isSandPlant(Block block) {
+        return block instanceof SugarCaneBlock || block instanceof CactusBlock || block instanceof DeadBushBlock
+                || block instanceof BambooBlock || block instanceof BambooShootBlock;
+    }
+
+    /**
+     * {@code state.isIn(tag)} where eroded sand counts as vanilla sand. Redirected into the sand plants'
+     * placement checks, so their normal conditions apply to eroded sand of every stage.
+     */
+    public static boolean isInSandAware(BlockState state, TagKey<Block> tag) {
+        return (state.isOf(TRMTBlocks.ERODED_SAND) ? Blocks.SAND.getDefaultState() : state).isIn(tag);
     }
 
     private BlockThresholds() {}
