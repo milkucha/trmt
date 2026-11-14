@@ -15,6 +15,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.block.TallPlantBlock;
 import net.minecraft.block.enums.DoubleBlockHalf;
 import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -45,7 +46,8 @@ public class MobEntityMixin {
             return;
         }
 
-        if (!mob.isLeashed()) return;
+        boolean leashed = mob.isLeashed();
+        if (!trmt$erodes(mob, leashed)) return;
 
         if (mob.hasStatusEffect(TRMTEffects.LIGHTNESS)) return;
 
@@ -60,8 +62,8 @@ public class MobEntityMixin {
         if (groundPos.equals(trmt$lastGroundPos)) return;
         trmt$lastGroundPos = groundPos.toImmutable();
 
-        float mult = TRMTConfig.get().erosionMultipliers.player
-                * TRMTConfig.get().erosionMultipliers.leash;
+        TRMTConfig.Multipliers m = TRMTConfig.get().erosionMultipliers;
+        float mult = m.player * (leashed ? m.leash : m.freeRoaming);
 
         ErosionMapManager manager = ErosionMapManager.get(world);
         long gameTime = world.getTime();
@@ -88,6 +90,19 @@ public class MobEntityMixin {
         manager.onStep(groundPos, block, 1.0f * mult, gameTime);
         trmt$tryTransform(world, manager, groundPos);
         manager.broadcastEntryUpdate(groundPos, block);
+    }
+
+    /**
+     * Which mobs erode: adult mobs no player rides, if leashed or if their type is in
+     * {@code erosionMobWhitelist}. Each rule below is one line so it can be changed on its own.
+     */
+    @Unique
+    private static boolean trmt$erodes(MobEntity mob, boolean leashed) {
+        if (mob.isBaby()) return false; // babies never erode (leashed or not)
+        // A player riding this mob already erodes through ServerPlayerEntityMixin's mounted path: don't count twice (leashed or not).
+        if (mob.getPassengerList().stream().anyMatch(p -> p instanceof PlayerEntity)) return false;
+        if (leashed) return true; // leashed: erodes once, with the leash multiplier, whitelisted or not
+        return BlockThresholds.isErodingMob(mob.getType()); // free-roaming: whitelist, entity type ids only
     }
 
     @Unique

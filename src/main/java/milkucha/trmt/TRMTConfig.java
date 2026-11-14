@@ -39,6 +39,8 @@ public final class TRMTConfig {
         public float player  = 0.5f;
         public float mounted = 2.0f;
         public float leash   = 1.5f;
+        /** Free-roaming mobs listed in {@code erosionMobWhitelist}: step amount is {@code player × freeRoaming}. */
+        public float freeRoaming = 1.0f;
     }
 
     public static class MinMax {
@@ -98,6 +100,34 @@ public final class TRMTConfig {
         public SandDeErosion  sand  = new SandDeErosion();
     }
 
+    /** Permanent erosion stages: {@code true} = that stage never de-erodes naturally (mirrors {@link DeErosionTimeoutDays}). */
+    public static class GrassPermanent {
+        public boolean stage1 = false;
+        public boolean stage2 = false;
+        public boolean stage3 = false;
+        public boolean stage4 = false;
+        public boolean stage5 = false;
+    }
+
+    public static class DirtPermanent {
+        public boolean erodedDirt       = false;
+        public boolean erodedCoarseDirt = false;
+    }
+
+    public static class SandPermanent {
+        public boolean stage1 = false;
+        public boolean stage2 = false;
+        public boolean stage3 = false;
+        public boolean stage4 = false;
+        public boolean stage5 = false;
+    }
+
+    public static class PermanentStages {
+        public GrassPermanent grass = new GrassPermanent();
+        public DirtPermanent  dirt  = new DirtPermanent();
+        public SandPermanent  sand  = new SandPermanent();
+    }
+
     public static class DeErosionToggles {
         public boolean grassEnabled = true;
         public boolean dirtEnabled  = true;
@@ -121,7 +151,10 @@ public final class TRMTConfig {
     public List<String> revertAlwaysBlocks = new ArrayList<>();
     /** Modded blocks that never revert eroded dirt / coarse dirt / grass below them (wins over revertAlwaysBlocks). */
     public List<String> revertNeverBlocks = new ArrayList<>();
+    /** Entity type ids (e.g. "minecraft:cow") whose free-roaming (unleashed) members erode like leashed mobs. Empty = only leashed mobs erode. */
+    public List<String> erosionMobWhitelist = new ArrayList<>();
     public DeErosionTimeoutDays deErosionTimeoutDays = new DeErosionTimeoutDays();
+    public PermanentStages      permanentStages      = new PermanentStages();
 
     // ── singleton ──────────────────────────────────────────────────────────
     private static TRMTConfig instance = new TRMTConfig();

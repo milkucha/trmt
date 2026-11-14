@@ -84,6 +84,8 @@ public class ErodedDirtBlock extends Block {
             return;
         }
         if (!TRMTConfig.get().deErosion.dirtEnabled) return;
+        // Permanent stage: no natural de-erosion, with or without an entry.
+        if (BlockThresholds.isPermanentDirt(state.getBlock())) return;
         ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
 

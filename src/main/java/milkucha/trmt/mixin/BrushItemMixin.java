@@ -1,11 +1,8 @@
 package milkucha.trmt.mixin;
 
 import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.block.ErodedSandBlock;
-import milkucha.trmt.erosion.ErosionMapManager;
-import net.minecraft.block.Block;
+import milkucha.trmt.erosion.ErosionRecovery;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -81,25 +78,14 @@ public class BrushItemMixin {
             return;
         }
 
-        // 10th brush tick — cycle complete, apply de-erosion.
-        ErosionMapManager manager = ErosionMapManager.get(world);
-        int stage = state.get(ErodedSandBlock.STAGE);
-        if (stage > 0) {
-            boolean keepWaterlogged = stage > 1 && state.get(ErodedSandBlock.WATERLOGGED);
-            world.setBlockState(pos, state.with(ErodedSandBlock.STAGE, stage - 1).with(ErodedSandBlock.WATERLOGGED, keepWaterlogged), Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime());
-        } else {
-            world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-        }
+        // Cycle complete: recover the target and its cross neighbours (occupied sand is skipped).
+        ErosionRecovery.recoverCross((ServerWorld) world, pos, player.getHorizontalFacing(), ErosionRecovery.Tool.BRUSH);
 
-        // 1 durability damage, matching vanilla (damage only fires on cycle completion).
+        // 1 durability damage per cycle, matching vanilla (damage only fires on cycle completion), not per block.
         EquipmentSlot slot = stack.equals(player.getEquippedStack(EquipmentSlot.OFFHAND))
                 ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND;
         stack.damage(1, player, p -> p.sendEquipmentBreakStatus(slot));
 
-        ((ServerWorld) world).syncWorldEvent(2005, pos, 0);
         trmt$brushProgress.put(uuid, 0);
     }
 }

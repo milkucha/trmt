@@ -148,6 +148,8 @@ public class ErosionDebugHud {
         String outLabel;
         if (timeout < 0) {
             outLabel = "out:-";
+        } else if (BlockThresholds.isPermanentStage(state)) {
+            outLabel = "out:perm";
         } else {
             boolean isolated = isIsolatedClient(world, pos);
             if (isolated) timeout /= 2;

@@ -65,10 +65,12 @@ public class ErodedGrassBlock extends Block {
             return;
         }
         if (!TRMTConfig.get().deErosion.grassEnabled) return;
+        int blockStage = state.get(STAGE);
+        // Permanent stage: no natural de-erosion (and so no grass sprout), with or without an entry.
+        if (BlockThresholds.isPermanentGrass(blockStage)) return;
         ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
 
-        int blockStage = state.get(STAGE);
         long currentTime = world.getTime();
         // Map block STAGE 0–4 to old grass stages 1–5 for the per-stage timeout config.
         long timeout = BlockThresholds.getGrassDeErosionTimeout(blockStage + 1);

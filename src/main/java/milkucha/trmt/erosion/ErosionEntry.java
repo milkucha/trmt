@@ -58,6 +58,21 @@ public class ErosionEntry {
         return erosionStage;
     }
 
+    /**
+     * Recovery progress from bonemeal/brush used on a neighbouring block (see {@link ErosionRecovery}):
+     * one stage is recovered when it reaches 1. Not saved: lost when the chunk's erosion data is unloaded,
+     * and with the entry whenever the block changes stage.
+     */
+    private float recoveryCredit;
+
+    public float getRecoveryCredit() {
+        return recoveryCredit;
+    }
+
+    public void setRecoveryCredit(float recoveryCredit) {
+        this.recoveryCredit = recoveryCredit;
+    }
+
     /** Adds {@code amount} to the erosion count and records the current game time. */
     public void recordStep(float amount, long currentGameTime) {
         this.walkedOnCount += amount;
