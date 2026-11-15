@@ -11,13 +11,27 @@ public final class ErodedGrassBlockModels {
         ModelLoadingPlugin.register(pluginContext ->
             pluginContext.modifyModelAfterBake().register((model, context) -> {
                 ModelIdentifier mid = context.topLevelId();
-                if (mid != null
-                        && "trmt".equals(mid.id().getNamespace())
-                        && "eroded_grass_block".equals(mid.id().getPath())) {
-                    return new ErodedGrassBlockModel(model);
+                if (mid != null && "trmt".equals(mid.id().getNamespace())) {
+                    if ("eroded_grass_block".equals(mid.id().getPath())) {
+                        return new ErodedGrassBlockModel(model);
+                    }
+                    // Sunken eroded sand (stage 1-4): top face without AO, see ErodedSandBlockModel.
+                    if ("eroded_sand".equals(mid.id().getPath()) && isSunkenVariant(mid.variant())) {
+                        return new ErodedSandBlockModel(model);
+                    }
                 }
                 return model;
             })
         );
+    }
+
+    /** Block-state variant string, e.g. "facing=south,stage=2"; stage 0 is full height. */
+    private static boolean isSunkenVariant(String variant) {
+        for (String prop : variant.split(",")) {
+            if (prop.startsWith("stage=")) {
+                return !"stage=0".equals(prop);
+            }
+        }
+        return false;
     }
 }
