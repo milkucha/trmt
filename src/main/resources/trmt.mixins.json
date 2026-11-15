@@ -21,7 +21,8 @@
 	],
 	"client": [
 		"DisconnectedScreenMixin",
-		"GuiMixin"
+		"GuiMixin",
+		"ModelBlockRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
