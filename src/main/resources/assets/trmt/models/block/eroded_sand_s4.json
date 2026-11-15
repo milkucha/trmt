@@ -1,12 +1,11 @@
 {
-  "ambientocclusion": false,
   "elements": [
     {
       "from": [0, 0, 0],
       "to": [16, 10, 16],
       "faces": {
         "down":  { "texture": "#side", "cullface": "down" },
-        "up":    { "texture": "#top", "cullface": "up" },
+        "up":    { "texture": "#top", "cullface": "up", "forge_data": { "ambient_occlusion": false } },
         "north": { "texture": "#side" },
         "south": { "texture": "#side" },
         "west":  { "texture": "#side" },
