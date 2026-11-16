@@ -71,13 +71,6 @@ public class ChunkErosionMap {
     }
 
     /**
-     * Removes any entry whose walkedOnCount has dropped to zero (e.g. after full decay).
-     */
-    public void pruneEmpty() {
-        entries.entrySet().removeIf(e -> e.getValue().isEmpty());
-    }
-
-    /**
      * Removes expirable entries (see {@link ErosionEntry#isExpirable()}) last touched before
      * {@code cutoffGameTime}.
      *

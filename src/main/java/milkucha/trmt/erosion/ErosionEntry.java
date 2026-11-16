@@ -65,37 +65,11 @@ public class ErosionEntry {
     }
 
     /**
-     * Advances grass erosion by one visual stage.
-     * Resets walkedOnCount to 0 and sets a new random threshold for the next stage.
-     */
-    public void advanceGrassStage(float newThreshold) {
-        this.erosionStage++;
-        this.walkedOnCount = 0f;
-        this.threshold = newThreshold;
-    }
-
-    /**
-     * Reverts grass erosion by one visual stage, resets progress, and updates
-     * {@code lastTouchedGameTime} to act as a cooldown against immediate re-reversion.
-     */
-    public void revertGrassStage(float newThreshold, long currentGameTime) {
-        this.erosionStage--;
-        this.walkedOnCount = 0f;
-        this.threshold = newThreshold;
-        this.lastTouchedGameTime = currentGameTime;
-    }
-
-    /**
      * True if this entry is only step progress on a vanilla block (grass, dirt, sand, snow, leaves,
      * vegetation...) and may expire when untouched. Entries of {@code trmt:eroded_*} blocks are their
      * de-erosion timers, and legacy grass entries with a stage are still to be migrated: never expire.
      */
     public boolean isExpirable() {
         return erosionStage == 0 && !ErosionMapManager.VANILLA_EQUIVALENTS.containsKey(trackedBlock);
-    }
-
-    /** Returns true if this entry carries no meaningful erosion (can be pruned). */
-    public boolean isEmpty() {
-        return walkedOnCount <= 0;
     }
 }

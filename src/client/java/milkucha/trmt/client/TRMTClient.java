@@ -14,10 +14,6 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientLoginNetworking;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.minecraft.item.BlockItem;
-import net.minecraft.util.ActionResult;
-import milkucha.trmt.block.ErodedSandBlock;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
@@ -50,18 +46,6 @@ public class TRMTClient implements ClientModInitializer {
 					.orElse("0.0.0")
 			);
 			return CompletableFuture.completedFuture(response);
-		});
-
-		// Suppress client-side prediction of block placement above sunken eroded sand (mirrors server rule).
-		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-			var placePos = hitResult.getBlockPos().offset(hitResult.getSide());
-			var below = world.getBlockState(placePos.down());
-			if (below.isOf(TRMTBlocks.ERODED_SAND)
-					&& below.get(ErodedSandBlock.STAGE) > 0
-					&& player.getStackInHand(hand).getItem() instanceof BlockItem) {
-				return ActionResult.FAIL;
-			}
-			return ActionResult.PASS;
 		});
 
 		ErodedGrassBlockModels.register();

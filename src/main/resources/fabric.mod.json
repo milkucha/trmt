@@ -20,9 +20,6 @@
 		],
 		"client": [
 			"milkucha.trmt.client.TRMTClient"
-		],
-		"fabric-datagen": [
-			"milkucha.trmt.client.TRMTDataGenerator"
 		]
 	},
 	"mixins": [
