@@ -73,7 +73,7 @@ public class ServerPlayerEntityMixin implements PathBuffHolder {
         // too low. Correct by checking one block up when groundPos yields nothing tracked.
         World world = player.getWorld();
         BlockState groundUpState = world.getBlockState(groundPos.up());
-        if (groundUpState.isOf(TRMTBlocks.ERODED_SAND) || groundUpState.isOf(Blocks.SAND)) {
+        if (groundUpState.isOf(TRMTBlocks.ERODED_SAND)) {
             groundPos = groundPos.up();
         }
 
@@ -159,6 +159,7 @@ public class ServerPlayerEntityMixin implements PathBuffHolder {
                 || (erosion.leavesEnabled && BlockThresholds.isLeaves(adjState.getBlock()))) {
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
             trmt$tryTransform(world, manager, pos);
+            manager.broadcastEntryUpdate(pos, adjState.getBlock());
         }
     }
 
@@ -204,7 +205,7 @@ public class ServerPlayerEntityMixin implements PathBuffHolder {
 
         // Threshold reached — advance visual stage or transform the block.
         if (state.isOf(Blocks.SAND)) {
-            if (!world.getBlockState(pos.up()).isAir()) return;
+            if (!BlockThresholds.canSandErodeFurther(world, pos)) return;
             Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
             world.setBlockState(pos,
                     TRMTBlocks.ERODED_SAND.getDefaultState()
@@ -217,7 +218,7 @@ public class ServerPlayerEntityMixin implements PathBuffHolder {
         }
 
         if (state.isOf(TRMTBlocks.ERODED_SAND)) {
-            if (!world.getBlockState(pos.up()).isAir()) return;
+            if (!BlockThresholds.canSandErodeFurther(world, pos)) return;
             int stage = state.get(ErodedSandBlock.STAGE);
             if (stage < 4) {
                 world.setBlockState(pos, state.with(ErodedSandBlock.STAGE, stage + 1), Block.NOTIFY_ALL);
@@ -282,7 +283,9 @@ public class ServerPlayerEntityMixin implements PathBuffHolder {
             }
             // Stage 3 reached — carry rotation forward to eroded_coarse_dirt.
             world.setBlockState(pos,
-                    TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState().with(ErodedDirtBlock.FACING, facing),
+                    TRMTBlocks.ERODED_COARSE_DIRT.getDefaultState()
+                            .with(ErodedDirtBlock.FACING, facing)
+                            .with(ErodedDirtBlock.FROM_DIRT, state.get(ErodedDirtBlock.FROM_DIRT)),
                     Block.NOTIFY_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_COARSE_DIRT, world.getTime());
@@ -296,7 +299,8 @@ public class ServerPlayerEntityMixin implements PathBuffHolder {
         world.setBlockState(pos,
                 TRMTBlocks.ERODED_DIRT.getDefaultState()
                         .with(ErodedDirtBlock.FACING, erodedFacing)
-                        .with(ErodedDirtBlock.STAGE, 1),
+                        .with(ErodedDirtBlock.STAGE, 1)
+                        .with(ErodedDirtBlock.FROM_DIRT, true),
                 Block.NOTIFY_ALL);
         manager.removeEntry(pos);
         manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_DIRT, world.getTime());

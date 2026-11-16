@@ -1,17 +1,20 @@
 package milkucha.trmt.mixin;
 
 import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.block.ErodedSandBlock;
+import milkucha.trmt.erosion.BlockThresholds;
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.SugarCaneBlock;
 import net.minecraft.fluid.Fluids;
+import net.minecraft.registry.tag.TagKey;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.WorldView;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(SugarCaneBlock.class)
@@ -22,13 +25,8 @@ public class SugarCaneBlockMixin {
                                            CallbackInfoReturnable<Boolean> cir) {
         BlockState below = world.getBlockState(pos.down());
 
-        // Eroded sand stage 0 is full-height — allow placement without water check (same as vanilla sand).
-        if (below.isOf(TRMTBlocks.ERODED_SAND) && below.get(ErodedSandBlock.STAGE) == 0) {
-            cir.setReturnValue(true);
-            return;
-        }
-
-        // Eroded grass/dirt are full-height blocks — allow placement when water is adjacent (vanilla rule).
+        // Eroded grass/dirt are full-height blocks - allow placement when water is adjacent (vanilla rule).
+        // Eroded sand (any stage) is handled by the isIn redirects below: it counts as sand, so the vanilla water check applies.
         if (below.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)
                 || below.isOf(TRMTBlocks.ERODED_DIRT)
                 || below.isOf(TRMTBlocks.ERODED_COARSE_DIRT)) {
@@ -42,5 +40,18 @@ public class SugarCaneBlockMixin {
             }
             cir.setReturnValue(false);
         }
+    }
+
+    // canPlaceAt calls BlockState.isIn twice: BlockTags.DIRT (ordinal 0), then BlockTags.SAND (ordinal 1).
+    @Redirect(method = "canPlaceAt", at = @At(value = "INVOKE", ordinal = 0,
+            target = "Lnet/minecraft/block/BlockState;isIn(Lnet/minecraft/registry/tag/TagKey;)Z"))
+    private boolean trmt$erodedSandCountsAsSandDirtCheck(BlockState state, TagKey<Block> tag) {
+        return BlockThresholds.isInSandAware(state, tag);
+    }
+
+    @Redirect(method = "canPlaceAt", at = @At(value = "INVOKE", ordinal = 1,
+            target = "Lnet/minecraft/block/BlockState;isIn(Lnet/minecraft/registry/tag/TagKey;)Z"))
+    private boolean trmt$erodedSandCountsAsSandSandCheck(BlockState state, TagKey<Block> tag) {
+        return BlockThresholds.isInSandAware(state, tag);
     }
 }

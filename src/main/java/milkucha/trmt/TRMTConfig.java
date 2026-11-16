@@ -166,6 +166,10 @@ public final class TRMTConfig {
         "minecraft:white_tulip", "minecraft:pink_tulip", "minecraft:oxeye_daisy",
         "minecraft:cornflower", "minecraft:lily_of_the_valley", "minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony"
     );
+    /** Modded blocks that always revert eroded dirt / coarse dirt / grass below them (vanilla shulker boxes already do). */
+    public List<String> revertAlwaysBlocks = new ArrayList<>();
+    /** Modded blocks that never revert eroded dirt / coarse dirt / grass below them (wins over revertAlwaysBlocks). */
+    public List<String> revertNeverBlocks = new ArrayList<>();
     public DeErosionTimeoutDays deErosionTimeoutDays = new DeErosionTimeoutDays();
 
     // ── singleton ──────────────────────────────────────────────────────────
@@ -211,6 +215,7 @@ public final class TRMTConfig {
                     sanitize(loaded);
                     instance = loaded;
                     BlockThresholds.invalidateVegetationCache();
+                    BlockThresholds.invalidateRevertCaches();
                     // Save back immediately so the file shows the values in use: missing or
                     // invalid entries are written with their defaults, unknown keys are dropped.
                     save();
@@ -225,6 +230,7 @@ public final class TRMTConfig {
                     TRMT.LOGGER.error("[TRMT] {} is not valid JSON, using defaults (file left unchanged): {}", path, e.getMessage());
                     instance = new TRMTConfig();
                     BlockThresholds.invalidateVegetationCache();
+                    BlockThresholds.invalidateRevertCaches();
                 }
                 return LoadResult.INVALID;
             } catch (IOException e) {
