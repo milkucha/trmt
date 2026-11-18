@@ -35,6 +35,7 @@ public class TRMTClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		TRMTClientConfig.load();
+		IndiumWarning.register();
 
 		// Respond to the server's login version query with our own version.
 		ClientLoginNetworking.registerGlobalReceiver(TRMTPackets.VERSION_CHECK, (client, handler, buf, listenerAdder) -> {
