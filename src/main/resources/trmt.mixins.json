@@ -21,7 +21,11 @@
 	],
 	"client": [
 		"DisconnectedScreenMixin",
-		"ModelBlockRendererMixin"
+		"LevelRendererMixin",
+		"ModelBlockRendererMixin",
+		"SpriteContentsMixin",
+		"SpriteResourceLoaderAccessor",
+		"SpriteResourceLoaderMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
