@@ -181,7 +181,7 @@ public final class TRMTConfig {
     /**
      * Loads config from disk. If the file is not valid JSON it is left untouched (so the user can fix
      * it) and {@link LoadResult#INVALID} is returned: the running config becomes the defaults, or stays
-     * as it was when {@code keepPreviousOnInvalid} is set (used by {@code /trmt reloadconfig}).
+     * as it was when {@code keepPreviousOnInvalid} is set (used by {@code /trmt reload-config}).
      */
     public static LoadResult load(boolean keepPreviousOnInvalid) {
         Path path = configPath();

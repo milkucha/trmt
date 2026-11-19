@@ -87,7 +87,7 @@ public class TRMT implements ModInitializer {
 						.executes(ctx -> {
 							if (ctx.getSource().hasPermissionLevel(2)) {
 								ctx.getSource().sendFeedback(() -> Text.literal(
-										"[TRMT] Commands: /trmt reloadconfig, /trmt convert-to-vanilla [quick], /trmt eroded-chunks"), false);
+										"[TRMT] Commands: /trmt reload-config, /trmt convert-to-vanilla [quick], /trmt eroded-chunks"), false);
 							} else {
 								ctx.getSource().sendFeedback(() -> Text.literal(
 										"[TRMT] The /trmt commands need operator permission (cheats). In singleplayer, enable cheats "
@@ -95,12 +95,12 @@ public class TRMT implements ModInitializer {
 							}
 							return 1;
 						})
-						.then(CommandManager.literal("reloadconfig")
+						.then(CommandManager.literal("reload-config")
 								.requires(src -> src.hasPermissionLevel(2))
 								.executes(ctx -> {
 									if (TRMTConfig.load(true) == TRMTConfig.LoadResult.INVALID) {
 										ctx.getSource().sendError(Text.literal("[TRMT] trmt.json is not valid JSON, so nothing was reloaded: the previous settings are still in use. "
-												+ "Fix the file (the server log names the line and the problem) and run /trmt reloadconfig again."));
+												+ "Fix the file (the server log names the line and the problem) and run /trmt reload-config again."));
 										return 0;
 									}
 									ctx.getSource().sendFeedback(() -> Text.literal("[TRMT] Config reloaded."), true);
