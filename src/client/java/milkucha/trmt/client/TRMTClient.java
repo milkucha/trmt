@@ -35,6 +35,7 @@ public class TRMTClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		TRMTClientConfig.load();
+		IndiumWarning.register();
 
 		// Respond to the server's configuration-phase version query with our own version.
 		ClientConfigurationNetworking.registerGlobalReceiver(VersionCheckPayload.ID, (payload, context) -> {
