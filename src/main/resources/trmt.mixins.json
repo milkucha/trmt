@@ -22,7 +22,11 @@
 	"client": [
 		"DisconnectedScreenMixin",
 		"GuiMixin",
-		"ModelBlockRendererMixin"
+		"ModelBlockRendererMixin",
+		"SpriteContentsMixin",
+		"SpriteSourceListAccessor",
+		"SpriteSourceListMixin",
+		"LevelRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
