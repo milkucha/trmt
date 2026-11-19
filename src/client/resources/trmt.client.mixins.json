@@ -4,7 +4,11 @@
 	"compatibilityLevel": "JAVA_25",
 	"client": [
 		"DisconnectedScreenMixin",
-		"ClickableWidgetPositionAccessor"
+		"ClickableWidgetPositionAccessor",
+		"SpriteContentsMixin",
+		"SpriteSourceListAccessor",
+		"SpriteSourceListMixin",
+		"LevelRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
