@@ -87,6 +87,9 @@ public class MobEntityMixin {
 
         if (!tracked) return;
 
+        // A permanent stage neither de-erodes nor erodes further: the step does nothing to it.
+        if (BlockThresholds.isPermanentStage(state)) return;
+
         manager.onStep(groundPos, block, 1.0f * mult, gameTime);
         trmt$tryTransform(world, manager, groundPos);
         manager.broadcastEntryUpdate(groundPos, block);
