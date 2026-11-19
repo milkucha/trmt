@@ -15,7 +15,8 @@ import java.nio.file.Path;
 
 /**
  * Client-only configuration loaded from {@code config/trmt-client.json}.
- * Edit the JSON file and restart the game to apply changes ({@code debugHud} can also be set in-game with {@code /trmt-hud}).
+ * Edit the JSON file and restart the game to apply changes ({@code debugHud} can also be set in-game with {@code /trmt-hud};
+ * {@code mipmapFix} is re-read on every resource reload (F3+T) and chunk reload (F3+A), see {@link #refreshMipmapFix()}).
  */
 public final class TRMTClientConfig {
 
@@ -24,6 +25,14 @@ public final class TRMTClientConfig {
 
     /** Show the erosion debug HUD overlay. Set to true for development. */
     public boolean debugHud = false;
+
+    /**
+     * Dithered far-distance rendering of the worn-grass overlay (reduces shimmer at distance).
+     * Off = the overlay renders exactly as before the fix. Applied by a resource reload
+     * (F3+T, which rebuilds the block atlas with the overlay's extra copies and mip data); turning it off
+     * also takes effect on a chunk reload (F3+A). See milkucha.trmt.client.render.MipmapFix.
+     */
+    public volatile boolean mipmapFix = false;
 
     private static TRMTClientConfig instance = new TRMTClientConfig();
 
@@ -51,6 +60,24 @@ public final class TRMTClientConfig {
             }
         }
         save();
+    }
+
+    /**
+     * Re-reads only {@code mipmapFix} from disk (no write, other settings untouched). Called from
+     * worker threads during a resource reload as well as from the render thread; on any error the
+     * current value is kept. Returns the value now in effect.
+     */
+    public static boolean refreshMipmapFix() {
+        Path path = configPath();
+        if (Files.exists(path)) {
+            try (Reader reader = Files.newBufferedReader(path)) {
+                TRMTClientConfig loaded = TRMTConfig.parse(reader, new TRMTClientConfig(), TRMTClientConfig.class, FILE_NAME);
+                if (loaded != null) instance.mipmapFix = loaded.mipmapFix;
+            } catch (JsonParseException | IOException e) {
+                TRMTNeoForge.LOGGER.error("[TRMT] could not re-read {}, keeping mipmapFix={}: {}", path, instance.mipmapFix, e.getMessage());
+            }
+        }
+        return instance.mipmapFix;
     }
 
     public static void save() {
