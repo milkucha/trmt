@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class BoneMealItemMixin {
 
     /**
-     * Bonemeal on eroded grass / dirt / coarse dirt recovers it (and its cross neighbours, see
+     * Bonemeal on eroded grass / dirt / coarse dirt recovers it (and its 3x3 neighbours, see
      * {@link ErosionRecovery}) instead of running vanilla. One bonemeal per use.
      */
     @Inject(method = "useOnBlock", at = @At("HEAD"), cancellable = true)
@@ -28,7 +28,7 @@ public class BoneMealItemMixin {
         BlockPos pos = context.getBlockPos();
         if (!ErosionRecovery.Tool.BONEMEAL.acts(world.getBlockState(pos))) return;
 
-        ErosionRecovery.recoverCross(serverWorld, pos, context.getHorizontalPlayerFacing(), ErosionRecovery.Tool.BONEMEAL);
+        ErosionRecovery.recoverArea(serverWorld, pos, context.getHorizontalPlayerFacing(), ErosionRecovery.Tool.BONEMEAL);
 
         PlayerEntity player = context.getPlayer();
         if (player != null && !player.isCreative()) {

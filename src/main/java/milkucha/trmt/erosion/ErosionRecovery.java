@@ -16,28 +16,25 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 
 /**
- * Bonemeal / brush recovery of eroded blocks. A use always acts on a cross: the target block plus its
- * 4 horizontal neighbours at the same height.
- *
- * <p>The target recovers one stage. The neighbours are treated like the neighbours of a step
- * ({@code ServerPlayerEntityMixin.trmt$stepAdjacent}): they get a fraction of the centre's effect, by
- * direction relative to the player's facing, which accumulates until it is a whole stage. Erosion gives
- * front 0.2, left/right 0.5, back 0 of a step; here front 0.2, left/right 0.5 and back 0.2 of a stage
- * (back has no erosion counterpart and the cross always includes it, so it gets the front's share).
- * Like erosion, the progress restarts from 0 after a stage change (no carry-over). Neighbours must be an
- * eroded block of the tool's family at the same Y (erosion's neighbours are not slope-aware either).
+ * Bonemeal / brush recovery of eroded blocks. A use acts on a 3x3 square at the target's height, oriented
+ * by the player's horizontal facing. Uses needed to recover one stage:
+ * <pre>
+ * 2 1 2     front-left · front · front-right
+ * 1 1 1     left · target · right
+ * 2 1 2     back-left · back · back-right
+ * </pre>
+ * Blocks needing more than one use count the uses on their erosion entry ({@code recoveryUses}, an
+ * integer, so no float drift); at the needed count they recover one stage and restart at 0. Only eroded
+ * blocks of the tool's family at the same Y take part.
  */
 public final class ErosionRecovery {
 
-    /** Share of a stage given to the neighbour in front of the target (away from the player) per use. */
-    public static final float FRONT_SHARE = 0.2f;
-    /** Share of a stage given to the left and right neighbours per use. */
-    public static final float SIDE_SHARE = 0.5f;
-    /** Share of a stage given to the neighbour behind the target (towards the player) per use. */
-    public static final float BACK_SHARE = 0.2f;
-
-    /** Float tolerance so 5 × 0.2 counts as a whole stage. */
-    private static final float EPSILON = 1.0e-4f;
+    /** Uses needed to recover one stage: target, left, right. */
+    public static final int USES_TARGET_ROW = 1;
+    /** Uses needed to recover one stage: front, back. */
+    public static final int USES_FRONT_BACK = 1;
+    /** Uses needed to recover one stage: the four corners. */
+    public static final int USES_CORNER = 2;
 
     public enum Tool {
         BONEMEAL("bonemeal"), BRUSH("brush");
@@ -56,40 +53,41 @@ public final class ErosionRecovery {
     private ErosionRecovery() {}
 
     /**
-     * Applies one use of {@code tool} to {@code centre} and its cross neighbours. The caller has checked that
-     * {@code tool.acts(centre state)}. {@code facing} is the player's horizontal facing.
+     * Applies one use of {@code tool} to the 3x3 square around {@code centre} (same Y). The caller has checked
+     * that {@code tool.acts(centre state)}. {@code facing} is the player's horizontal facing.
      * Brushing skips any sand position a living entity is standing on (centre included).
      *
      * @return the number of blocks that changed state
      */
-    public static int recoverCross(ServerWorld world, BlockPos centre, Direction facing, Tool tool) {
+    public static int recoverArea(ServerWorld world, BlockPos centre, Direction facing, Tool tool) {
+        Direction left = facing.rotateYCounterclockwise();
+        Direction right = facing.rotateYClockwise();
+        BlockPos front = centre.offset(facing);
+        BlockPos back = centre.offset(facing.getOpposite());
         int changed = 0;
-        if (recoverCentre(world, centre, tool)) changed++;
-        if (recoverNeighbour(world, centre.offset(facing), FRONT_SHARE, tool, "front")) changed++;
-        if (recoverNeighbour(world, centre.offset(facing.rotateYCounterclockwise()), SIDE_SHARE, tool, "left")) changed++;
-        if (recoverNeighbour(world, centre.offset(facing.rotateYClockwise()), SIDE_SHARE, tool, "right")) changed++;
-        if (recoverNeighbour(world, centre.offset(facing.getOpposite()), BACK_SHARE, tool, "back")) changed++;
+        if (recoverAt(world, centre, USES_TARGET_ROW, tool, "centre")) changed++;
+        if (recoverAt(world, centre.offset(left), USES_TARGET_ROW, tool, "left")) changed++;
+        if (recoverAt(world, centre.offset(right), USES_TARGET_ROW, tool, "right")) changed++;
+        if (recoverAt(world, front, USES_FRONT_BACK, tool, "front")) changed++;
+        if (recoverAt(world, back, USES_FRONT_BACK, tool, "back")) changed++;
+        if (recoverAt(world, front.offset(left), USES_CORNER, tool, "front-left")) changed++;
+        if (recoverAt(world, front.offset(right), USES_CORNER, tool, "front-right")) changed++;
+        if (recoverAt(world, back.offset(left), USES_CORNER, tool, "back-left")) changed++;
+        if (recoverAt(world, back.offset(right), USES_CORNER, tool, "back-right")) changed++;
         return changed;
     }
 
-    private static boolean recoverCentre(ServerWorld world, BlockPos pos, Tool tool) {
-        BlockState state = world.getBlockState(pos);
-        if (!tool.acts(state)) return false;
-        if (tool == Tool.BRUSH && isOccupied(world, pos)) {
-            log(tool, pos, "centre", "skipped-occupied");
-            return false;
-        }
-        recoverOneStage(world, pos, state, tool);
-        log(tool, pos, "centre", "recovered");
-        return true;
-    }
-
-    private static boolean recoverNeighbour(ServerWorld world, BlockPos pos, float share, Tool tool, String role) {
+    private static boolean recoverAt(ServerWorld world, BlockPos pos, int usesNeeded, Tool tool, String role) {
         BlockState state = world.getBlockState(pos);
         if (!tool.acts(state)) return false;
         if (tool == Tool.BRUSH && isOccupied(world, pos)) {
             log(tool, pos, role, "skipped-occupied");
             return false;
+        }
+        if (usesNeeded <= 1) {
+            recoverOneStage(world, pos, state, tool);
+            log(tool, pos, role, "recovered");
+            return true;
         }
         ErosionMapManager manager = ErosionMapManager.get(world);
         ErosionEntry entry = entryAt(manager, pos);
@@ -100,10 +98,10 @@ public final class ErosionRecovery {
             entry = entryAt(manager, pos);
             if (entry == null) return false; // erosion inactive in this world
         }
-        float credit = entry.getRecoveryCredit() + share;
-        if (credit < 1.0f - EPSILON) {
-            entry.setRecoveryCredit(credit);
-            log(tool, pos, role, "credit=" + credit);
+        int uses = entry.getRecoveryUses() + 1;
+        if (uses < usesNeeded) {
+            entry.setRecoveryUses(uses);
+            log(tool, pos, role, "uses=" + uses + "/" + usesNeeded);
             return false;
         }
         recoverOneStage(world, pos, state, tool); // replaces the entry: progress restarts at 0

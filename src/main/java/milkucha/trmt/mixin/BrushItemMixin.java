@@ -78,8 +78,8 @@ public class BrushItemMixin {
             return;
         }
 
-        // Cycle complete: recover the target and its cross neighbours (occupied sand is skipped).
-        ErosionRecovery.recoverCross((ServerWorld) world, pos, player.getHorizontalFacing(), ErosionRecovery.Tool.BRUSH);
+        // Cycle complete: recover the target and its 3x3 neighbours (occupied sand is skipped).
+        ErosionRecovery.recoverArea((ServerWorld) world, pos, player.getHorizontalFacing(), ErosionRecovery.Tool.BRUSH);
 
         // 1 durability damage per cycle, matching vanilla (damage only fires on cycle completion), not per block.
         EquipmentSlot slot = stack.equals(player.getEquippedStack(EquipmentSlot.OFFHAND))
