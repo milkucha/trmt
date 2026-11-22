@@ -11,5 +11,6 @@
   "block.trmt.eroded_sand": "侵蚀沙子",
 
   "trmt.button.download_update": "下载模组更新",
-  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) 客户端版本已过时（v%s）！\n此服务器需要 v%s 或更新版本。\n请下载更新后再加入服务器。"
+  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) 客户端版本已过时（v%s）！\n此服务器需要 v%s 或更新版本。\n请下载更新后再加入服务器。",
+  "trmt.warning.sodium_without_indium": "TRMT：已安装 Sodium 但未安装 Indium。磨损的道路将无法正确渲染。请安装 Indium。"
 }

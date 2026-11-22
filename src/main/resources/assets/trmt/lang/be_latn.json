@@ -10,6 +10,7 @@
   "block.trmt.eroded_coarse_dirt": "Vytaptanaja hrubaja ziamla",
   "block.trmt.eroded_sand": "Vytaptany piasok",
 
-  "trmt.button.download_update": "Sampavac abnaŭleńnie moda",
-  "trmt.disconnect.outdated": "Viertsija klijenta The Roads More Travelled (TRMT) sastareła (v%s)!\nHety serwier patrabuje viertsii v%s albo navejšaj.\nKali łaska, sampavujcie abnaŭleńnie dla padklučennia da serwera."
+  "trmt.button.download_update": "Spampavać abnaŭleńnie moda",
+  "trmt.disconnect.outdated": "Versija klijenta The Roads More Travelled (TRMT) sastareła (v%s)!\nHety siervier patrabuje versii v%s albo navejšaj.\nKali łaska, spampavujcie abnaŭleńnie dla padklučennia da sierviera.",
+  "trmt.warning.sodium_without_indium": "TRMT: Sodium ŭstalavany biez Indium. Vytaptanyja ściežki nie buduć adlustroŭvacca pravilna. Ŭstalujcie Indium."
 }

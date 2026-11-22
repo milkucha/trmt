@@ -11,5 +11,6 @@
   "block.trmt.eroded_sand": "Pasir Terkikis",
 
   "trmt.button.download_update": "Unduh Pembaruan Mod",
-  "trmt.disconnect.outdated": "Versi klien The Roads More Travelled (TRMT) sudah usang (v%s)!\nServer ini memerlukan v%s atau yang lebih baru.\nSilakan unduh pembaruan untuk bergabung dengan server ini!"
+  "trmt.disconnect.outdated": "Versi klien The Roads More Travelled (TRMT) sudah usang (v%s)!\nServer ini memerlukan v%s atau yang lebih baru.\nSilakan unduh pembaruan untuk bergabung dengan server ini!",
+  "trmt.warning.sodium_without_indium": "TRMT: Sodium terpasang tanpa Indium. Jalan setapak yang aus tidak akan ditampilkan dengan benar. Pasang Indium."
 }

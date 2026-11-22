@@ -11,5 +11,6 @@
   "block.trmt.eroded_sand": "Aşınmış Kum",
 
   "trmt.button.download_update": "Mod Güncellemesini İndir",
-  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) istemci sürümü eski (v%s)!\nBu sunucu v%s veya daha yeni bir sürüm gerektiriyor.\nSunucuya katılmak için lütfen güncellemeyi indirin!"
+  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) istemci sürümü eski (v%s)!\nBu sunucu v%s veya daha yeni bir sürüm gerektiriyor.\nSunucuya katılmak için lütfen güncellemeyi indirin!",
+  "trmt.warning.sodium_without_indium": "TRMT: Sodium, Indium olmadan yüklenmiş. Aşınmış yollar doğru görüntülenmeyecek. Indium'u yükleyin."
 }

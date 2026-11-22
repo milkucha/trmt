@@ -11,5 +11,6 @@
   "block.trmt.eroded_sand": "Sabbia erosa",
 
   "trmt.button.download_update": "Scarica l'aggiornamento della mod",
-  "trmt.disconnect.outdated": "La versione client di The Roads More Travelled (TRMT) è obsoleta (v%s)!\nQuesto server richiede la v%s o una versione più recente.\nScarica l'aggiornamento per accedere al server!"
+  "trmt.disconnect.outdated": "La versione client di The Roads More Travelled (TRMT) è obsoleta (v%s)!\nQuesto server richiede la v%s o una versione più recente.\nScarica l'aggiornamento per accedere al server!",
+  "trmt.warning.sodium_without_indium": "TRMT: Sodium è installato senza Indium. I sentieri consumati non verranno visualizzati correttamente. Installa Indium."
 }

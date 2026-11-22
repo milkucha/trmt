@@ -11,5 +11,6 @@
   "block.trmt.eroded_sand": "Вытаптаны пясок",
 
   "trmt.button.download_update": "Спампаваць абнаўленне мода",
-  "trmt.disconnect.outdated": "Версія кліента The Roads More Travelled (TRMT) састарэла (v%s)!\nГэты сервер патрабуе версіі v%s або навейшай.\nКалі ласка, спампуйце абнаўленне для падключэння да сервера."
+  "trmt.disconnect.outdated": "Версія кліента The Roads More Travelled (TRMT) састарэла (v%s)!\nГэты сервер патрабуе версіі v%s або навейшай.\nКалі ласка, спампуйце абнаўленне для падключэння да сервера.",
+  "trmt.warning.sodium_without_indium": "TRMT: Sodium усталяваны без Indium. Вытаптаныя сцежкі не будуць адлюстроўвацца правільна. Усталюйце Indium."
 }

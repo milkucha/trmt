@@ -11,5 +11,6 @@
   "block.trmt.eroded_sand": "Arena erosionada",
 
   "trmt.button.download_update": "Descargar actualización del mod",
-  "trmt.disconnect.outdated": "¡La versión del cliente de The Roads More Travelled (TRMT) está desactualizada (v%s)!\nEste servidor requiere v%s o más reciente.\n¡Descarga la actualización para unirte a este servidor!"
+  "trmt.disconnect.outdated": "¡La versión del cliente de The Roads More Travelled (TRMT) está desactualizada (v%s)!\nEste servidor requiere v%s o más reciente.\n¡Descarga la actualización para unirte a este servidor!",
+  "trmt.warning.sodium_without_indium": "TRMT: Sodium está instalado sin Indium. Los caminos desgastados no se mostrarán correctamente. Instala Indium."
 }

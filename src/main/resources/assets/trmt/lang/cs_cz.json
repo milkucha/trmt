@@ -11,5 +11,6 @@
   "block.trmt.eroded_sand": "Erodovaný písek",
 
   "trmt.button.download_update": "Stáhnout aktualizaci modu",
-  "trmt.disconnect.outdated": "Verze klienta The Roads More Travelled (TRMT) je zastaralá (v%s)!\nTento server vyžaduje v%s nebo novější.\nPro připojení k tomuto serveru si prosím stáhněte aktualizaci!"
+  "trmt.disconnect.outdated": "Verze klienta The Roads More Travelled (TRMT) je zastaralá (v%s)!\nTento server vyžaduje v%s nebo novější.\nPro připojení k tomuto serveru si prosím stáhněte aktualizaci!",
+  "trmt.warning.sodium_without_indium": "TRMT: Sodium je nainstalován bez Indium. Vyšlapané cesty se nebudou správně zobrazovat. Nainstalujte Indium."
 }

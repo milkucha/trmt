@@ -11,5 +11,6 @@
   "block.trmt.eroded_sand": "Nisip erodat",
 
   "trmt.button.download_update": "Descarcă actualizarea modului",
-  "trmt.disconnect.outdated": "Versiunea clientului The Roads More Travelled (TRMT) este învechită (v%s)!\nAcest server necesită v%s sau mai nouă.\nVă rugăm să descărcați actualizarea pentru a vă conecta la server."
+  "trmt.disconnect.outdated": "Versiunea clientului The Roads More Travelled (TRMT) este învechită (v%s)!\nAcest server necesită v%s sau mai nouă.\nVă rugăm să descărcați actualizarea pentru a vă conecta la server.",
+  "trmt.warning.sodium_without_indium": "TRMT: Sodium este instalat fără Indium. Cărările bătătorite nu vor fi afișate corect. Instalează Indium."
 }
