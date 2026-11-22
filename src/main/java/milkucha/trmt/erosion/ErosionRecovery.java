@@ -14,6 +14,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.world.WorldEvents;
 
 /**
  * Bonemeal / brush recovery of eroded blocks. A use acts on a 3x3 square at the target's height, oriented
@@ -26,6 +27,10 @@ import net.minecraft.util.math.Direction;
  * Blocks needing more than one use count the uses on their erosion entry ({@code recoveryUses}, an
  * integer, so no float drift); at the needed count they recover one stage and restart at 0. Only eroded
  * blocks of the tool's family at the same Y take part.
+ * <p>
+ * Every recovered block shows bonemeal particles. The clicked block uses world event
+ * {@link WorldEvents#BONE_MEAL_USED} when bonemeal is used (vanilla's 15 particles plus the bone meal sound, so one sound per use;
+ * a brush uses {@link WorldEvents#PLANT_FERTILIZED} there too, since it plays its own sound); its neighbours use {@link WorldEvents#PLANT_FERTILIZED} (particles only, fewer of them).
  */
 public final class ErosionRecovery {
 
@@ -36,11 +41,11 @@ public final class ErosionRecovery {
     /** Uses needed to recover one stage: the four corners. */
     public static final int USES_CORNER = 2;
 
-    /** Bonemeal particle count for the clicked block (0 = vanilla's default of 15). */
+    /** Bonemeal particle count for the clicked block (0 = vanilla's default of 15), sent with {@code BONE_MEAL_USED} (with sound). */
     private static final int PARTICLES_CENTRE = 0;
-    /** Bonemeal particle count for a recovered left, right, front or back block. */
+    /** Bonemeal particle count for a recovered left, right, front or back block, sent with {@code PLANT_FERTILIZED} (no sound). */
     private static final int PARTICLES_NEIGHBOUR = 2;
-    /** Bonemeal particle count for a recovered corner block. */
+    /** Bonemeal particle count for a recovered corner block, sent with {@code PLANT_FERTILIZED} (no sound). */
     private static final int PARTICLES_CORNER = 1;
 
     public enum Tool {
@@ -91,11 +96,14 @@ public final class ErosionRecovery {
             log(tool, pos, role, "skipped-occupied");
             return false;
         }
-        int particles = "centre".equals(role) ? PARTICLES_CENTRE
+        boolean centre = "centre".equals(role);
+        // Only bonemeal plays its sound (once per use, on the clicked block); the brush has its own sound.
+        int event = centre && tool == Tool.BONEMEAL ? WorldEvents.BONE_MEAL_USED : WorldEvents.PLANT_FERTILIZED;
+        int particles = centre ? PARTICLES_CENTRE
                 : role.contains("-") ? PARTICLES_CORNER   // front-left, front-right, back-left, back-right
                 : PARTICLES_NEIGHBOUR;
         if (usesNeeded <= 1) {
-            recoverOneStage(world, pos, state, tool, particles);
+            recoverOneStage(world, pos, state, tool, event, particles);
             log(tool, pos, role, "recovered");
             return true;
         }
@@ -114,7 +122,7 @@ public final class ErosionRecovery {
             log(tool, pos, role, "uses=" + uses + "/" + usesNeeded);
             return false;
         }
-        recoverOneStage(world, pos, state, tool, particles); // replaces the entry: progress restarts at 0
+        recoverOneStage(world, pos, state, tool, event, particles); // replaces the entry: progress restarts at 0
         log(tool, pos, role, "recovered");
         return true;
     }
@@ -130,8 +138,11 @@ public final class ErosionRecovery {
         return !world.getEntitiesByClass(LivingEntity.class, box, e -> !e.isSpectator()).isEmpty();
     }
 
-    /** One stage back along the erosion chain, with a fresh cooldown entry, HUD update and bonemeal particles. */
-    private static void recoverOneStage(ServerWorld world, BlockPos pos, BlockState state, Tool tool, int particles) {
+    /**
+     * One stage back along the erosion chain, with a fresh cooldown entry, HUD update and the world event
+     * {@code event} ({@code BONE_MEAL_USED} or {@code PLANT_FERTILIZED}) carrying {@code particles} as its data.
+     */
+    private static void recoverOneStage(ServerWorld world, BlockPos pos, BlockState state, Tool tool, int event, int particles) {
         ErosionMapManager manager = ErosionMapManager.get(world);
         long now = world.getTime();
         Block block = state.getBlock();
@@ -192,7 +203,7 @@ public final class ErosionRecovery {
             manager.writeCooldownEntry(pos, cooldownFor, now);
             manager.broadcastEntryUpdate(pos, cooldownFor);
         }
-        world.syncWorldEvent(2005, pos, particles);
+        world.syncWorldEvent(event, pos, particles);
     }
 
     private static void log(Tool tool, BlockPos pos, String role, String result) {
