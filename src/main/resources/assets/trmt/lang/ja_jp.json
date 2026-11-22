@@ -11,5 +11,6 @@
   "block.trmt.eroded_sand": "侵食された砂",
 
   "trmt.button.download_update": "Modのアップデートをダウンロード",
-  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) のクライアントバージョンが古くなっています (v%s)！\nこのサーバーはv%s以上が必要です。\nアップデートをダウンロードしてサーバーに参加してください。"
+  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) のクライアントバージョンが古くなっています (v%s)！\nこのサーバーはv%s以上が必要です。\nアップデートをダウンロードしてサーバーに参加してください。",
+  "trmt.warning.sodium_without_indium": "TRMT: SodiumがIndiumなしでインストールされています。踏み固められた道が正しく表示されません。Indiumをインストールしてください。"
 }

@@ -11,5 +11,6 @@
   "block.trmt.eroded_sand": "침식된 모래",
 
   "trmt.button.download_update": "모드 업데이트 다운로드",
-  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) 클라이언트 버전이 오래되었습니다 (v%s)!\n이 서버는 v%s 이상이 필요합니다.\n서버에 접속하려면 업데이트를 다운로드하세요."
+  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) 클라이언트 버전이 오래되었습니다 (v%s)!\n이 서버는 v%s 이상이 필요합니다.\n서버에 접속하려면 업데이트를 다운로드하세요.",
+  "trmt.warning.sodium_without_indium": "TRMT: Sodium이 Indium 없이 설치되어 있습니다. 닳은 길이 올바르게 표시되지 않습니다. Indium을 설치하세요."
 }

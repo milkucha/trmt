@@ -1,0 +1,16 @@
+{
+  "effect.trmt.lightness": "Ligereza",
+  "item.minecraft.potion.effect.trmt.lightness": "Poción de ligereza",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "Poción de ligereza arrojadiza",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "Poción de ligereza persistente",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Flecha de ligereza",
+
+  "block.trmt.eroded_grass_block": "Césped erosionado",
+  "block.trmt.eroded_dirt": "Tierra erosionada",
+  "block.trmt.eroded_coarse_dirt": "Tierra estéril erosionada",
+  "block.trmt.eroded_sand": "Arena erosionada",
+
+  "trmt.button.download_update": "Descargar actualización del mod",
+  "trmt.disconnect.outdated": "¡La versión del cliente de The Roads More Travelled (TRMT) está desactualizada (v%s)!\nEste servidor requiere v%s o más reciente.\n¡Descarga la actualización para unirte a este servidor!",
+  "trmt.warning.sodium_without_indium": "TRMT: Sodium está instalado sin Indium. Los caminos desgastados no se mostrarán correctamente. Instala Indium."
+}

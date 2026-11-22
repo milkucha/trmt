@@ -9,6 +9,7 @@ import milkucha.trmt.network.VersionCheckPayload;
 import milkucha.trmt.network.VersionResponsePayload;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
@@ -71,6 +72,8 @@ public class TRMT implements ModInitializer {
 		// that world is created, i.e. inside initServer() (createLevels), before runServer() starts its tick
 		// clock — doing it on SERVER_STARTED counted the whole load as one long first tick ("Can't keep up!").
 		ServerWorldEvents.LOAD.register((server, world) -> ErosionMapManager.loadState(world));
+		// Untouched step progress expires (entryExpiryDays): checked when a chunk loads, at world load and on save.
+		ServerChunkEvents.CHUNK_LOAD.register((world, chunk) -> ErosionMapManager.onChunkLoad(world, chunk.getPos()));
 		// The legacy grass-entry migration places blocks, so it waits until the worlds are fully ready.
 		ServerLifecycleEvents.SERVER_STARTED.register(server ->
 				ErosionMapManager.migrateGrassEntries(server));
@@ -95,7 +98,7 @@ public class TRMT implements ModInitializer {
 						.executes(ctx -> {
 							if (ctx.getSource().permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) {
 								ctx.getSource().sendSuccess(() -> Component.literal(
-										"[TRMT] Commands: /trmt reloadconfig, /trmt convert-to-vanilla [quick], /trmt eroded-chunks"), false);
+										"[TRMT] Commands: /trmt reload-config, /trmt convert-to-vanilla [quick], /trmt eroded-chunks"), false);
 							} else {
 								ctx.getSource().sendSuccess(() -> Component.literal(
 										"[TRMT] The /trmt commands need operator permission (cheats). In singleplayer, enable cheats "
@@ -103,12 +106,12 @@ public class TRMT implements ModInitializer {
 							}
 							return 1;
 						})
-						.then(Commands.literal("reloadconfig")
+						.then(Commands.literal("reload-config")
 								.requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
 								.executes(ctx -> {
 									if (TRMTConfig.load(true) == TRMTConfig.LoadResult.INVALID) {
 										ctx.getSource().sendFailure(Component.literal("[TRMT] trmt.json is not valid JSON, so nothing was reloaded: the previous settings are still in use. "
-												+ "Fix the file (the server log names the line and the problem) and run /trmt reloadconfig again."));
+												+ "Fix the file (the server log names the line and the problem) and run /trmt reload-config again."));
 										return 0;
 									}
 									ctx.getSource().sendSuccess(() -> Component.literal("[TRMT] Config reloaded."), true);

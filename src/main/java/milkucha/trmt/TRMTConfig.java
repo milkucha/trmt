@@ -9,6 +9,7 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import milkucha.trmt.erosion.BlockThresholds;
+import milkucha.trmt.path.PathSpeedBuff;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
@@ -38,6 +39,8 @@ public final class TRMTConfig {
         public float player  = 0.5f;
         public float mounted = 2.0f;
         public float leash   = 1.5f;
+        /** Free-roaming mobs listed in {@code erosionMobWhitelist}: step amount is {@code player × freeRoaming}. */
+        public float freeRoaming = 1.0f;
     }
 
     public static class MinMax {
@@ -51,12 +54,34 @@ public final class TRMTConfig {
         public boolean sandEnabled       = true;
         public boolean leavesEnabled     = true;
         public boolean vegetationEnabled = true;
+        public boolean snowEnabled       = true;
     }
 
     public static class DeErosionToggles {
         public boolean grassEnabled = true;
         public boolean dirtEnabled  = true;
         public boolean sandEnabled  = true;
+    }
+
+    /** Which eroded blocks count as path for the path speed buff (their depth weights are fixed in {@code PathDetector}). */
+    public static class PathBlockToggles {
+        public boolean erodedGrass      = true;
+        public boolean erodedDirt       = true;
+        public boolean erodedCoarseDirt = true;
+        public boolean erodedSand       = true;
+        public PathBlockToggles() {}
+    }
+
+    /** Settings of the path speed buff (see {@code milkucha.trmt.path.PathSpeedBuff}). */
+    public static class PathSpeedBuffConfig {
+        public boolean enabled      = true;
+        public float   tier1Percent = 8f;
+        public float   tier2Percent = 16f;
+        public float   tier3Percent = 25f;
+        public float   tier2MinDepth = 1.75f;
+        public float   tier3MinDepth = 2.5f;
+        public PathBlockToggles pathBlocks = new PathBlockToggles();
+        public PathSpeedBuffConfig() {}
     }
 
     public static class VegetationThreshold extends MinMax {
@@ -74,6 +99,8 @@ public final class TRMTConfig {
         public MinMax              sand       = new MinMax(1.5f, 3f);
         public VegetationThreshold leaves     = new VegetationThreshold(2f, 3f, 0.1f);
         public VegetationThreshold vegetation = new VegetationThreshold(2f, 3f, 0.2f);
+        public VegetationThreshold snow       = new VegetationThreshold(0.4f, 0.9f, 0f);
+        public MinMax              snowBlock  = new MinMax(0.5f, 1.0f);
     }
 
     public static class GrassDeErosion {
@@ -103,11 +130,40 @@ public final class TRMTConfig {
         public SandDeErosion  sand  = new SandDeErosion();
     }
 
+    /** Permanent erosion stages: {@code true} = that stage never de-erodes naturally (mirrors {@link DeErosionTimeoutDays}). */
+    public static class GrassPermanent {
+        public boolean stage1 = false;
+        public boolean stage2 = false;
+        public boolean stage3 = false;
+        public boolean stage4 = false;
+        public boolean stage5 = false;
+    }
+
+    public static class DirtPermanent {
+        public boolean erodedDirt       = false;
+        public boolean erodedCoarseDirt = false;
+    }
+
+    public static class SandPermanent {
+        public boolean stage1 = false;
+        public boolean stage2 = false;
+        public boolean stage3 = false;
+        public boolean stage4 = false;
+        public boolean stage5 = false;
+    }
+
+    public static class PermanentStages {
+        public GrassPermanent grass = new GrassPermanent();
+        public DirtPermanent  dirt  = new DirtPermanent();
+        public SandPermanent  sand  = new SandPermanent();
+    }
+
     // ── top-level fields ───────────────────────────────────────────────────
 
     public ErosionToggles       erosion              = new ErosionToggles();
     public DeErosionToggles     deErosion            = new DeErosionToggles();
     public Multipliers          erosionMultipliers   = new Multipliers();
+    public PathSpeedBuffConfig  pathSpeedBuff        = new PathSpeedBuffConfig();
     public ErosionThresholds    erosionThresholds    = new ErosionThresholds();
     public List<String> erodableVegetation = Arrays.asList(
         "minecraft:short_grass", "minecraft:tall_grass",
@@ -120,7 +176,15 @@ public final class TRMTConfig {
     public List<String> revertAlwaysBlocks = new ArrayList<>();
     /** Modded blocks that never revert eroded dirt / coarse dirt / grass below them (wins over revertAlwaysBlocks). */
     public List<String> revertNeverBlocks = new ArrayList<>();
+    /** Entity type ids (e.g. "minecraft:cow") whose free-roaming (unleashed) members erode like leashed mobs. Empty = only leashed mobs erode. */
+    public List<String> erosionMobWhitelist = new ArrayList<>();
     public DeErosionTimeoutDays deErosionTimeoutDays = new DeErosionTimeoutDays();
+    public PermanentStages      permanentStages      = new PermanentStages();
+    /**
+     * Step progress on a block that has not changed yet (grass, dirt, sand, snow, leaves, plants) is
+     * forgotten after this many Minecraft days untouched. 0 = never. Eroded blocks are not affected.
+     */
+    public float entryExpiryDays = 5f;
 
     // ── singleton ──────────────────────────────────────────────────────────
     private static TRMTConfig instance = new TRMTConfig();
@@ -147,9 +211,16 @@ public final class TRMTConfig {
     /**
      * Loads config from disk. If the file is not valid JSON it is left untouched (so the user can fix
      * it) and {@link LoadResult#INVALID} is returned: the running config becomes the defaults, or stays
-     * as it was when {@code keepPreviousOnInvalid} is set (used by {@code /trmt reloadconfig}).
+     * as it was when {@code keepPreviousOnInvalid} is set (used by {@code /trmt reload-config}).
      */
     public static LoadResult load(boolean keepPreviousOnInvalid) {
+        LoadResult result = loadFile(keepPreviousOnInvalid);
+        // Whatever config is now active (loaded, defaults or the kept previous one), rebuild what is derived from it.
+        PathSpeedBuff.rebuildWeights(instance.pathSpeedBuff);
+        return result;
+    }
+
+    private static LoadResult loadFile(boolean keepPreviousOnInvalid) {
         Path path = configPath();
         if (Files.exists(path)) {
             try (Reader reader = Files.newBufferedReader(path)) {
@@ -253,6 +324,10 @@ public final class TRMTConfig {
         if (d.isNumber()) {
             double x;
             try { x = v.getAsDouble(); } catch (NumberFormatException e) { return false; } // "1.5" is fine
+            if (d.getAsNumber() instanceof Integer || d.getAsNumber() instanceof Long) {
+                // Integer setting (e.g. an integer-valued setting): Gson would reject 2.5 and fail the whole file, so only integral values pass.
+                return x >= 0 && x <= Integer.MAX_VALUE && x == Math.rint(x);
+            }
             return x >= 0 && x <= Float.MAX_VALUE && !(key.equals("dropChance") && x > 1);
         }
         return true;
