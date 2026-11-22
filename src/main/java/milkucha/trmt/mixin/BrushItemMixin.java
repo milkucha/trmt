@@ -1,8 +1,7 @@
 package milkucha.trmt.mixin;
 
 import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.block.ErodedSandBlock;
-import milkucha.trmt.erosion.ErosionMapManager;
+import milkucha.trmt.erosion.ErosionRecovery;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -11,8 +10,6 @@ import net.minecraft.world.item.BrushItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -72,24 +69,14 @@ public class BrushItemMixin {
             return;
         }
 
-        ErosionMapManager manager = ErosionMapManager.get(world);
-        int stage = state.getValue(ErodedSandBlock.STAGE);
-        if (stage > 0) {
-            BlockState newState = state.setValue(ErodedSandBlock.STAGE, stage - 1);
-            if (stage - 1 == 0) newState = newState.setValue(ErodedSandBlock.WATERLOGGED, false);
-            world.setBlock(pos, newState, Block.UPDATE_ALL);
-            manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getGameTime());
-        } else {
-            world.setBlock(pos, Blocks.SAND.defaultBlockState(), Block.UPDATE_ALL);
-            manager.removeEntry(pos);
-        }
+        // Cycle complete: recover the target and its 3x3 neighbours (occupied sand is skipped).
+        ErosionRecovery.recoverArea((ServerLevel) world, pos, player.getDirection(), ErosionRecovery.Tool.BRUSH);
 
+        // 1 durability damage per cycle, matching vanilla (damage only fires on cycle completion), not per block.
         EquipmentSlot slot = stack.equals(player.getItemBySlot(EquipmentSlot.OFFHAND))
                 ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND;
         stack.hurtAndBreak(1, player, slot);
 
-        ((ServerLevel) world).levelEvent(2005, pos, 0);
         trmt$brushProgress.put(uuid, 0);
     }
 }

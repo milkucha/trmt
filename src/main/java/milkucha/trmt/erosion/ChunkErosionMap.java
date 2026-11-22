@@ -69,6 +69,18 @@ public class ChunkErosionMap {
         return entries.remove(pos) != null;
     }
 
+    /**
+     * Removes expirable entries (see {@link ErosionEntry#isExpirable()}) last touched before
+     * {@code cutoffGameTime}.
+     *
+     * @return how many entries were removed.
+     */
+    public int pruneExpired(long cutoffGameTime) {
+        int before = entries.size();
+        entries.values().removeIf(e -> e.isExpirable() && e.getLastTouchedGameTime() < cutoffGameTime);
+        return before - entries.size();
+    }
+
     public boolean isEmpty() {
         return entries.isEmpty();
     }

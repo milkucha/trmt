@@ -12,6 +12,7 @@
 		"ChunkDataSenderMixin",
 		"DryVegetationBlockMixin",
 		"EatBlockGoalMixin",
+		"EntityMixin",
 		"FallingBlockEntityMixin",
 		"HoeItemMixin",
 		"MobEntityMixin",

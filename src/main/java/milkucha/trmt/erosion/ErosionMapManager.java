@@ -19,6 +19,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import java.util.ArrayList;
@@ -38,6 +39,20 @@ import java.util.UUID;
  * Sends erosion data (debug HUD only) to HUD-enabled players watching each chunk via Fabric networking.
  */
 public class ErosionMapManager {
+
+    /**
+     * A landing in the same block column counts as a new step only after at least this many ticks
+     * off the ground (a jump is ~12). Shorter airtime is sinking (a snow layer removed: ~2 ticks,
+     * a snow block turned into 7 layers: ~3) or an onGround flicker while standing still.
+     */
+    public static final int LANDING_MIN_AIR_TICKS = 5;
+
+    private static final long TICKS_PER_DAY = 24000L;
+
+    /** True if both positions are in the same x/z column ({@code b} may be null). */
+    public static boolean sameColumn(BlockPos a, BlockPos b) {
+        return b != null && a.getX() == b.getX() && a.getZ() == b.getZ();
+    }
 
     /** One manager per loaded server world, created when that world loads. */
     private static final Map<ResourceKey<Level>, ErosionMapManager> INSTANCES = new HashMap<>();
@@ -74,6 +89,38 @@ public class ErosionMapManager {
         ErosionMapManager manager = new ErosionMapManager(world);
         storage.load(manager.state, world.dimension());
         INSTANCES.put(world.dimension(), manager);
+        manager.pruneExpired(new ArrayList<>(manager.state.getAllChunkMaps().keySet()));
+    }
+
+    /** Called when vanilla loads a chunk into the world: drops that chunk's expired entries. */
+    public static void onChunkLoad(ServerLevel world, ChunkPos chunkPos) {
+        get(world).pruneExpired(List.of(chunkPos));
+    }
+
+    /**
+     * Drops expired entries in the given chunks: progress on a vanilla block (stage 0, not a
+     * {@code trmt:eroded_*} block) untouched for {@code entryExpiryDays}. Entries of eroded blocks
+     * are kept: they are the de-erosion timers. Runs at world load, chunk load and save — never polled.
+     */
+    private void pruneExpired(Iterable<ChunkPos> chunks) {
+        if (state == null) return;
+        float days = milkucha.trmt.TRMTConfig.get().entryExpiryDays;
+        if (days <= 0) return;
+        long cutoff = world.getGameTime() - (long) (days * TICKS_PER_DAY);
+        int removed = 0;
+        for (ChunkPos chunkPos : chunks) {
+            ChunkErosionMap map = state.getChunkMap(chunkPos);
+            if (map == null) continue;
+            int n = map.pruneExpired(cutoff);
+            if (n > 0) {
+                removed += n;
+                state.removeChunkMapIfEmpty(chunkPos);
+                state.markDirty(chunkPos);
+            }
+        }
+        if (removed > 0) {
+            TRMT.LOGGER.debug("[TRMT] {}: dropped {} expired erosion entries", world.dimension().identifier(), removed);
+        }
     }
 
     /**
@@ -84,6 +131,12 @@ public class ErosionMapManager {
     public static void onWorldSave(ServerLevel world) {
         ErosionMapManager manager = INSTANCES.get(world.dimension());
         if (manager == null || storage == null) return;
+        // Regions about to be written: drop their expired entries first.
+        List<ChunkPos> dirtyChunks = new ArrayList<>();
+        for (long region : manager.state.getDirtyRegions()) {
+            dirtyChunks.addAll(manager.state.getRegionChunks(region));
+        }
+        manager.pruneExpired(dirtyChunks);
         storage.save(manager.state, world.dimension());
     }
 
@@ -184,7 +237,8 @@ public class ErosionMapManager {
             world.setBlock(pos,
                     TRMTBlocks.ERODED_GRASS_BLOCK.defaultBlockState()
                             .setValue(ErodedGrassBlock.FACING, facing)
-                            .setValue(ErodedGrassBlock.STAGE, stage),
+                            .setValue(ErodedGrassBlock.STAGE, stage)
+                            .setValue(ErodedGrassBlock.SNOWY, ErodedGrassBlock.snowyAt(world, pos)),
                     Block.UPDATE_ALL);
             removeEntry(pos);
             writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, currentTime);
@@ -239,10 +293,16 @@ public class ErosionMapManager {
             for (int y = 0; y < 16; y++) {
                 for (int z = 0; z < 16; z++) {
                     for (int x = 0; x < 16; x++) {
-                        Block vanilla = VANILLA_EQUIVALENTS.get(section.getBlockState(x, y, z).getBlock());
+                        BlockState eroded = section.getBlockState(x, y, z);
+                        Block vanilla = VANILLA_EQUIVALENTS.get(eroded.getBlock());
                         if (vanilla == null) continue;
                         mutable.set(startX + x, startY + y, startZ + z);
-                        world.setBlock(mutable, vanilla.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+                        // Carry eroded grass's snowy flag to grass_block (no neighbour read, see above).
+                        BlockState vanillaState = vanilla.defaultBlockState();
+                        if (eroded.hasProperty(ErodedGrassBlock.SNOWY) && vanillaState.hasProperty(ErodedGrassBlock.SNOWY)) {
+                            vanillaState = vanillaState.setValue(ErodedGrassBlock.SNOWY, eroded.getValue(ErodedGrassBlock.SNOWY));
+                        }
+                        world.setBlock(mutable, vanillaState, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
                         removeEntry(mutable.immutable());
                         converted++;
                     }
