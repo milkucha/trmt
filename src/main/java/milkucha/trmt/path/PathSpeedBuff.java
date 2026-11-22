@@ -38,6 +38,8 @@ public final class PathSpeedBuff {
         int misses;
         /** The entity (the player or the mount they control) currently carrying the modifier; null when none. */
         LivingEntity target;
+        /** Set on every dismount: the player's next tick re-gates the spot on foot (see {@link #tickCheck}). */
+        boolean dismounted;
     }
 
     /** Rebuilds the weight lookup from the active config (config load and {@code /trmt reloadconfig}). */
@@ -49,6 +51,11 @@ public final class PathSpeedBuff {
      * Per-tick safety net behind the dismount hook ({@code EntityMixin}): if the entity carrying the buff is
      * no longer the one the player stands on, is in another world, or the player is dead, take the modifier
      * off it. A few reference compares per tick, no block reads.
+     * <p>
+     * The first tick after a dismount also re-gates the spot the player is now at (once, not per tick). After a
+     * normal dismount {@link #onPlacedAfterDismount} already did that at the same spot, so nothing changes; it
+     * matters when the dismount was part of a teleport (evaluated at the old spot, then moved) or of a path
+     * that never places the player (mount removed), so a buff never lingers away from the path.
      */
     public static void tickCheck(ServerPlayerEntity player, State state) {
         LivingEntity target = state.target;
@@ -57,6 +64,22 @@ public final class PathSpeedBuff {
                 || target.getWorld() != player.getWorld())) {
             release(state);
         }
+        if (state.dismounted) {
+            state.dismounted = false;
+            // Still/again riding (switched mounts): the vehicle's own crossings decide, as before.
+            if (player.getVehicle() == null && player.isAlive()) evaluate(player, null, state, true);
+        }
+    }
+
+    /**
+     * Called when a dismount has put the player down at their dismount spot ({@code requestTeleportAndDismount},
+     * reached from every {@code stopRiding}). Re-gates that spot on foot at once, in the same call that took
+     * the buff off the mount, so a player who gets off on a path keeps a buffed carrier without a tick's gap
+     * (their landing only counts as a new ground block ~2 ticks later, once the client reports them on ground).
+     * Off a path it gives tier 0, so nothing is applied.
+     */
+    public static void onPlacedAfterDismount(ServerPlayerEntity player, State state) {
+        if (state.dismounted && player.getVehicle() == null && player.isAlive()) evaluate(player, null, state, true);
     }
 
     /** Takes the buff off whatever carries it and resets the state (dismount, target change). */
@@ -68,9 +91,13 @@ public final class PathSpeedBuff {
         state.misses = 0;
     }
 
-    /** Dismount hook: release if {@code mount} is the entity this player's buff sits on. */
+    /**
+     * Dismount hook: release if {@code mount} is the entity this player's buff sits on, and mark the player for
+     * the on-foot re-gate ({@link #onPlacedAfterDismount}, then once more on the next tick).
+     */
     public static void onDismount(State state, Entity mount) {
         if (mount != null && state.target == mount) release(state);
+        state.dismounted = true;
     }
 
     /**
@@ -78,6 +105,14 @@ public final class PathSpeedBuff {
      * modifier. Independent of the erosion toggles, sneaking and Lightness.
      */
     public static void onNewGroundBlock(ServerPlayerEntity player, Entity vehicle, State state) {
+        evaluate(player, vehicle, state, false);
+    }
+
+    /**
+     * @param regate judge the spot as a fresh entry ({@code gateEnter}, no grace), as if the tier were 0, but
+     *               without taking the modifier off first: an unchanged result leaves the attribute untouched.
+     */
+    private static void evaluate(ServerPlayerEntity player, Entity vehicle, State state, boolean regate) {
         TRMTConfig.PathSpeedBuffConfig cfg = TRMTConfig.get().pathSpeedBuff;
 
         // Who carries the buff: the player on foot, the living mount they control, nothing otherwise
@@ -89,6 +124,10 @@ public final class PathSpeedBuff {
         if (state.target != null && state.target != target) release(state);
 
         int oldTier = state.tier;
+        if (regate) {
+            state.tier = 0;
+            state.misses = 0;
+        }
         PathSample sample = null;
         if (!cfg.enabled || target == null) {
             state.tier = 0;

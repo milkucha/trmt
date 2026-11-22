@@ -42,6 +42,15 @@ public class ServerPlayerEntityMixin implements PathBuffHolder {
         return trmt$pathBuff;
     }
 
+    /**
+     * Path speed buff: a dismount has just put the player down at their dismount spot (only caller in 1.20.1:
+     * {@code LivingEntity.onDismounted}, i.e. every {@code stopRiding}); evaluate it on foot right away.
+     */
+    @Inject(method = "requestTeleportAndDismount", at = @At("TAIL"))
+    private void trmt$onPlacedAfterDismount(double x, double y, double z, CallbackInfo ci) {
+        PathSpeedBuff.onPlacedAfterDismount((ServerPlayerEntity) (Object) this, trmt$pathBuff);
+    }
+
     /** Last block position this player was standing on. Null while airborne. */
     @Unique
     private BlockPos trmt$lastGroundPos = null;
@@ -55,7 +64,8 @@ public class ServerPlayerEntityMixin implements PathBuffHolder {
         boolean mounted = vehicle != null;
         boolean onGround = mounted ? vehicle.isOnGround() : player.isOnGround();
 
-        // Safety net for the path speed buff: drop it if its carrier is no longer what the player stands on/controls.
+        // Safety net for the path speed buff: drop it if its carrier is no longer what the player stands on/controls;
+        // on the first tick after a dismount, re-gate the spot the player is at now.
         PathSpeedBuff.tickCheck(player, trmt$pathBuff);
 
         if (!onGround) {
