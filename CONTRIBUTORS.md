@@ -4,3 +4,4 @@ The following people have contributed code to The Roads More Travelled (TRMT) un
 
 | Contributor | Contribution |
 |---|---|
+| [@megatocha](https://github.com/megatocha) | Localization aligned with the official Minecraft translations and 17 new languages (PR #44) |
