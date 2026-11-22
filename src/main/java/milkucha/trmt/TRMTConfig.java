@@ -53,6 +53,7 @@ public final class TRMTConfig {
         public boolean sandEnabled       = true;
         public boolean leavesEnabled     = true;
         public boolean vegetationEnabled = true;
+        public boolean snowEnabled       = true;
     }
 
     public static class VegetationThreshold extends MinMax {
@@ -70,6 +71,8 @@ public final class TRMTConfig {
         public MinMax              sand       = new MinMax(1.5f, 3f);
         public VegetationThreshold leaves     = new VegetationThreshold(2f, 3f, 0.1f);
         public VegetationThreshold vegetation = new VegetationThreshold(2f, 3f, 0.2f);
+        public VegetationThreshold snow       = new VegetationThreshold(0.4f, 0.9f, 0f);
+        public MinMax              snowBlock  = new MinMax(0.5f, 1.0f);
     }
 
     public static class GrassDeErosion {
@@ -171,6 +174,11 @@ public final class TRMTConfig {
     /** Modded blocks that never revert eroded dirt / coarse dirt / grass below them (wins over revertAlwaysBlocks). */
     public List<String> revertNeverBlocks = new ArrayList<>();
     public DeErosionTimeoutDays deErosionTimeoutDays = new DeErosionTimeoutDays();
+    /**
+     * Step progress on a block that has not changed yet (grass, dirt, sand, snow, leaves, plants) is
+     * forgotten after this many Minecraft days untouched. 0 = never. Eroded blocks are not affected.
+     */
+    public float entryExpiryDays = 5f;
 
     // ── singleton ──────────────────────────────────────────────────────────
     private static TRMTConfig instance = new TRMTConfig();

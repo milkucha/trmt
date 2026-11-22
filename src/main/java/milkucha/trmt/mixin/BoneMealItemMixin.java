@@ -43,7 +43,7 @@ public class BoneMealItemMixin {
                 manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, currentTime);
             } else {
                 // Stage 0 → fully recovered, revert to vanilla grass.
-                world.setBlockState(pos, Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
+                world.setBlockState(pos, ErodedGrassBlock.grassStateFor(world, pos), Block.NOTIFY_ALL);
                 manager.removeEntry(pos);
             }
         } else if (block == TRMTBlocks.ERODED_DIRT) {
@@ -62,7 +62,8 @@ public class BoneMealItemMixin {
                 world.setBlockState(pos,
                         TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
                                 .with(ErodedGrassBlock.FACING, facing)
-                                .with(ErodedGrassBlock.STAGE, 4),
+                                .with(ErodedGrassBlock.STAGE, 4)
+                                .with(ErodedGrassBlock.SNOWY, ErodedGrassBlock.snowyAt(world, pos)),
                         Block.NOTIFY_ALL);
                 manager.removeEntry(pos);
                 manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, currentTime);
