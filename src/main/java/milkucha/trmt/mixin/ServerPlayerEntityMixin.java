@@ -165,9 +165,13 @@ public class ServerPlayerEntityMixin implements PathBuffHolder {
             return;
         }
 
-        manager.onStep(groundPos, block, 1.0f * mult, gameTime);
-        trmt$tryTransform(world, manager, groundPos);
-        manager.broadcastEntryUpdate(groundPos, block);
+        // A permanent stage neither de-erodes nor erodes further: the step does nothing to it
+        // (its neighbours still get their share below).
+        if (!BlockThresholds.isPermanentStage(state)) {
+            manager.onStep(groundPos, block, 1.0f * mult, gameTime);
+            trmt$tryTransform(world, manager, groundPos);
+            manager.broadcastEntryUpdate(groundPos, block);
+        }
 
         // Trails in snow are one block wide: no spread from a snow block.
         if (state.isOf(Blocks.SNOW_BLOCK)) {
@@ -199,6 +203,7 @@ public class ServerPlayerEntityMixin implements PathBuffHolder {
                 || (erosion.dirtEnabled && (adjState.isOf(Blocks.DIRT) || adjState.isOf(TRMTBlocks.ERODED_DIRT) || adjState.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))
                 || (erosion.sandEnabled && (adjState.isOf(Blocks.SAND) || adjState.isOf(TRMTBlocks.ERODED_SAND)))
                 || (erosion.leavesEnabled && BlockThresholds.isLeaves(adjState.getBlock()))) {
+            if (BlockThresholds.isPermanentStage(adjState)) return; // permanent stages do not erode further
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
             trmt$tryTransform(world, manager, pos);
             manager.broadcastEntryUpdate(pos, adjState.getBlock());

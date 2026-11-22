@@ -157,7 +157,10 @@ public class ErosionDebugHud {
         int lineH = tr.fontHeight + 1; // line height in scaled coords
 
         // Line 1: walkedOnCount / threshold
-        String countLabel = cellEntry != null
+        // A permanent stage does not erode further, so it shows no progress towards the next stage.
+        String countLabel = BlockThresholds.isPermanentStage(state)
+                ? "perm"
+                : cellEntry != null
                 ? String.format("%.1f/%.1f", cellEntry.walkedOnCount, cellEntry.threshold)
                 : "0.0/-";
         drawCenteredScaled(context, tr, countLabel, x, y, 0, COUNT_COLOR);
@@ -174,6 +177,8 @@ public class ErosionDebugHud {
         String outLabel;
         if (timeout < 0) {
             outLabel = "out:-";
+        } else if (BlockThresholds.isPermanentStage(state)) {
+            outLabel = "out:perm";
         } else {
             boolean isolated = isIsolatedClient(world, pos);
             if (isolated) timeout /= 2;
