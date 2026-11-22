@@ -44,6 +44,9 @@ import java.util.function.Supplier;
  *
  * Stage texture selection and FACING Y-rotation are already baked into the wrapped
  * model by the block-state system; the copy choice is the only per-position work.
+ * Snowy variants (eroded_grass_block_s*_snow) have no side overlay element, only the opaque
+ * vanilla grass_block_snow side plus the dirt + eroded_top UP pair (same tinted stage sprite),
+ * so the same material and overlay-copy transform applies.
  */
 public class ErodedGrassBlockModel implements BakedModel {
 
