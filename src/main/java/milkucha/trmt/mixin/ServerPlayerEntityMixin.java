@@ -9,6 +9,8 @@ import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
+import milkucha.trmt.path.PathBuffHolder;
+import milkucha.trmt.path.PathSpeedBuff;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -30,8 +32,25 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ServerPlayerEntity.class)
-public class ServerPlayerEntityMixin {
+public class ServerPlayerEntityMixin implements PathBuffHolder {
 
+    /** Path speed buff state of this player (see {@link PathSpeedBuff}). */
+    @Unique
+    private final PathSpeedBuff.State trmt$pathBuff = new PathSpeedBuff.State();
+
+    @Override
+    public PathSpeedBuff.State trmt$getPathBuff() {
+        return trmt$pathBuff;
+    }
+
+    /**
+     * Path speed buff: a dismount has just put the player down at their dismount spot (only caller in 1.20.1:
+     * {@code LivingEntity.onDismounted}, i.e. every {@code stopRiding}); evaluate it on foot right away.
+     */
+    @Inject(method = "requestTeleportAndDismount", at = @At("TAIL"))
+    private void trmt$onPlacedAfterDismount(double x, double y, double z, CallbackInfo ci) {
+        PathSpeedBuff.onPlacedAfterDismount((ServerPlayerEntity) (Object) this, trmt$pathBuff);
+    }
 
     /** Last block position this player (or their vehicle) stood on; kept while airborne. */
     @Unique
@@ -50,11 +69,17 @@ public class ServerPlayerEntityMixin {
         boolean mounted = vehicle != null;
         boolean onGround = mounted ? vehicle.isOnGround() : player.isOnGround();
 
+        // Safety net for the path speed buff: drop it if its carrier is no longer what the player stands on/controls;
+        // on the first tick after a dismount, re-gate the spot the player is at now.
+        PathSpeedBuff.tickCheck(player, trmt$pathBuff);
+
         if (!onGround) {
             if (trmt$airTicks < Integer.MAX_VALUE) trmt$airTicks++;
             return;
         }
         boolean landedFromJump = trmt$airTicks >= ErosionMapManager.LANDING_MIN_AIR_TICKS;
+        // Path speed buff: any time off the ground counts, as a landing has always re-evaluated the buff.
+        boolean wasAirborne = trmt$airTicks > 0;
         trmt$airTicks = 0;
 
         // getBlockPos() returns the block at the entity's Y coordinate (feet level).
@@ -75,7 +100,16 @@ public class ServerPlayerEntityMixin {
         // standing still, a brief onGround flicker, and sinking when the block below gets lower
         // (a snow layer removed, a snow block turned into layers, an eroded sand stage).
         boolean sameColumn = ErosionMapManager.sameColumn(groundPos, trmt$lastGroundPos);
+        boolean sameBlock = groundPos.equals(trmt$lastGroundPos);
         trmt$lastGroundPos = groundPos.toImmutable();
+
+        // Path speed buff: one evaluation per new ground block (or landing after any airborne tick), on its own
+        // trigger rather than the erosion step rule below. Deliberately before the step-rule, sneaking and Lightness
+        // returns (the buff is about the path, not about wearing it) and independent of the erosion toggles.
+        if (!sameBlock || wasAirborne) {
+            PathSpeedBuff.onNewGroundBlock(player, vehicle, trmt$pathBuff);
+        }
+
         if (sameColumn && !landedFromJump) {
             return;
         }
