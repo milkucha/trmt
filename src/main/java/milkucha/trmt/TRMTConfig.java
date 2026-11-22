@@ -141,9 +141,9 @@ public final class TRMTConfig {
         public float   gateKeep     = 0.45f;
         /** Consecutive evaluations below gateKeep before the buff is lost. */
         public int     graceBlocks  = 4;
-        public float   tier1Percent = 4f;
-        public float   tier2Percent = 8f;
-        public float   tier3Percent = 12f;
+        public float   tier1Percent = 8f;
+        public float   tier2Percent = 16f;
+        public float   tier3Percent = 25f;
         public float   tier2MinDepth = 1.75f;
         public float   tier3MinDepth = 2.5f;
         /** Extra depth margin that must be crossed before the tier drops again. */
