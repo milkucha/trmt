@@ -1,0 +1,15 @@
+{
+  "effect.trmt.lightness": "Hafiflik",
+  "item.minecraft.potion.effect.trmt.lightness": "Hafiflik İksiri",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "Patlayıcı Hafiflik İksiri",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "Kalıcı Hafiflik İksiri",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Hafiflik Oku",
+
+  "block.trmt.eroded_grass_block": "Aşınmış Çimenli Toprak",
+  "block.trmt.eroded_dirt": "Aşınmış Toprak",
+  "block.trmt.eroded_coarse_dirt": "Aşınmış İri Taneli Toprak",
+  "block.trmt.eroded_sand": "Aşınmış Kum",
+
+  "trmt.button.download_update": "Mod Güncellemesini İndir",
+  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) istemci sürümü eski (v%s)!\nBu sunucu v%s veya daha yeni bir sürüm gerektiriyor.\nSunucuya katılmak için lütfen güncellemeyi indirin!"
+}

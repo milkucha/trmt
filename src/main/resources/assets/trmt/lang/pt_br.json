@@ -1,15 +1,15 @@
 {
   "effect.trmt.lightness": "Leveza",
-  "item.minecraft.potion.effect.trmt.lightness": "Poção de leveza",
-  "item.minecraft.splash_potion.effect.trmt.lightness": "Poção de respingo de leveza",
-  "item.minecraft.lingering_potion.effect.trmt.lightness": "Poção de longa duração de leveza",
-  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Flecha de leveza",
+  "item.minecraft.potion.effect.trmt.lightness": "Poção de Leveza",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "Poção Arremessável de Leveza",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "Poção Prolongada de Leveza",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Flecha de Leveza",
 
-  "block.trmt.eroded_grass_block": "Bloco de grama erodido",
-  "block.trmt.eroded_dirt": "Terra erodida",
-  "block.trmt.eroded_coarse_dirt": "Terra pedregosa erodida",
-  "block.trmt.eroded_sand": "Areia erodida",
+  "block.trmt.eroded_grass_block": "Bloco de Grama Erodido",
+  "block.trmt.eroded_dirt": "Terra Erodida",
+  "block.trmt.eroded_coarse_dirt": "Terra Infértil Erodida",
+  "block.trmt.eroded_sand": "Areia Erodida",
 
   "trmt.button.download_update": "Baixar atualização do mod",
-  "trmt.disconnect.outdated": "A versão do cliente The Roads More Travelled (TRMT) está desatualizada (v%s)!\nEste servidor requer v%s ou mais recente.\nBaixe a atualização para entrar neste servidor."
+  "trmt.disconnect.outdated": "A versão do cliente The Roads More Travelled (TRMT) está desatualizada (v%s)!\nEste servidor requer a v%s ou mais recente.\nPor favor, baixe a atualização para se conectar a este servidor."
 }

@@ -1,0 +1,15 @@
+{
+  "effect.trmt.lightness": "Лекота",
+  "item.minecraft.potion.effect.trmt.lightness": "Отвара на лекота",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "Разплискваща се отвара на лекота",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "Задържаща се отвара на лекота",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Стрела с отрова на лекота",
+
+  "block.trmt.eroded_grass_block": "Ерозиран тревист блок",
+  "block.trmt.eroded_dirt": "Ерозирана пръст",
+  "block.trmt.eroded_coarse_dirt": "Ерозирана едра пръст",
+  "block.trmt.eroded_sand": "Ерозиран пясък",
+
+  "trmt.button.download_update": "Изтегляне на актуализацията на мода",
+  "trmt.disconnect.outdated": "Версията на клиента на The Roads More Travelled (TRMT) е остаряла (v%s)!\nТози сървър изисква v%s или по-нова.\nМоля, изтеглете актуализацията, за да се свържете със сървъра."
+}

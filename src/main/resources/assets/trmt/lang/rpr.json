@@ -1,0 +1,15 @@
+{
+  "effect.trmt.lightness": "Легкость",
+  "item.minecraft.potion.effect.trmt.lightness": "Снадобье легкости",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "Взрывное снадобье легкости",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "Туманное снадобье легкости",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Стрѣла легкости",
+
+  "block.trmt.eroded_grass_block": "Витоптаная дернина",
+  "block.trmt.eroded_dirt": "Витоптаная земля",
+  "block.trmt.eroded_coarse_dirt": "Витоптаная каменистая земля",
+  "block.trmt.eroded_sand": "Витоптаный песокъ",
+
+  "trmt.button.download_update": "Скачати обновленіе мода",
+  "trmt.disconnect.outdated": "Версія кліента The Roads More Travelled (TRMT) устарѣла (v%s)!\nЭтотъ серверъ требуетъ v%s или новѣе.\nПожалуйста, скачайте обновленіе для подключенія къ серверу."
+}

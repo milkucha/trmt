@@ -1,0 +1,15 @@
+{
+  "effect.trmt.lightness": "Lichtheid",
+  "item.minecraft.potion.effect.trmt.lightness": "Drank der lichtheid",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "Spattende drank der lichtheid",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "Aanhoudende drank der lichtheid",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Pijl van lichtheid",
+
+  "block.trmt.eroded_grass_block": "Geërodeerd grasblok",
+  "block.trmt.eroded_dirt": "Geërodeerde aarde",
+  "block.trmt.eroded_coarse_dirt": "Geërodeerde grove aarde",
+  "block.trmt.eroded_sand": "Geërodeerd zand",
+
+  "trmt.button.download_update": "Mod-update downloaden",
+  "trmt.disconnect.outdated": "De clientversie van The Roads More Travelled (TRMT) is verouderd (v%s)!\nDeze server vereist v%s of nieuwer.\nDownload de update om verbinding te maken met deze server!"
+}

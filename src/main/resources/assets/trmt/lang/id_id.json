@@ -1,0 +1,15 @@
+{
+  "effect.trmt.lightness": "Keringanan",
+  "item.minecraft.potion.effect.trmt.lightness": "Ramuan Keringanan",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "Ramuan Ciprat Keringanan",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "Ramuan Bertahan Keringanan",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Panah Keringanan",
+
+  "block.trmt.eroded_grass_block": "Balok Rumput Terkikis",
+  "block.trmt.eroded_dirt": "Tanah Terkikis",
+  "block.trmt.eroded_coarse_dirt": "Tanah Kasar Terkikis",
+  "block.trmt.eroded_sand": "Pasir Terkikis",
+
+  "trmt.button.download_update": "Unduh Pembaruan Mod",
+  "trmt.disconnect.outdated": "Versi klien The Roads More Travelled (TRMT) sudah usang (v%s)!\nServer ini memerlukan v%s atau yang lebih baru.\nSilakan unduh pembaruan untuk bergabung dengan server ini!"
+}

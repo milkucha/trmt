@@ -1,0 +1,15 @@
+{
+  "effect.trmt.lightness": "Lejeritate",
+  "item.minecraft.potion.effect.trmt.lightness": "Poțiune de lejeritate",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "Poțiune de lejeritate de aruncat",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "Poțiune de lejeritate persistentă",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Săgeată de lejeritate",
+
+  "block.trmt.eroded_grass_block": "Bloc de iarbă erodat",
+  "block.trmt.eroded_dirt": "Pământ erodat",
+  "block.trmt.eroded_coarse_dirt": "Pământ pietros erodat",
+  "block.trmt.eroded_sand": "Nisip erodat",
+
+  "trmt.button.download_update": "Descarcă actualizarea modului",
+  "trmt.disconnect.outdated": "Versiunea clientului The Roads More Travelled (TRMT) este învechită (v%s)!\nAcest server necesită v%s sau mai nouă.\nVă rugăm să descărcați actualizarea pentru a vă conecta la server."
+}

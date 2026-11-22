@@ -1,0 +1,15 @@
+{
+  "effect.trmt.lightness": "Легкість",
+  "item.minecraft.potion.effect.trmt.lightness": "Зварок легкости",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "Метательний зварок легкости",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "Туманий зварок легкости",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Стріла легкости",
+
+  "block.trmt.eroded_grass_block": "Стоптаний бльок трави",
+  "block.trmt.eroded_dirt": "Стоптана землє",
+  "block.trmt.eroded_coarse_dirt": "Стоптана загрубіла землє",
+  "block.trmt.eroded_sand": "Стоптаний пісок",
+
+  "trmt.button.download_update": "Стягнути обнову моди",
+  "trmt.disconnect.outdated": "Версія клієнта The Roads More Travelled (TRMT) вже застаріла (v%s)!\nЦей сервер вимагає v%s або новішу.\nПрошу стягнути обнову, би зайти на сервер!"
+}
