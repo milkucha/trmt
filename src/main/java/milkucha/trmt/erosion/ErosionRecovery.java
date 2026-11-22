@@ -154,8 +154,8 @@ public final class ErosionRecovery {
                 next = state.with(ErodedGrassBlock.STAGE, stage - 1);
                 cooldownFor = TRMTBlocks.ERODED_GRASS_BLOCK;
             } else {
-                // Stage 0 → fully recovered, vanilla grass.
-                next = Blocks.GRASS_BLOCK.getDefaultState();
+                // Stage 0 → fully recovered, vanilla grass (snowy if snow lies on top).
+                next = ErodedGrassBlock.grassStateFor(world, pos);
                 cooldownFor = null;
             }
         } else if (block == TRMTBlocks.ERODED_DIRT) {
@@ -172,7 +172,8 @@ public final class ErosionRecovery {
                 // Stage 0 → most-eroded grass stage, preserving facing.
                 next = TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
                         .with(ErodedGrassBlock.FACING, facing)
-                        .with(ErodedGrassBlock.STAGE, 4);
+                        .with(ErodedGrassBlock.STAGE, 4)
+                        .with(ErodedGrassBlock.SNOWY, ErodedGrassBlock.snowyAt(world, pos));
                 cooldownFor = TRMTBlocks.ERODED_GRASS_BLOCK;
             }
         } else if (block == TRMTBlocks.ERODED_COARSE_DIRT) {

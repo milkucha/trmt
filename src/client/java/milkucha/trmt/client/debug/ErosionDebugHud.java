@@ -8,6 +8,7 @@ import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.erosion.BlockThresholds;
+import milkucha.trmt.path.PathSpeedBuff;
 import milkucha.trmt.network.TRMTPackets;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
@@ -22,6 +23,10 @@ import net.minecraft.client.render.model.BakedModel;
 import net.minecraft.client.render.model.BakedQuad;
 import net.minecraft.client.texture.Sprite;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.attribute.EntityAttributeInstance;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
+import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -55,6 +60,9 @@ public class ErosionDebugHud {
     /** Last {@code client-hud-state} text per cell (N, W, centre, E, S), so a line is logged only when it changes. */
     private static final String[] lastLogged = new String[5];
 
+    /** Last {@code client-hud-buff} value logged (percent), so a line is logged only when it changes. */
+    private static int lastLoggedBuff = Integer.MIN_VALUE;
+
     public static void register() {
         HudRenderCallback.EVENT.register(ErosionDebugHud::render);
     }
@@ -67,6 +75,7 @@ public class ErosionDebugHud {
         TRMTClientConfig.get().debugHud = enabled;
         TestLog.line(() -> "client-hud enabled=" + enabled);
         java.util.Arrays.fill(lastLogged, null);
+        lastLoggedBuff = Integer.MIN_VALUE;
         if (!enabled) ClientErosionCache.getInstance().clear();
         if (MinecraftClient.getInstance().getNetworkHandler() != null) {
             PacketByteBuf buf = PacketByteBufs.create();
@@ -93,7 +102,7 @@ public class ErosionDebugHud {
         TextRenderer tr = client.textRenderer;
         int lineHeight = tr.fontHeight + 1;
 
-        int totalHeight = 3 * CELL + 4 + lineHeight;
+        int totalHeight = 3 * CELL + 4 + 2 * lineHeight;
         int x0 = MARGIN;
         int y0 = context.getScaledWindowHeight() - MARGIN - totalHeight;
 
@@ -105,6 +114,23 @@ public class ErosionDebugHud {
 
         String coords = center.getX() + " " + center.getY() + " " + center.getZ();
         context.drawText(tr, coords, x0, y0 + 3 * CELL + 4, TEXT_COLOR, true);
+
+        // Path speed buff: the movement-speed modifier is synced with the attribute (also for a ridden mount).
+        boolean riding = client.player.getVehicle() instanceof LivingEntity;
+        LivingEntity carrier = riding ? (LivingEntity) client.player.getVehicle() : client.player;
+        int buffPercent = 0;
+        EntityAttributeInstance speed = carrier.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+        if (speed != null) {
+            EntityAttributeModifier mod = speed.getModifier(PathSpeedBuff.MODIFIER_ID);
+            if (mod != null) buffPercent = (int) Math.round(mod.getValue() * 100);
+        }
+        context.drawText(tr, "speed_buff = " + buffPercent + "%" + (riding ? " (mount)" : ""),
+                x0, y0 + 3 * CELL + 4 + lineHeight, TEXT_COLOR, true);
+        if (TestLog.enabled() && buffPercent != lastLoggedBuff) {
+            lastLoggedBuff = buffPercent;
+            final int logged = buffPercent;
+            TestLog.line(() -> "client-hud-buff value=" + logged);
+        }
     }
 
     private static void renderCell(DrawContext context, ClientWorld world,

@@ -12,8 +12,10 @@ import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.SnowBlock;
 import net.minecraft.block.TallPlantBlock;
 import net.minecraft.block.enums.DoubleBlockHalf;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -32,8 +34,13 @@ import java.util.concurrent.ThreadLocalRandom;
 @Mixin(MobEntity.class)
 public class MobEntityMixin {
 
+    /** Last block position this mob stood on; kept while airborne. */
     @Unique
     private BlockPos trmt$lastGroundPos = null;
+
+    /** Consecutive ticks this mob has been off the ground. */
+    @Unique
+    private int trmt$airTicks = 0;
 
     @Inject(method = "tick", at = @At("TAIL"))
     private void trmt$onTick(CallbackInfo ci) {
@@ -42,9 +49,11 @@ public class MobEntityMixin {
         if (!(mob.getWorld() instanceof ServerWorld)) return;
 
         if (!mob.isOnGround()) {
-            trmt$lastGroundPos = null;
+            if (trmt$airTicks < Integer.MAX_VALUE) trmt$airTicks++;
             return;
         }
+        boolean landedFromJump = trmt$airTicks >= ErosionMapManager.LANDING_MIN_AIR_TICKS;
+        trmt$airTicks = 0;
 
         boolean leashed = mob.isLeashed();
         if (!trmt$erodes(mob, leashed)) return;
@@ -59,8 +68,10 @@ public class MobEntityMixin {
             groundPos = groundPos.up();
         }
 
-        if (groundPos.equals(trmt$lastGroundPos)) return;
+        // New block column, or a landing after a real jump/fall (see ServerPlayerEntityMixin).
+        boolean sameColumn = ErosionMapManager.sameColumn(groundPos, trmt$lastGroundPos);
         trmt$lastGroundPos = groundPos.toImmutable();
+        if (sameColumn && !landedFromJump) return;
 
         TRMTConfig.Multipliers m = TRMTConfig.get().erosionMultipliers;
         float mult = m.player * (leashed ? m.leash : m.freeRoaming);
@@ -69,12 +80,18 @@ public class MobEntityMixin {
         long gameTime = world.getTime();
         TRMTConfig.ErosionToggles erosion = TRMTConfig.get().erosion;
 
-        BlockPos vegPos = groundPos.up();
-        BlockState vegState = world.getBlockState(vegPos);
-        if (erosion.vegetationEnabled && BlockThresholds.isVegetation(vegState.getBlock())) {
-            manager.onStep(vegPos, vegState.getBlock(), 1.0f * mult, gameTime);
-            trmt$tryBreakVegetation(world, manager, vegPos, vegState);
-            manager.broadcastEntryUpdate(vegPos, vegState.getBlock());
+        BlockPos abovePos = groundPos.up();
+        BlockState aboveState = world.getBlockState(abovePos);
+        if (erosion.vegetationEnabled && BlockThresholds.isVegetation(aboveState.getBlock())) {
+            manager.onStep(abovePos, aboveState.getBlock(), 1.0f * mult, gameTime);
+            trmt$tryBreakVegetation(world, manager, abovePos, aboveState);
+            manager.broadcastEntryUpdate(abovePos, aboveState.getBlock());
+        }
+        if (erosion.snowEnabled && aboveState.isOf(Blocks.SNOW)) {
+            manager.onStep(abovePos, aboveState.getBlock(), 1.0f * mult, gameTime);
+            trmt$tryReduceSnow(world, manager, abovePos, aboveState, mob);
+            manager.broadcastEntryUpdate(abovePos, aboveState.getBlock());
+            return; // snow layer insulates the ground block from direct erosion
         }
 
         BlockState state = world.getBlockState(groundPos);
@@ -83,7 +100,8 @@ public class MobEntityMixin {
         boolean tracked = (erosion.grassEnabled && (state.isOf(Blocks.GRASS_BLOCK) || state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK)))
                 || (erosion.dirtEnabled && (state.isOf(Blocks.DIRT) || state.isOf(TRMTBlocks.ERODED_DIRT) || state.isOf(TRMTBlocks.ERODED_COARSE_DIRT)))
                 || (erosion.sandEnabled && (state.isOf(Blocks.SAND) || state.isOf(TRMTBlocks.ERODED_SAND)))
-                || (erosion.leavesEnabled && BlockThresholds.isLeaves(block));
+                || (erosion.leavesEnabled && BlockThresholds.isLeaves(block))
+                || (erosion.snowEnabled && state.isOf(Blocks.SNOW_BLOCK));
 
         if (!tracked) return;
 
@@ -135,10 +153,34 @@ public class MobEntityMixin {
     }
 
     @Unique
+    private static void trmt$tryReduceSnow(World world, ErosionMapManager manager,
+                                            BlockPos pos, BlockState state, Entity breaker) {
+        ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
+        if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
+
+        int layers = state.get(SnowBlock.LAYERS);
+        if (layers > 1) {
+            world.setBlockState(pos, state.with(SnowBlock.LAYERS, layers - 1), Block.NOTIFY_ALL);
+        } else {
+            float dropChance = TRMTConfig.get().erosionThresholds.snow.dropChance;
+            boolean drops = dropChance >= 1.0f || (dropChance > 0.0f && ThreadLocalRandom.current().nextFloat() < dropChance);
+            // The vanilla snow loot table only drops when an entity breaks the block.
+            world.breakBlock(pos, drops, breaker);
+        }
+        manager.removeEntry(pos);
+    }
+
+    @Unique
     private static void trmt$tryTransform(World world, ErosionMapManager manager, BlockPos pos) {
         BlockState state = world.getBlockState(pos);
         ErosionEntry entry = manager.getChunkMap(new ChunkPos(pos)).getEntry(pos);
         if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
+
+        if (state.isOf(Blocks.SNOW_BLOCK)) {
+            world.setBlockState(pos, Blocks.SNOW.getDefaultState().with(SnowBlock.LAYERS, 7), Block.NOTIFY_ALL);
+            manager.removeEntry(pos);
+            return;
+        }
 
         if (state.isOf(Blocks.SAND)) {
             if (!BlockThresholds.canSandErodeFurther(world, pos)) return;
@@ -178,7 +220,8 @@ public class MobEntityMixin {
             world.setBlockState(pos,
                     TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
                             .with(ErodedGrassBlock.FACING, erodedFacing)
-                            .with(ErodedGrassBlock.STAGE, 0),
+                            .with(ErodedGrassBlock.STAGE, 0)
+                            .with(ErodedGrassBlock.SNOWY, ErodedGrassBlock.snowyAt(world, pos)),
                     Block.NOTIFY_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, world.getTime());

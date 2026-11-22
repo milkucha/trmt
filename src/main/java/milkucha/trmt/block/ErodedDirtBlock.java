@@ -119,7 +119,8 @@ public class ErodedDirtBlock extends Block {
                 world.setBlockState(pos,
                         TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
                                 .with(ErodedGrassBlock.FACING, facing)
-                                .with(ErodedGrassBlock.STAGE, 4),
+                                .with(ErodedGrassBlock.STAGE, 4)
+                                .with(ErodedGrassBlock.SNOWY, ErodedGrassBlock.snowyAt(world, pos)),
                         Block.NOTIFY_ALL);
                 manager.removeEntry(pos);
                 manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, newCooldownTime);
