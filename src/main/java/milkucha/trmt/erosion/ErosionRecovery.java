@@ -36,6 +36,13 @@ public final class ErosionRecovery {
     /** Uses needed to recover one stage: the four corners. */
     public static final int USES_CORNER = 2;
 
+    /** Bonemeal particle count for the clicked block (0 = vanilla's default of 15). */
+    private static final int PARTICLES_CENTRE = 0;
+    /** Bonemeal particle count for a recovered left, right, front or back block. */
+    private static final int PARTICLES_NEIGHBOUR = 2;
+    /** Bonemeal particle count for a recovered corner block. */
+    private static final int PARTICLES_CORNER = 1;
+
     public enum Tool {
         BONEMEAL("bonemeal"), BRUSH("brush");
 
@@ -84,8 +91,11 @@ public final class ErosionRecovery {
             log(tool, pos, role, "skipped-occupied");
             return false;
         }
+        int particles = "centre".equals(role) ? PARTICLES_CENTRE
+                : role.contains("-") ? PARTICLES_CORNER   // front-left, front-right, back-left, back-right
+                : PARTICLES_NEIGHBOUR;
         if (usesNeeded <= 1) {
-            recoverOneStage(world, pos, state, tool);
+            recoverOneStage(world, pos, state, tool, particles);
             log(tool, pos, role, "recovered");
             return true;
         }
@@ -104,7 +114,7 @@ public final class ErosionRecovery {
             log(tool, pos, role, "uses=" + uses + "/" + usesNeeded);
             return false;
         }
-        recoverOneStage(world, pos, state, tool); // replaces the entry: progress restarts at 0
+        recoverOneStage(world, pos, state, tool, particles); // replaces the entry: progress restarts at 0
         log(tool, pos, role, "recovered");
         return true;
     }
@@ -121,7 +131,7 @@ public final class ErosionRecovery {
     }
 
     /** One stage back along the erosion chain, with a fresh cooldown entry, HUD update and bonemeal particles. */
-    private static void recoverOneStage(ServerWorld world, BlockPos pos, BlockState state, Tool tool) {
+    private static void recoverOneStage(ServerWorld world, BlockPos pos, BlockState state, Tool tool, int particles) {
         ErosionMapManager manager = ErosionMapManager.get(world);
         long now = world.getTime();
         Block block = state.getBlock();
@@ -181,7 +191,7 @@ public final class ErosionRecovery {
             manager.writeCooldownEntry(pos, cooldownFor, now);
             manager.broadcastEntryUpdate(pos, cooldownFor);
         }
-        world.syncWorldEvent(2005, pos, 0);
+        world.syncWorldEvent(2005, pos, particles);
     }
 
     private static void log(Tool tool, BlockPos pos, String role, String result) {
