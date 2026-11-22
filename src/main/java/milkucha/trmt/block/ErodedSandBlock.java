@@ -148,12 +148,13 @@ public class ErodedSandBlock extends Block implements SimpleWaterloggedBlock {
             return;
         }
         if (!TRMTConfig.get().deErosion.sandEnabled) return;
+        int stage = state.getValue(STAGE);
+        // Permanent stage: no natural de-erosion, with or without an entry.
+        if (BlockThresholds.isPermanentSand(stage)) return;
 
         ErosionMapManager manager = ErosionMapManager.get(world);
         ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
         ErosionEntry entry = chunkMap != null ? chunkMap.getEntry(pos) : null;
-
-        int stage = state.getValue(STAGE);
         long currentTime = world.getGameTime();
         long timeout = BlockThresholds.getSandDeErosionTimeout(stage);
         if (BlockThresholds.isIsolated(world, pos, manager)) timeout /= 2;

@@ -83,6 +83,8 @@ public class ErodedDirtBlock extends Block {
             return;
         }
         if (!milkucha.trmt.TRMTConfig.get().deErosion.dirtEnabled) return;
+        // Permanent stage: no natural de-erosion, with or without an entry.
+        if (BlockThresholds.isPermanentDirt(state.getBlock())) return;
 
         ErosionMapManager manager = ErosionMapManager.get(world);
         ChunkErosionMap chunkMap = manager.getChunkMap(new ChunkPos(pos));
@@ -118,7 +120,8 @@ public class ErodedDirtBlock extends Block {
                 world.setBlock(pos,
                         TRMTBlocks.ERODED_GRASS_BLOCK.get().defaultBlockState()
                                 .setValue(ErodedGrassBlock.FACING, facing)
-                                .setValue(ErodedGrassBlock.STAGE, 4),
+                                .setValue(ErodedGrassBlock.STAGE, 4)
+                                .setValue(ErodedGrassBlock.SNOWY, ErodedGrassBlock.snowyAt(world, pos)),
                         Block.UPDATE_ALL);
                 manager.removeEntry(pos);
                 manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK.get(), newCooldownTime);

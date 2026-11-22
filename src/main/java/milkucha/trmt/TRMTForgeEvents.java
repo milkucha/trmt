@@ -15,6 +15,7 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.level.BlockEvent;
+import net.minecraftforge.event.level.ChunkEvent;
 import net.minecraftforge.event.level.ChunkWatchEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
@@ -52,6 +53,20 @@ public class TRMTForgeEvents {
     public static void onLevelSave(LevelEvent.Save event) {
         if (event.getLevel() instanceof ServerLevel level) {
             ErosionMapManager.onWorldSave(level);
+        }
+    }
+
+    /**
+     * Untouched step progress expires (entryExpiryDays): checked when a chunk loads, at level load and on save.
+     * Forge 47 posts the server-side ChunkEvent.Load in ChunkMap.protoChunkToFullChunk (main-thread mailbox),
+     * when the chunk becomes a full LevelChunk (loaded from disk or newly generated) = Fabric's
+     * ServerChunkEvents.CHUNK_LOAD. The same event also fires for client levels (handled in
+     * TRMTForgeClientEvents), hence the ServerLevel check.
+     */
+    @SubscribeEvent
+    public static void onChunkLoad(ChunkEvent.Load event) {
+        if (event.getLevel() instanceof ServerLevel level) {
+            ErosionMapManager.onChunkLoad(level, event.getChunk().getPos());
         }
     }
 
@@ -121,7 +136,7 @@ public class TRMTForgeEvents {
                 .executes(ctx -> {
                     if (ctx.getSource().hasPermission(2)) {
                         ctx.getSource().sendSuccess(() -> Component.literal(
-                                "[TRMT] Commands: /trmt reloadconfig, /trmt convert-to-vanilla [quick], /trmt eroded-chunks"), false);
+                                "[TRMT] Commands: /trmt reload-config, /trmt convert-to-vanilla [quick], /trmt eroded-chunks"), false);
                     } else {
                         ctx.getSource().sendSuccess(() -> Component.literal(
                                 "[TRMT] The /trmt commands need operator permission (cheats). In singleplayer, enable cheats "
@@ -129,12 +144,12 @@ public class TRMTForgeEvents {
                     }
                     return 1;
                 })
-                .then(Commands.literal("reloadconfig")
+                .then(Commands.literal("reload-config")
                         .requires(src -> src.hasPermission(2))
                         .executes(ctx -> {
                             if (TRMTConfig.load(true) == TRMTConfig.LoadResult.INVALID) {
                                 ctx.getSource().sendFailure(Component.literal("[TRMT] trmt.json is not valid JSON, so nothing was reloaded: the previous settings are still in use. "
-                                        + "Fix the file (the server log names the line and the problem) and run /trmt reloadconfig again."));
+                                        + "Fix the file (the server log names the line and the problem) and run /trmt reload-config again."));
                                 return 0;
                             }
                             ctx.getSource().sendSuccess(() -> Component.literal("[TRMT] Config reloaded."), true);

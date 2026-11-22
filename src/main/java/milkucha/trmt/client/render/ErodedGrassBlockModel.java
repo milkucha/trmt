@@ -43,6 +43,10 @@ import java.util.List;
  * block's copy of its stage sprite. The copy index reaches the model through ModelData (getModelData
  * is the only per-position hook: the chunk compiler passes its result to getRenderTypes and getQuads).
  * Off: the "fix active" branches never run; the two-pass split is exactly as before.
+ *
+ * Snowy variants (eroded_grass_block_s*_snow) have no side overlay element, only the opaque
+ * vanilla grass_block_snow side plus the dirt + eroded_top UP pair (same tinted stage sprite),
+ * so the same render-type split and overlay-copy transform applies.
  */
 @OnlyIn(Dist.CLIENT)
 public class ErodedGrassBlockModel implements BakedModel {

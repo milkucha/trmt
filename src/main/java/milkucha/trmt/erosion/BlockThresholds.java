@@ -3,12 +3,15 @@ package milkucha.trmt.erosion;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.TRMTConfig;
 import milkucha.trmt.TRMTForge;
+import milkucha.trmt.block.ErodedGrassBlock;
+import milkucha.trmt.block.ErodedSandBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -240,6 +243,10 @@ public final class BlockThresholds {
             range = cfg.erosionThresholds.coarseDirt;
         } else if (block == Blocks.SAND) {
             range = cfg.erosionThresholds.sand;
+        } else if (block == Blocks.SNOW) {
+            range = cfg.erosionThresholds.snow;
+        } else if (block == Blocks.SNOW_BLOCK) {
+            range = cfg.erosionThresholds.snowBlock;
         } else if (getVegetationSet().contains(block)) {
             range = cfg.erosionThresholds.vegetation;
         } else if (block instanceof LeavesBlock) {
@@ -319,5 +326,79 @@ public final class BlockThresholds {
         TRMTConfig.DirtDeErosion d = cfg.deErosionTimeoutDays.dirt;
         if (block == TRMTBlocks.ERODED_DIRT.get()) return (long)(d.erodedDirt       * TICKS_PER_DAY);
         return (long)(d.erodedCoarseDirt * TICKS_PER_DAY);
+    }
+
+    // -- permanent stages (never de-erode naturally) ---------------------------
+
+    /** True if eroded grass of block STAGE {@code blockStage} (0–4, config key stage1–stage5) never de-erodes naturally. */
+    public static boolean isPermanentGrass(int blockStage) {
+        TRMTConfig.GrassPermanent g = TRMTConfig.get().permanentStages.grass;
+        return switch (blockStage) {
+            case 0  -> g.stage1;
+            case 1  -> g.stage2;
+            case 2  -> g.stage3;
+            case 3  -> g.stage4;
+            default -> g.stage5;
+        };
+    }
+
+    /** True if eroded sand of block STAGE {@code blockStage} (0–4, config key stage1–stage5) never de-erodes naturally. */
+    public static boolean isPermanentSand(int blockStage) {
+        TRMTConfig.SandPermanent s = TRMTConfig.get().permanentStages.sand;
+        return switch (blockStage) {
+            case 0  -> s.stage1;
+            case 1  -> s.stage2;
+            case 2  -> s.stage3;
+            case 3  -> s.stage4;
+            default -> s.stage5;
+        };
+    }
+
+    /** True if the eroded dirt block type (every stage of eroded_dirt, or eroded_coarse_dirt) never de-erodes naturally. */
+    public static boolean isPermanentDirt(Block block) {
+        TRMTConfig.DirtPermanent d = TRMTConfig.get().permanentStages.dirt;
+        if (block == TRMTBlocks.ERODED_DIRT.get()) return d.erodedDirt;
+        if (block == TRMTBlocks.ERODED_COARSE_DIRT.get()) return d.erodedCoarseDirt;
+        return false;
+    }
+
+    /** True if {@code state} (any eroded block) is a permanent stage; false for every other block. */
+    public static boolean isPermanentStage(BlockState state) {
+        Block block = state.getBlock();
+        if (block == TRMTBlocks.ERODED_GRASS_BLOCK.get()) return isPermanentGrass(state.getValue(ErodedGrassBlock.STAGE));
+        if (block == TRMTBlocks.ERODED_SAND.get()) return isPermanentSand(state.getValue(ErodedSandBlock.STAGE));
+        return isPermanentDirt(block);
+    }
+
+    // -- mob erosion whitelist -------------------------------------------------
+
+    private static volatile List<String> mobWhitelistFrom = null;
+    private static volatile Set<EntityType<?>> resolvedMobWhitelist = Set.of();
+
+    /**
+     * True if free-roaming mobs of {@code type} erode (config {@code erosionMobWhitelist}, entity type ids).
+     * The resolved set is cached against the identity of the config list, so every config (re)load rebuilds it.
+     */
+    public static boolean isErodingMob(EntityType<?> type) {
+        List<String> ids = TRMTConfig.get().erosionMobWhitelist;
+        if (ids != mobWhitelistFrom) {
+            Set<EntityType<?>> resolved = new HashSet<>();
+            if (ids != null) {
+                for (String id : ids) {
+                    ResourceLocation identifier = ResourceLocation.tryParse(id);
+                    if (identifier == null) {
+                        TRMTForge.LOGGER.warn("[TRMT] erosionMobWhitelist: '{}' is not a valid identifier, skipping", id);
+                        continue;
+                    }
+                    BuiltInRegistries.ENTITY_TYPE.getOptional(identifier).ifPresentOrElse(
+                        resolved::add,
+                        () -> TRMTForge.LOGGER.warn("[TRMT] erosionMobWhitelist: unknown entity type '{}', skipping", id)
+                    );
+                }
+            }
+            resolvedMobWhitelist = Set.copyOf(resolved);
+            mobWhitelistFrom = ids;
+        }
+        return resolvedMobWhitelist.contains(type);
     }
 }
