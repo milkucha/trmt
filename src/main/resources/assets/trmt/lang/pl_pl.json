@@ -11,5 +11,6 @@
   "block.trmt.eroded_sand": "Erodowany piasek",
 
   "trmt.button.download_update": "Pobierz aktualizację moda",
-  "trmt.disconnect.outdated": "Wersja klienta The Roads More Travelled (TRMT) jest przestarzała (v%s)!\nTen serwer wymaga v%s lub nowszej.\nPobierz aktualizację, aby dołączyć do serwera."
+  "trmt.disconnect.outdated": "Wersja klienta The Roads More Travelled (TRMT) jest przestarzała (v%s)!\nTen serwer wymaga v%s lub nowszej.\nPobierz aktualizację, aby dołączyć do serwera.",
+  "trmt.warning.sodium_without_indium": "TRMT: Sodium jest zainstalowany bez Indium. Wydeptane ścieżki nie będą poprawnie wyświetlane. Zainstaluj Indium."
 }

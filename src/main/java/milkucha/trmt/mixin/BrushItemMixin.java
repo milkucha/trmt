@@ -1,16 +1,12 @@
 package milkucha.trmt.mixin;
 
 import milkucha.trmt.TRMTBlocks;
-import milkucha.trmt.block.ErodedSandBlock;
-import milkucha.trmt.erosion.ErosionMapManager;
-import net.minecraft.block.Block;
+import milkucha.trmt.erosion.ErosionRecovery;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BrushItem;
-import net.minecraft.state.property.Properties;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemUsageContext;
 import net.minecraft.server.world.ServerWorld;
@@ -73,24 +69,14 @@ public class BrushItemMixin {
             return;
         }
 
-        ErosionMapManager manager = ErosionMapManager.get(world);
-        int stage = state.get(ErodedSandBlock.STAGE);
-        if (stage > 0) {
-            BlockState newState = state.with(ErodedSandBlock.STAGE, stage - 1);
-            if (stage == 1) newState = newState.with(Properties.WATERLOGGED, false);
-            world.setBlockState(pos, newState, Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-            manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_SAND, world.getTime());
-        } else {
-            world.setBlockState(pos, Blocks.SAND.getDefaultState(), Block.NOTIFY_ALL);
-            manager.removeEntry(pos);
-        }
+        // Cycle complete: recover the target and its 3x3 neighbours (occupied sand is skipped).
+        ErosionRecovery.recoverArea((ServerWorld) world, pos, player.getHorizontalFacing(), ErosionRecovery.Tool.BRUSH);
 
+        // 1 durability damage per cycle, matching vanilla (damage only fires on cycle completion), not per block.
         EquipmentSlot slot = stack.equals(player.getEquippedStack(EquipmentSlot.OFFHAND))
                 ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND;
         stack.damage(1, player, slot);
 
-        ((ServerWorld) world).syncWorldEvent(2005, pos, 0);
         trmt$brushProgress.put(uuid, 0);
     }
 }

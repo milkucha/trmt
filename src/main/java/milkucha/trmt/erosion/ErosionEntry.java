@@ -58,9 +58,33 @@ public class ErosionEntry {
         return erosionStage;
     }
 
+    /**
+     * Number of bonemeal/brush uses on a neighbouring block counted towards its next recovered stage
+     * (see {@link ErosionRecovery}). Not saved: lost when the chunk's erosion data is unloaded,
+     * and with the entry whenever the block changes stage.
+     */
+    private int recoveryUses;
+
+    public int getRecoveryUses() {
+        return recoveryUses;
+    }
+
+    public void setRecoveryUses(int recoveryUses) {
+        this.recoveryUses = recoveryUses;
+    }
+
     /** Adds {@code amount} to the erosion count and records the current game time. */
     public void recordStep(float amount, long currentGameTime) {
         this.walkedOnCount += amount;
         this.lastTouchedGameTime = currentGameTime;
+    }
+
+    /**
+     * True if this entry is only step progress on a vanilla block (grass, dirt, sand, snow, leaves,
+     * vegetation...) and may expire when untouched. Entries of {@code trmt:eroded_*} blocks are their
+     * de-erosion timers, and legacy grass entries with a stage are still to be migrated: never expire.
+     */
+    public boolean isExpirable() {
+        return erosionStage == 0 && !ErosionMapManager.VANILLA_EQUIVALENTS.containsKey(trackedBlock);
     }
 }
