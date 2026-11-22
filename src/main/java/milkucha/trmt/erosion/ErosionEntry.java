@@ -58,6 +58,21 @@ public class ErosionEntry {
         return erosionStage;
     }
 
+    /**
+     * Number of bonemeal/brush uses on a neighbouring block counted towards its next recovered stage
+     * (see {@link ErosionRecovery}). Not saved: lost when the chunk's erosion data is unloaded,
+     * and with the entry whenever the block changes stage.
+     */
+    private int recoveryUses;
+
+    public int getRecoveryUses() {
+        return recoveryUses;
+    }
+
+    public void setRecoveryUses(int recoveryUses) {
+        this.recoveryUses = recoveryUses;
+    }
+
     /** Adds {@code amount} to the erosion count and records the current game time. */
     public void recordStep(float amount, long currentGameTime) {
         this.walkedOnCount += amount;

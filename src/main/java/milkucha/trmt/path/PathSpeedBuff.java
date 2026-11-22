@@ -42,7 +42,7 @@ public final class PathSpeedBuff {
         boolean dismounted;
     }
 
-    /** Rebuilds the weight lookup from the active config (config load and {@code /trmt reloadconfig}). */
+    /** Rebuilds the weight lookup from the active config (config load and {@code /trmt reload-config}). */
     public static void rebuildWeights(TRMTConfig.PathSpeedBuffConfig cfg) {
         weights = new PathWeights(cfg.weights);
     }
