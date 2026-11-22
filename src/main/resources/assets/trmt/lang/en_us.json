@@ -11,5 +11,6 @@
   "block.trmt.eroded_sand": "Eroded Sand",
 
   "trmt.button.download_update": "Download Mod Update",
-  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) client version is outdated (v%s)!\nThis server requires v%s or newer.\nPlease download the update to join this server."
+  "trmt.disconnect.outdated": "The Roads More Travelled (TRMT) client version is outdated (v%s)!\nThis server requires v%s or newer.\nPlease download the update to join this server.",
+  "trmt.warning.sodium_without_indium": "TRMT: Sodium is installed without Indium. Worn paths won't render correctly. Install Indium."
 }
