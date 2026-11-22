@@ -138,50 +138,24 @@ public final class TRMTConfig {
         public boolean sandEnabled  = true;
     }
 
-    /** Depth weight per stage of a block with stages 0-4 (eroded grass, eroded sand). */
-    public static class StageWeights5 {
-        public float stage0, stage1, stage2, stage3, stage4;
-        public StageWeights5() {}
-        StageWeights5(float s0, float s1, float s2, float s3, float s4) {
-            stage0 = s0; stage1 = s1; stage2 = s2; stage3 = s3; stage4 = s4;
-        }
-    }
-
-    /** Depth weight per stage of a block with stages 0-3 (eroded dirt). */
-    public static class StageWeights4 {
-        public float stage0, stage1, stage2, stage3;
-        public StageWeights4() {}
-        StageWeights4(float s0, float s1, float s2, float s3) {
-            stage0 = s0; stage1 = s1; stage2 = s2; stage3 = s3;
-        }
-    }
-
-    /** Depth weights of the eroded blocks for the path speed buff; weight 0 = the block does not count as path. */
-    public static class PathBlockWeights {
-        public StageWeights5 erodedGrass      = new StageWeights5(1f, 1f, 2f, 2f, 2f);
-        public StageWeights4 erodedDirt       = new StageWeights4(3f, 3f, 3f, 3f);
-        public float         erodedCoarseDirt = 3f;
-        public StageWeights5 erodedSand       = new StageWeights5(1f, 1f, 2f, 2f, 3f);
-        public PathBlockWeights() {}
+    /** Which eroded blocks count as path for the path speed buff (their depth weights are fixed in {@code PathDetector}). */
+    public static class PathBlockToggles {
+        public boolean erodedGrass      = true;
+        public boolean erodedDirt       = true;
+        public boolean erodedCoarseDirt = true;
+        public boolean erodedSand       = true;
+        public PathBlockToggles() {}
     }
 
     /** Settings of the path speed buff (see {@code milkucha.trmt.path.PathSpeedBuff}). */
     public static class PathSpeedBuffConfig {
         public boolean enabled      = true;
-        /** Minimum density (eroded blocks / 9 in the 3x3x3 window) to start the buff. */
-        public float   gateEnter    = 0.6f;
-        /** Minimum density to keep the buff once it is on (hysteresis); never above gateEnter. */
-        public float   gateKeep     = 0.45f;
-        /** Consecutive evaluations below gateKeep before the buff is lost. */
-        public int     graceBlocks  = 4;
         public float   tier1Percent = 8f;
         public float   tier2Percent = 16f;
         public float   tier3Percent = 25f;
         public float   tier2MinDepth = 1.75f;
         public float   tier3MinDepth = 2.5f;
-        /** Extra depth margin that must be crossed before the tier drops again. */
-        public float   tierMargin   = 0.25f;
-        public PathBlockWeights weights = new PathBlockWeights();
+        public PathBlockToggles pathBlocks = new PathBlockToggles();
         public PathSpeedBuffConfig() {}
     }
 
@@ -253,7 +227,6 @@ public final class TRMTConfig {
             try (Reader reader = Files.newBufferedReader(path)) {
                 TRMTConfig loaded = parse(reader, new TRMTConfig(), TRMTConfig.class, FILE_NAME);
                 if (loaded != null) {
-                    sanitize(loaded);
                     instance = loaded;
                     BlockThresholds.invalidateVegetationCache();
                     BlockThresholds.invalidateRevertCaches();
@@ -283,24 +256,6 @@ public final class TRMTConfig {
         save();
         TRMT.LOGGER.info("[TRMT] Default config written to {}", path);
         return LoadResult.DEFAULTS_WRITTEN;
-    }
-
-    /** Cross-field rules that {@link #merge} cannot express; applied before the config is used and saved back. */
-    private static void sanitize(TRMTConfig config) {
-        PathSpeedBuffConfig p = config.pathSpeedBuff;
-        if (p.gateEnter > 1f) {
-            TRMT.LOGGER.warn("[TRMT] {}: pathSpeedBuff.gateEnter {} is above 1, using 1", FILE_NAME, p.gateEnter);
-            p.gateEnter = 1f;
-        }
-        if (p.gateKeep > 1f) {
-            TRMT.LOGGER.warn("[TRMT] {}: pathSpeedBuff.gateKeep {} is above 1, using 1", FILE_NAME, p.gateKeep);
-            p.gateKeep = 1f;
-        }
-        if (p.gateKeep > p.gateEnter) {
-            TRMT.LOGGER.warn("[TRMT] {}: pathSpeedBuff.gateKeep {} is above gateEnter {}, using {} for both",
-                    FILE_NAME, p.gateKeep, p.gateEnter, p.gateEnter);
-            p.gateKeep = p.gateEnter;
-        }
     }
 
     private static void save() {
@@ -371,7 +326,7 @@ public final class TRMTConfig {
             double x;
             try { x = v.getAsDouble(); } catch (NumberFormatException e) { return false; } // "1.5" is fine
             if (d.getAsNumber() instanceof Integer || d.getAsNumber() instanceof Long) {
-                // Integer setting (e.g. graceBlocks): Gson would reject 2.5 and fail the whole file, so only integral values pass.
+                // Integer setting (e.g. an integer-valued setting): Gson would reject 2.5 and fail the whole file, so only integral values pass.
                 return x >= 0 && x <= Integer.MAX_VALUE && x == Math.rint(x);
             }
             return x >= 0 && x <= Float.MAX_VALUE && !(key.equals("dropChance") && x > 1);
