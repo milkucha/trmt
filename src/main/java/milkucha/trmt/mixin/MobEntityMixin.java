@@ -202,7 +202,8 @@ public class MobEntityMixin {
             world.setBlockState(pos,
                     TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
                             .with(ErodedGrassBlock.FACING, erodedFacing)
-                            .with(ErodedGrassBlock.STAGE, 0),
+                            .with(ErodedGrassBlock.STAGE, 0)
+                            .with(ErodedGrassBlock.SNOWY, ErodedGrassBlock.snowyAt(world, pos)),
                     Block.NOTIFY_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, world.getTime());

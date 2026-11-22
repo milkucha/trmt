@@ -3,6 +3,7 @@ package milkucha.trmt.erosion;
 import milkucha.trmt.TRMT;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.block.ErodedGrassBlock;
+import net.minecraft.block.BlockState;
 import milkucha.trmt.TestLog;
 import milkucha.trmt.network.TRMTPackets;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
@@ -272,7 +273,8 @@ public class ErosionMapManager {
             world.setBlockState(pos,
                     TRMTBlocks.ERODED_GRASS_BLOCK.getDefaultState()
                             .with(ErodedGrassBlock.FACING, facing)
-                            .with(ErodedGrassBlock.STAGE, stage),
+                            .with(ErodedGrassBlock.STAGE, stage)
+                            .with(ErodedGrassBlock.SNOWY, ErodedGrassBlock.snowyAt(world, pos)),
                     Block.NOTIFY_ALL);
             removeEntry(pos);
             writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK, currentTime);
@@ -327,10 +329,16 @@ public class ErosionMapManager {
             for (int y = 0; y < 16; y++) {
                 for (int z = 0; z < 16; z++) {
                     for (int x = 0; x < 16; x++) {
-                        Block vanilla = VANILLA_EQUIVALENTS.get(section.getBlockState(x, y, z).getBlock());
+                        BlockState eroded = section.getBlockState(x, y, z);
+                        Block vanilla = VANILLA_EQUIVALENTS.get(eroded.getBlock());
                         if (vanilla == null) continue;
                         mutable.set(startX + x, startY + y, startZ + z);
-                        world.setBlockState(mutable, vanilla.getDefaultState(), Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
+                        // Carry eroded grass's snowy flag to grass_block (no neighbour read, see above).
+                        BlockState vanillaState = vanilla.getDefaultState();
+                        if (eroded.contains(ErodedGrassBlock.SNOWY) && vanillaState.contains(ErodedGrassBlock.SNOWY)) {
+                            vanillaState = vanillaState.with(ErodedGrassBlock.SNOWY, eroded.get(ErodedGrassBlock.SNOWY));
+                        }
+                        world.setBlockState(mutable, vanillaState, Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
                         removeEntry(mutable.toImmutable());
                         converted++;
                     }

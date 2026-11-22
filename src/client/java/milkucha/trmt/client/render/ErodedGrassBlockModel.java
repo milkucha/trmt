@@ -24,6 +24,8 @@ import java.util.function.Supplier;
  * eroded-top overlay and the grass_block_side_overlay are discarded correctly.
  * Stage texture selection and FACING Y-rotation are already baked into the wrapped
  * model by the block-state system, so this class needs no per-position lookups.
+ * Snowy variants (eroded_grass_block_s*_snow) have no side overlay element, only the opaque
+ * vanilla grass_block_snow side plus the dirt + eroded_top UP pair, so the same transform applies.
  */
 public class ErodedGrassBlockModel implements BakedModel {
 
