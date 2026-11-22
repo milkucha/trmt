@@ -26,7 +26,14 @@ public final class PathSpeedBuff {
     public static final UUID MODIFIER_ID = UUID.fromString("39251b3b-b47c-4be5-b962-1fe3efaf4136");
     public static final String MODIFIER_NAME = "trmt:path_speed_buff";
 
-    private static volatile PathWeights weights = new PathWeights(new TRMTConfig.PathBlockWeights());
+    /** Minimum density (eroded blocks / 9 in the 3x3x3 window) to start the buff. */
+    private static final float GATE_ENTER = 0.6f;
+    /** Minimum density to keep the buff once it is on (hysteresis). */
+    private static final float GATE_KEEP = 0.45f;
+    /** Consecutive evaluations below GATE_KEEP before the buff is lost. */
+    private static final int GRACE_BLOCKS = 4;
+
+    private static volatile PathWeights weights = new PathWeights(new TRMTConfig.PathBlockToggles());
 
     private PathSpeedBuff() {}
 
@@ -44,7 +51,7 @@ public final class PathSpeedBuff {
 
     /** Rebuilds the weight lookup from the active config (config load and {@code /trmt reloadconfig}). */
     public static void rebuildWeights(TRMTConfig.PathSpeedBuffConfig cfg) {
-        weights = new PathWeights(cfg.weights);
+        weights = new PathWeights(cfg.pathBlocks);
     }
 
     /**
@@ -136,14 +143,14 @@ public final class PathSpeedBuff {
             sample = PathDetector.sample(player.getWorld(), BlockPos.ofFloored(target.getPos()), weights);
             float density = sample.density();
             if (state.tier == 0) {
-                if (density >= cfg.gateEnter) {
+                if (density >= GATE_ENTER) {
                     state.tier = PathDetector.nextTier(0, sample.avgDepth(), cfg);
                     state.misses = 0;
                 }
-            } else if (density >= cfg.gateKeep) {
+            } else if (density >= GATE_KEEP) {
                 state.misses = 0;
                 state.tier = PathDetector.nextTier(state.tier, sample.avgDepth(), cfg);
-            } else if (++state.misses >= cfg.graceBlocks) {
+            } else if (++state.misses >= GRACE_BLOCKS) {
                 state.tier = 0;
                 state.misses = 0;
             }

@@ -23,6 +23,9 @@ public final class PathDetector {
 
     private PathDetector() {}
 
+    /** Extra depth margin that must be crossed before the tier drops again. */
+    private static final float TIER_MARGIN = 0.25f;
+
     /**
      * @param count    number of window positions whose block counts as path (weight above 0)
      * @param avgDepth sum of the weights of those blocks divided by {@code count} (0 when {@code count} is 0)
@@ -41,13 +44,12 @@ public final class PathDetector {
         private final float coarseDirt;
         private final float[] sand = new float[5];
 
-        public PathWeights(TRMTConfig.PathBlockWeights c) {
-            TRMTConfig.StageWeights5 g = c.erodedGrass, s = c.erodedSand;
-            TRMTConfig.StageWeights4 d = c.erodedDirt;
-            grass[0] = g.stage0; grass[1] = g.stage1; grass[2] = g.stage2; grass[3] = g.stage3; grass[4] = g.stage4;
-            dirt[0] = d.stage0; dirt[1] = d.stage1; dirt[2] = d.stage2; dirt[3] = d.stage3;
-            coarseDirt = c.erodedCoarseDirt;
-            sand[0] = s.stage0; sand[1] = s.stage1; sand[2] = s.stage2; sand[3] = s.stage3; sand[4] = s.stage4;
+        /** Fixed per-stage depth weights; a class switched off in the config counts as weight 0 (not path). */
+        public PathWeights(TRMTConfig.PathBlockToggles c) {
+            if (c.erodedGrass) { grass[0] = 1f; grass[1] = 1f; grass[2] = 2f; grass[3] = 2f; grass[4] = 2f; }
+            if (c.erodedDirt) { dirt[0] = 3f; dirt[1] = 3f; dirt[2] = 3f; dirt[3] = 3f; }
+            coarseDirt = c.erodedCoarseDirt ? 3f : 0f;
+            if (c.erodedSand) { sand[0] = 1f; sand[1] = 1f; sand[2] = 2f; sand[3] = 2f; sand[4] = 3f; }
         }
 
         /** Depth weight of {@code state}; 0 for anything that is not one of the four eroded blocks. */
@@ -102,7 +104,7 @@ public final class PathDetector {
         int baseline = baselineTier(avgDepth, cfg);
         if (currentTier <= 0 || baseline >= currentTier) return baseline;
         int tier = Math.min(currentTier, 3);
-        while (tier > 1 && avgDepth < minDepth(tier, cfg) - cfg.tierMargin) tier--;
+        while (tier > 1 && avgDepth < minDepth(tier, cfg) - TIER_MARGIN) tier--;
         return Math.max(tier, baseline);
     }
 
