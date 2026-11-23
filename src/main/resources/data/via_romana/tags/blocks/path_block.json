@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "trmt:eroded_grass_block", "required": false },
+    { "id": "trmt:eroded_dirt", "required": false },
+    { "id": "trmt:eroded_coarse_dirt", "required": false },
+    { "id": "trmt:eroded_sand", "required": false }
+  ]
+}
