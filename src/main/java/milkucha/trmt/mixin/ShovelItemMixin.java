@@ -3,6 +3,7 @@ package milkucha.trmt.mixin;
 import milkucha.trmt.TRMTBlocks;
 import milkucha.trmt.erosion.ErosionMapManager;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
@@ -21,8 +22,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Extends shovel path-flattening to cover trmt:eroded_coarse_dirt,
- * matching the behaviour of its vanilla counterpart (coarse_dirt).
+ * Lets shovels flatten trmt:eroded_grass_block and trmt:eroded_dirt into a dirt path,
+ * under the same conditions as vanilla: the clicked face is not the bottom face and
+ * the block above is air. Otherwise the use passes.
  */
 @Mixin(ShovelItem.class)
 public class ShovelItemMixin {
@@ -34,6 +36,18 @@ public class ShovelItemMixin {
         BlockState state = world.getBlockState(pos);
 
         if (!state.is(TRMTBlocks.ERODED_GRASS_BLOCK) && !state.is(TRMTBlocks.ERODED_DIRT)) {
+            return;
+        }
+
+        // Shovels can only flatten if the block above is air — same rule as vanilla.
+        if (!world.getBlockState(pos.above()).isAir()) {
+            cir.setReturnValue(InteractionResult.PASS);
+            return;
+        }
+
+        // Don't flatten the bottom face (matches vanilla shovel behaviour).
+        if (context.getClickedFace() == Direction.DOWN) {
+            cir.setReturnValue(InteractionResult.PASS);
             return;
         }
 
