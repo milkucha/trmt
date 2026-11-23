@@ -40,6 +40,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * on a trmt block (any item carrying the hoe/shovel transformer, as the old mixins covered
  * HoeItem/ShovelItem subclasses), and the erosion entry is removed only on that conversion, from
  * the clicked level's manager.
+ *
+ * Conditions (otherwise the use passes): both match vanilla's hoe and shovel transformers (air
+ * above, not the bottom face).
  */
 @Mixin(BlockTransformer.class)
 public class BlockTransformerMixin {
@@ -72,9 +75,8 @@ public class BlockTransformerMixin {
     @Unique
     private static void trmt$tillErodedBlocks(UseOnContext context, BlockPos pos, Level world,
                                               CallbackInfoReturnable<InteractionResult> cir) {
-        // Hoes can only till if the block above is air or replaceable — same rule as vanilla.
-        BlockState above = world.getBlockState(pos.above());
-        if (!above.isAir() && !above.canBeReplaced()) {
+        // Hoes can only till if the block above is air — same rule as vanilla.
+        if (!world.getBlockState(pos.above()).isAir()) {
             cir.setReturnValue(InteractionResult.PASS);
             return;
         }
@@ -102,6 +104,18 @@ public class BlockTransformerMixin {
     @Unique
     private static void trmt$flattenErodedBlocks(UseOnContext context, BlockPos pos, Level world,
                                                  CallbackInfoReturnable<InteractionResult> cir) {
+        // Shovels can only flatten if the block above is air — same rule as vanilla.
+        if (!world.getBlockState(pos.above()).isAir()) {
+            cir.setReturnValue(InteractionResult.PASS);
+            return;
+        }
+
+        // Don't flatten the bottom face (matches vanilla shovel behaviour).
+        if (context.getClickedFace() == Direction.DOWN) {
+            cir.setReturnValue(InteractionResult.PASS);
+            return;
+        }
+
         Player player = context.getPlayer();
         world.playSound(player, pos, SoundEvents.SHOVEL_FLATTEN.value(), SoundSource.BLOCKS, 1.0f, 1.0f);
         if (!world.isClientSide()) {
