@@ -8,7 +8,7 @@
 		"SpriteContentsMixin",
 		"SpriteSourceListAccessor",
 		"SpriteSourceListMixin",
-		"LevelRendererMixin"
+		"LevelExtractorMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

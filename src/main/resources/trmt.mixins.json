@@ -6,6 +6,7 @@
 		"BambooSaplingBlockMixin",
 		"BambooStalkBlockMixin",
 		"BlockItemMixin",
+		"BlockTransformerMixin",
 		"BoneMealItemMixin",
 		"BrushItemMixin",
 		"CactusBlockMixin",
@@ -14,11 +15,9 @@
 		"EatBlockGoalMixin",
 		"EntityMixin",
 		"FallingBlockEntityMixin",
-		"HoeItemMixin",
 		"MobEntityMixin",
 		"ServerPlayerEntityMixin",
 		"ServerWorldMixin",
-		"ShovelItemMixin",
 		"SugarCaneBlockMixin"
 	],
 	"injectors": {

@@ -44,6 +44,7 @@ public class TRMT implements ModInitializer {
 		TRMTEffects.register();
 		TRMTPotions.register();
 		TRMTBlocks.register();
+		TRMTBlockTransforms.register();
 
 		PayloadTypeRegistry.clientboundConfiguration().register(VersionCheckPayload.ID, VersionCheckPayload.CODEC);
 		PayloadTypeRegistry.serverboundConfiguration().register(VersionResponsePayload.ID, VersionResponsePayload.CODEC);
