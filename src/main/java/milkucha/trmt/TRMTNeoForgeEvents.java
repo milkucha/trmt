@@ -3,9 +3,6 @@ package milkucha.trmt;
 import milkucha.trmt.erosion.ErosionMapManager;
 import milkucha.trmt.erosion.VanillaConversion;
 import milkucha.trmt.network.TRMTNetwork;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.alchemy.Potions;
-import net.neoforged.neoforge.event.brewing.RegisterBrewingRecipesEvent;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -33,13 +30,6 @@ import java.util.Set;
 
 @EventBusSubscriber(modid = "trmt")
 public class TRMTNeoForgeEvents {
-
-    @SubscribeEvent
-    public static void onRegisterBrewingRecipes(RegisterBrewingRecipesEvent event) {
-        var builder = event.getBuilder();
-        builder.addMix(Potions.AWKWARD, Items.FEATHER, TRMTPotions.LIGHTNESS);
-        builder.addMix(TRMTPotions.LIGHTNESS, Items.REDSTONE, TRMTPotions.LONG_LIGHTNESS);
-    }
 
     /**
      * Load each dimension's erosion region files (the overworld also migrates the legacy file) while its

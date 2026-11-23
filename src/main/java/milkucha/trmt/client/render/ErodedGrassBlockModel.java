@@ -127,9 +127,10 @@ public class ErodedGrassBlockModel extends DelegateBlockStateModel {
                 TextureAtlasSprite from = mi.sprite();
                 float du = to.getU0() - from.getU0();
                 float dv = to.getV0() - from.getV0();
-                // Same layer (CUTOUT), tint, shade, emission and AO flag; only the sprite changes.
+                // Same layer (CUTOUT), item render types, tint, shade, emission and AO flag; only the sprite changes.
                 BakedQuad.MaterialInfo info = new BakedQuad.MaterialInfo(to, mi.layer(), mi.itemRenderType(),
-                        mi.tintIndex(), mi.shade(), mi.lightEmission(), mi.ambientOcclusion());
+                        mi.itemGlintRenderType(), mi.itemGlintSpecialRenderType(), mi.tintIndex(),
+                        mi.shadeDirectionOverride(), mi.lightEmission(), mi.ambientOcclusion());
                 up.add(new BakedQuad(q.position0(), q.position1(), q.position2(), q.position3(),
                         shift(q.packedUV0(), du, dv), shift(q.packedUV1(), du, dv),
                         shift(q.packedUV2(), du, dv), shift(q.packedUV3(), du, dv),

@@ -7,6 +7,7 @@
 		"BambooSaplingBlockMixin",
 		"BambooStalkBlockMixin",
 		"BlockItemMixin",
+		"BlockTransformerMixin",
 		"BoneMealItemMixin",
 		"BrushItemMixin",
 		"CactusBlockMixin",
@@ -14,10 +15,8 @@
 		"EatBlockGoalMixin",
 		"EntityMixin",
 		"FallingBlockEntityMixin",
-		"HoeItemMixin",
 		"MobEntityMixin",
 		"ServerPlayerEntityMixin",
-		"ShovelItemMixin",
 		"SugarCaneBlockMixin"
 	],
 	"client": [
@@ -26,7 +25,7 @@
 		"SpriteContentsMixin",
 		"SpriteSourceListAccessor",
 		"SpriteSourceListMixin",
-		"LevelRendererMixin"
+		"LevelExtractorMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

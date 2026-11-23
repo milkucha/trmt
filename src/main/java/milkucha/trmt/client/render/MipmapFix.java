@@ -88,7 +88,7 @@ public final class MipmapFix {
                 on ? "with mipmapped, dithered worn-grass overlay" : "without changes");
     }
 
-    /** LevelRenderer.allChanged HEAD (F3+A, also the end of every resource reload): re-read the setting. */
+    /** LevelExtractor.allChanged HEAD (F3+A, also the end of every resource reload): re-read the setting. */
     public static void onChunkReload() {
         boolean before = TRMTClientConfig.get().mipmapFix;
         boolean now = TRMTClientConfig.refreshMipmapFix();

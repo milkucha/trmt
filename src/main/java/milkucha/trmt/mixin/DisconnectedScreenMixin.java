@@ -1,7 +1,7 @@
 package milkucha.trmt.mixin;
 
 import milkucha.trmt.network.TRMTNetwork;
-import net.minecraft.util.Util;
+import com.mojang.blaze3d.Blaze3D;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
@@ -45,7 +45,7 @@ public abstract class DisconnectedScreenMixin extends Screen {
             trmt$downloadButton = this.addRenderableWidget(
                 Button.builder(
                     Component.translatable("trmt.button.download_update"),
-                    btn -> Util.getPlatform().openUri(URI.create(TRMTNetwork.MODRINTH_URL))
+                    btn -> Blaze3D.openUri(URI.create(TRMTNetwork.MODRINTH_URL))
                 ).pos(backBtn.getX(), backBtn.getY() + 25).width(backBtn.getWidth()).build()
             );
             return;
