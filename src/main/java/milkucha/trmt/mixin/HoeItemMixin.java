@@ -22,8 +22,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Extends hoe tilling to cover trmt:eroded_coarse_dirt,
- * converting it to farmland — matching the behaviour of vanilla dirt/grass tilling.
+ * Lets hoes till trmt:eroded_grass_block and trmt:eroded_dirt into farmland,
+ * under the same conditions as vanilla: the clicked face is not the bottom face and
+ * the block above is air. Otherwise the use passes.
  */
 @Mixin(HoeItem.class)
 public class HoeItemMixin {
@@ -38,9 +39,8 @@ public class HoeItemMixin {
             return;
         }
 
-        // Hoes can only till if the block above is air or replaceable — same rule as vanilla.
-        BlockState above = world.getBlockState(pos.up());
-        if (!above.isAir() && !above.isReplaceable()) {
+        // Hoes can only till if the block above is air — same rule as vanilla.
+        if (!world.getBlockState(pos.up()).isAir()) {
             cir.setReturnValue(ActionResult.PASS);
             return;
         }
