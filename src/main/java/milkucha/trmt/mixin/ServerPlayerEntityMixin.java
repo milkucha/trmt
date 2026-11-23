@@ -151,7 +151,10 @@ public class ServerPlayerEntityMixin implements PathBuffHolder {
             manager.onStep(abovePos, aboveState.getBlock(), 1.0f * mult, gameTime);
             trmt$tryReduceSnow(world, manager, abovePos, aboveState, player);
             manager.broadcastEntryUpdate(abovePos, aboveState.getBlock());
-            // The snow layer insulates the ground block, and trails in snow are one block wide (no spread).
+            // Snow spreads to neighbouring snow layers in the usual cross; the snow layer insulates the
+            // ground block, which gets no step and no spread.
+            Direction snowFacing = player.getDirection();
+            trmt$spreadSnow(world, manager, abovePos, Blocks.SNOW, snowFacing, mult, gameTime, player);
             return;
         }
 
@@ -173,8 +176,9 @@ public class ServerPlayerEntityMixin implements PathBuffHolder {
             manager.broadcastEntryUpdate(groundPos, block);
         }
 
-        // Trails in snow are one block wide: no spread from a snow block.
+        // A snow block spreads the cross to neighbouring snow blocks only; other neighbours get nothing.
         if (state.is(Blocks.SNOW_BLOCK)) {
+            trmt$spreadSnow(world, manager, groundPos, Blocks.SNOW_BLOCK, player.getDirection(), mult, gameTime, player);
             return;
         }
 
@@ -208,6 +212,33 @@ public class ServerPlayerEntityMixin implements PathBuffHolder {
             trmt$tryTransform(world, manager, pos);
             manager.broadcastEntryUpdate(pos, adjState.getBlock());
         }
+    }
+
+    /**
+     * Cross spread for snow, same weights as the other blocks: front 0.2, left and right 0.5, back nothing.
+     * Only a neighbour of the same kind at exactly {@code origin.relative(dir)} is stepped (a snow layer next to
+     * a snow layer, a snow block next to a snow block); height differences are ignored.
+     */
+    @Unique
+    private static void trmt$spreadSnow(Level world, ErosionMapManager manager, BlockPos origin,
+                                         Block kind, Direction facing, float mult, long gameTime, Entity walker) {
+        trmt$stepSnowAdjacent(world, manager, origin.relative(facing), kind, 0.2f * mult, gameTime, walker);
+        trmt$stepSnowAdjacent(world, manager, origin.relative(facing.getCounterClockWise()), kind, 0.5f * mult, gameTime, walker);
+        trmt$stepSnowAdjacent(world, manager, origin.relative(facing.getClockWise()), kind, 0.5f * mult, gameTime, walker);
+    }
+
+    @Unique
+    private static void trmt$stepSnowAdjacent(Level world, ErosionMapManager manager, BlockPos pos,
+                                               Block kind, float amount, long gameTime, Entity walker) {
+        BlockState adjState = world.getBlockState(pos);
+        if (!adjState.is(kind)) return;
+        manager.onStep(pos, kind, amount, gameTime);
+        if (kind == Blocks.SNOW) {
+            trmt$tryReduceSnow(world, manager, pos, adjState, walker);
+        } else {
+            trmt$tryTransform(world, manager, pos);
+        }
+        manager.broadcastEntryUpdate(pos, kind);
     }
 
     @Unique
