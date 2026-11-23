@@ -1,0 +1,16 @@
+{
+  "effect.trmt.lightness": "Легкость",
+  "item.minecraft.potion.effect.trmt.lightness": "Снадобье легкости",
+  "item.minecraft.splash_potion.effect.trmt.lightness": "Взрывное снадобье легкости",
+  "item.minecraft.lingering_potion.effect.trmt.lightness": "Туманное снадобье легкости",
+  "item.minecraft.tipped_arrow.effect.trmt.lightness": "Стрѣла легкости",
+
+  "block.trmt.eroded_grass_block": "Вытоптанная дернина",
+  "block.trmt.eroded_dirt": "Вытоптанная земля",
+  "block.trmt.eroded_coarse_dirt": "Вытоптанная каменистая земля",
+  "block.trmt.eroded_sand": "Вытоптанный песокъ",
+
+  "trmt.button.download_update": "Скачать обновленіе мода",
+  "trmt.disconnect.outdated": "Версія кліента The Roads More Travelled (TRMT) устарѣла (v%s)!\nЭтотъ серверъ требуетъ v%s или новѣе.\nПожалуйста, скачайте обновленіе для подключенія къ серверу.",
+  "trmt.warning.sodium_without_indium": "TRMT: Sodium установленъ безъ Indium. Вытоптанныя тропы будутъ отображаться неправильно. Установите Indium."
+}

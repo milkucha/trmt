@@ -19,6 +19,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.level.ChunkEvent;
 import net.neoforged.neoforge.event.level.ChunkWatchEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
@@ -62,6 +63,20 @@ public class TRMTNeoForgeEvents {
     public static void onLevelSave(LevelEvent.Save event) {
         if (event.getLevel() instanceof ServerLevel level) {
             ErosionMapManager.onWorldSave(level);
+        }
+    }
+
+    /**
+     * Untouched step progress expires (entryExpiryDays): checked when a chunk loads, at level load and on save.
+     * Server-side ChunkEvent.Load is posted in ChunkStatusTasks.full on the server thread (main-thread mailbox),
+     * when the chunk becomes a full LevelChunk (loaded from disk or newly generated) = Fabric's
+     * ServerChunkEvents.CHUNK_LOAD. The same event also fires for client levels (handled in
+     * TRMTNeoForgeClientEvents), hence the ServerLevel check.
+     */
+    @SubscribeEvent
+    public static void onChunkLoad(ChunkEvent.Load event) {
+        if (event.getLevel() instanceof ServerLevel level) {
+            ErosionMapManager.onChunkLoad(level, event.getChunk().getPos());
         }
     }
 
@@ -121,7 +136,7 @@ public class TRMTNeoForgeEvents {
                 .executes(ctx -> {
                     if (ctx.getSource().permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) {
                         ctx.getSource().sendSuccess(() -> Component.literal(
-                                "[TRMT] Commands: /trmt reloadconfig, /trmt convert-to-vanilla [quick], /trmt eroded-chunks"), false);
+                                "[TRMT] Commands: /trmt reload-config, /trmt convert-to-vanilla [quick], /trmt eroded-chunks"), false);
                     } else {
                         ctx.getSource().sendSuccess(() -> Component.literal(
                                 "[TRMT] The /trmt commands need operator permission (cheats). In singleplayer, enable cheats "
@@ -129,12 +144,12 @@ public class TRMTNeoForgeEvents {
                     }
                     return 1;
                 })
-                .then(Commands.literal("reloadconfig")
+                .then(Commands.literal("reload-config")
                         .requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                         .executes(ctx -> {
                             if (TRMTConfig.load(true) == TRMTConfig.LoadResult.INVALID) {
                                 ctx.getSource().sendFailure(Component.literal("[TRMT] trmt.json is not valid JSON, so nothing was reloaded: the previous settings are still in use. "
-                                        + "Fix the file (the server log names the line and the problem) and run /trmt reloadconfig again."));
+                                        + "Fix the file (the server log names the line and the problem) and run /trmt reload-config again."));
                                 return 0;
                             }
                             ctx.getSource().sendSuccess(() -> Component.literal("[TRMT] Config reloaded."), true);

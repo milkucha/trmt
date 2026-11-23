@@ -9,6 +9,8 @@ import milkucha.trmt.block.ErodedSandBlock;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.erosion.ErosionEntry;
 import milkucha.trmt.erosion.ErosionMapManager;
+import milkucha.trmt.path.PathBuffHolder;
+import milkucha.trmt.path.PathSpeedBuff;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,6 +21,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoublePlantBlock;
+import net.minecraft.world.level.block.SnowLayerBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import org.spongepowered.asm.mixin.Mixin;
@@ -30,11 +33,27 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Mixin(ServerPlayer.class)
-public class ServerPlayerEntityMixin {
+public class ServerPlayerEntityMixin implements PathBuffHolder {
 
-    /** Last block position this player was standing on. Null while airborne. */
+    /** Path speed buff state of this player (see {@link PathSpeedBuff}). */
+    @Unique
+    private final PathSpeedBuff.State trmt$pathBuff = new PathSpeedBuff.State();
+
+    @Override
+    public PathSpeedBuff.State trmt$getPathBuff() {
+        return trmt$pathBuff;
+    }
+
+    // Path speed buff, dismount: ServerPlayer no longer overrides dismountTo on 1.21.11, so the
+    // "placed after dismount" hook is in EntityMixin (Entity.dismountTo), next to removePassenger.
+
+    /** Last block position this player (or their vehicle) stood on; kept while airborne. */
     @Unique
     private BlockPos trmt$lastGroundPos = null;
+
+    /** Consecutive ticks the player (or their vehicle) has been off the ground. */
+    @Unique
+    private int trmt$airTicks = 0;
 
     @Inject(method = "tick", at = @At("TAIL"))
     private void trmt$onTick(CallbackInfo ci) {
@@ -45,11 +64,18 @@ public class ServerPlayerEntityMixin {
         boolean mounted = vehicle != null;
         boolean onGround = mounted ? vehicle.onGround() : player.onGround();
 
+        // Safety net for the path speed buff: drop it if its carrier is no longer what the player stands on/controls;
+        // on the first tick after a dismount, re-gate the spot the player is at now.
+        PathSpeedBuff.tickCheck(player, trmt$pathBuff);
+
         if (!onGround) {
-            // Airborne (or vehicle airborne) — clear last ground position so the next landing registers.
-            trmt$lastGroundPos = null;
+            if (trmt$airTicks < Integer.MAX_VALUE) trmt$airTicks++;
             return;
         }
+        boolean landedFromJump = trmt$airTicks >= ErosionMapManager.LANDING_MIN_AIR_TICKS;
+        // Path speed buff: any time off the ground counts, as a landing has always re-evaluated the buff.
+        boolean wasAirborne = trmt$airTicks > 0;
+        trmt$airTicks = 0;
 
         // blockPosition() returns the block at the entity's Y coordinate (feet level).
         // The block they are *standing on* is one below.
@@ -64,12 +90,24 @@ public class ServerPlayerEntityMixin {
             groundPos = groundPos.above();
         }
 
-        // Only process when the player (or vehicle) moves onto a new block, not while standing still.
-        if (groundPos.equals(trmt$lastGroundPos)) {
-            return;
+        // Only process when the player (or vehicle) moves onto a new block column, or lands after a
+        // real jump/fall. Staying in the same column without a real jump is not a step: this covers
+        // standing still, a brief onGround flicker, and sinking when the block below gets lower
+        // (a snow layer removed, a snow block turned into layers, an eroded sand stage).
+        boolean sameColumn = ErosionMapManager.sameColumn(groundPos, trmt$lastGroundPos);
+        boolean sameBlock = groundPos.equals(trmt$lastGroundPos);
+        trmt$lastGroundPos = groundPos.immutable();
+
+        // Path speed buff: one evaluation per new ground block (or landing after any airborne tick), on its own
+        // trigger rather than the erosion step rule below. Deliberately before the step-rule, sneaking and Lightness
+        // returns (the buff is about the path, not about wearing it) and independent of the erosion toggles.
+        if (!sameBlock || wasAirborne) {
+            PathSpeedBuff.onNewGroundBlock(player, vehicle, trmt$pathBuff);
         }
 
-        trmt$lastGroundPos = groundPos.immutable();
+        if (sameColumn && !landedFromJump) {
+            return;
+        }
 
         if (player.isShiftKeyDown()) return;
 
@@ -94,26 +132,45 @@ public class ServerPlayerEntityMixin {
 
         // Check for vegetation at the player's feet level (one block above the ground).
         // Vegetation has no collision so the player passes through it — track and break it.
-        BlockPos vegPos = groundPos.above();
-        BlockState vegState = world.getBlockState(vegPos);
-        if (erosion.vegetationEnabled && BlockThresholds.isVegetation(vegState.getBlock())) {
-            manager.onStep(vegPos, vegState.getBlock(), 1.0f * mult, gameTime);
-            trmt$tryBreakVegetation(world, manager, vegPos, vegState);
-            manager.broadcastEntryUpdate(vegPos, vegState.getBlock());
+        // This fires regardless of what the ground block is so that vegetation on any surface
+        // can be trampled, even when the ground block's own erosion category is disabled.
+        BlockPos abovePos = groundPos.above();
+        BlockState aboveState = world.getBlockState(abovePos);
+        if (erosion.vegetationEnabled && BlockThresholds.isVegetation(aboveState.getBlock())) {
+            manager.onStep(abovePos, aboveState.getBlock(), 1.0f * mult, gameTime);
+            trmt$tryBreakVegetation(world, manager, abovePos, aboveState);
+            manager.broadcastEntryUpdate(abovePos, aboveState.getBlock());
+        }
+        if (erosion.snowEnabled && aboveState.is(Blocks.SNOW)) {
+            manager.onStep(abovePos, aboveState.getBlock(), 1.0f * mult, gameTime);
+            trmt$tryReduceSnow(world, manager, abovePos, aboveState, player);
+            manager.broadcastEntryUpdate(abovePos, aboveState.getBlock());
+            // The snow layer insulates the ground block, and trails in snow are one block wide (no spread).
+            return;
         }
 
         boolean tracked = (erosion.grassEnabled && (state.is(Blocks.GRASS_BLOCK) || state.is(TRMTBlocks.ERODED_GRASS_BLOCK.get())))
                 || (erosion.dirtEnabled && (state.is(Blocks.DIRT) || state.is(TRMTBlocks.ERODED_DIRT.get()) || state.is(TRMTBlocks.ERODED_COARSE_DIRT.get())))
                 || (erosion.sandEnabled && (state.is(Blocks.SAND) || state.is(TRMTBlocks.ERODED_SAND.get())))
-                || (erosion.leavesEnabled && BlockThresholds.isLeaves(block));
+                || (erosion.leavesEnabled && BlockThresholds.isLeaves(block))
+                || (erosion.snowEnabled && state.is(Blocks.SNOW_BLOCK));
 
         if (!tracked) {
             return;
         }
 
-        manager.onStep(groundPos, block, 1.0f * mult, gameTime);
-        trmt$tryTransform(world, manager, groundPos);
-        manager.broadcastEntryUpdate(groundPos, block);
+        // A permanent stage neither de-erodes nor erodes further: the step does nothing to it
+        // (its neighbours still get their share below).
+        if (!BlockThresholds.isPermanentStage(state)) {
+            manager.onStep(groundPos, block, 1.0f * mult, gameTime);
+            trmt$tryTransform(world, manager, groundPos);
+            manager.broadcastEntryUpdate(groundPos, block);
+        }
+
+        // Trails in snow are one block wide: no spread from a snow block.
+        if (state.is(Blocks.SNOW_BLOCK)) {
+            return;
+        }
 
         // Spread erosion to adjacent blocks based on the player's facing direction.
         // Front (the direction the player faces): +0.2
@@ -133,10 +190,14 @@ public class ServerPlayerEntityMixin {
                                            BlockPos pos, float amount, long gameTime) {
         BlockState adjState = world.getBlockState(pos);
         TRMTConfig.ErosionToggles erosion = TRMTConfig.get().erosion;
+        // Snow never takes spread: snow blocks are not spread targets, and a block under a snow
+        // layer is insulated (as it is when stepped on directly).
+        if (erosion.snowEnabled && world.getBlockState(pos.above()).is(Blocks.SNOW)) return;
         if ((erosion.grassEnabled && (adjState.is(Blocks.GRASS_BLOCK) || adjState.is(TRMTBlocks.ERODED_GRASS_BLOCK.get())))
                 || (erosion.dirtEnabled && (adjState.is(Blocks.DIRT) || adjState.is(TRMTBlocks.ERODED_DIRT.get()) || adjState.is(TRMTBlocks.ERODED_COARSE_DIRT.get())))
                 || (erosion.sandEnabled && (adjState.is(Blocks.SAND) || adjState.is(TRMTBlocks.ERODED_SAND.get())))
                 || (erosion.leavesEnabled && BlockThresholds.isLeaves(adjState.getBlock()))) {
+            if (BlockThresholds.isPermanentStage(adjState)) return; // permanent stages do not erode further
             manager.onStep(pos, adjState.getBlock(), amount, gameTime);
             trmt$tryTransform(world, manager, pos);
             manager.broadcastEntryUpdate(pos, adjState.getBlock());
@@ -170,6 +231,25 @@ public class ServerPlayerEntityMixin {
         manager.removeEntry(pos);
     }
 
+    @Unique
+    private static void trmt$tryReduceSnow(Level world, ErosionMapManager manager,
+                                            BlockPos pos, BlockState state, Entity breaker) {
+        ErosionEntry entry = manager.getChunkMap(ChunkPos.containing(pos)).getEntry(pos);
+        if (entry == null || entry.getWalkedOnCount() < entry.getThreshold()) return;
+
+        int layers = state.getValue(SnowLayerBlock.LAYERS);
+        if (layers > 1) {
+            world.setBlock(pos, state.setValue(SnowLayerBlock.LAYERS, layers - 1), Block.UPDATE_ALL);
+        } else {
+            float dropChance = TRMTConfig.get().erosionThresholds.snow.dropChance;
+            boolean drops = dropChance >= 1.0f || (dropChance > 0.0f && ThreadLocalRandom.current().nextFloat() < dropChance);
+            // The vanilla snow loot table only drops when an entity breaks the block
+            // (entity_properties "this"), so the walker must be passed as the breaker.
+            world.destroyBlock(pos, drops, breaker);
+        }
+        manager.removeEntry(pos);
+    }
+
     /**
      * Checks whether the block at {@code pos} has accumulated enough erosion to transform,
      * and if so, advances it to the next stage in the chain and clears its entry.
@@ -184,6 +264,12 @@ public class ServerPlayerEntityMixin {
         }
 
         // Threshold reached — advance visual stage or transform the block.
+        if (state.is(Blocks.SNOW_BLOCK)) {
+            world.setBlock(pos, Blocks.SNOW.defaultBlockState().setValue(SnowLayerBlock.LAYERS, 7), Block.UPDATE_ALL);
+            manager.removeEntry(pos);
+            return;
+        }
+
         if (state.is(Blocks.SAND)) {
             if (!BlockThresholds.canSandErodeFurther(world, pos)) return;
             Direction erodedFacing = trmt$rotationToFacing(BlockThresholds.posRotation(pos));
@@ -222,7 +308,8 @@ public class ServerPlayerEntityMixin {
             world.setBlock(pos,
                     TRMTBlocks.ERODED_GRASS_BLOCK.get().defaultBlockState()
                             .setValue(ErodedGrassBlock.FACING, erodedFacing)
-                            .setValue(ErodedGrassBlock.STAGE, 0),
+                            .setValue(ErodedGrassBlock.STAGE, 0)
+                            .setValue(ErodedGrassBlock.SNOWY, ErodedGrassBlock.snowyAt(world, pos)),
                     Block.UPDATE_ALL);
             manager.removeEntry(pos);
             manager.writeCooldownEntry(pos, TRMTBlocks.ERODED_GRASS_BLOCK.get(), world.getGameTime());

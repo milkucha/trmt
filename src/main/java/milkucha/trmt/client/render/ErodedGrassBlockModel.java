@@ -34,6 +34,10 @@ import java.util.Map;
  * hash: level 0 of every copy is identical, so up close nothing changes; far away the copies'
  * different mip rounding (SpriteContentsMixin) averages out to the stage's true grass coverage.
  * Off: plain delegation.
+ *
+ * Snowy variants (eroded_grass_block_s*_snow) have no side overlay element, only the opaque
+ * vanilla grass_block_snow side plus the dirt + eroded_top UP pair (same tinted stage sprite),
+ * so the same layer and overlay-copy transform applies.
  */
 public class ErodedGrassBlockModel extends DelegateBlockStateModel {
 

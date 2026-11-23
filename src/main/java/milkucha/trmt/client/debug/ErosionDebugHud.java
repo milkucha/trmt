@@ -8,6 +8,7 @@ import milkucha.trmt.client.TRMTClientConfig;
 import milkucha.trmt.client.network.ClientErosionCache;
 import milkucha.trmt.erosion.BlockThresholds;
 import milkucha.trmt.network.TRMTNetwork;
+import milkucha.trmt.path.PathSpeedBuff;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.color.block.BlockTintSource;
@@ -21,6 +22,10 @@ import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import java.util.ArrayList;
@@ -38,6 +43,9 @@ public class ErosionDebugHud {
     /** Last {@code client-hud-state} text per cell (N, W, centre, E, S), so a line is logged only when it changes. */
     private static final String[] lastLogged = new String[5];
 
+    /** Last {@code client-hud-buff} value logged (percent), so a line is logged only when it changes. */
+    private static int lastLoggedBuff = Integer.MIN_VALUE;
+
     private ErosionDebugHud() {}
 
     /**
@@ -48,6 +56,7 @@ public class ErosionDebugHud {
         TRMTClientConfig.get().debugHud = enabled;
         TestLog.line(() -> "client-hud enabled=" + enabled);
         java.util.Arrays.fill(lastLogged, null);
+        lastLoggedBuff = Integer.MIN_VALUE;
         if (!enabled) ClientErosionCache.getInstance().clear();
         sendHudState(Minecraft.getInstance().getConnection(), enabled);
     }
@@ -74,7 +83,7 @@ public class ErosionDebugHud {
         Font tr = client.font;
         int lineHeight = tr.lineHeight + 1;
 
-        int totalHeight = 3 * CELL + 4 + lineHeight;
+        int totalHeight = 3 * CELL + 4 + 2 * lineHeight;
         int x0 = MARGIN;
         int y0 = guiGraphics.guiHeight() - MARGIN - totalHeight;
 
@@ -86,6 +95,23 @@ public class ErosionDebugHud {
 
         String coords = center.getX() + " " + center.getY() + " " + center.getZ();
         guiGraphics.text(tr, coords, x0, y0 + 3 * CELL + 4, TEXT_COLOR, true);
+
+        // Path speed buff: the movement-speed modifier is synced with the attribute (also for a ridden mount).
+        boolean riding = client.player.getVehicle() instanceof LivingEntity;
+        LivingEntity carrier = riding ? (LivingEntity) client.player.getVehicle() : client.player;
+        int buffPercent = 0;
+        AttributeInstance speed = carrier.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (speed != null) {
+            AttributeModifier mod = speed.getModifier(PathSpeedBuff.MODIFIER_ID);
+            if (mod != null) buffPercent = (int) Math.round(mod.amount() * 100);
+        }
+        guiGraphics.text(tr, "speed_buff = " + buffPercent + "%" + (riding ? " (mount)" : ""),
+                x0, y0 + 3 * CELL + 4 + lineHeight, TEXT_COLOR, true);
+        if (TestLog.enabled() && buffPercent != lastLoggedBuff) {
+            lastLoggedBuff = buffPercent;
+            final int logged = buffPercent;
+            TestLog.line(() -> "client-hud-buff value=" + logged);
+        }
     }
 
     private static void renderCell(GuiGraphicsExtractor guiGraphics, ClientLevel world,
@@ -114,7 +140,10 @@ public class ErosionDebugHud {
         long currentTime = client.level != null ? client.level.getGameTime() : 0L;
         int lineH = tr.lineHeight + 1;
 
-        String countLabel = cellEntry != null
+        // A permanent stage does not erode further, so it shows no progress towards the next stage.
+        String countLabel = BlockThresholds.isPermanentStage(state)
+                ? "perm"
+                : cellEntry != null
                 ? String.format("%.1f/%.1f", cellEntry.walkedOnCount, cellEntry.threshold)
                 : "0.0/-";
         drawCentered(guiGraphics, tr, countLabel, x, y, 0, COUNT_COLOR);
@@ -129,6 +158,8 @@ public class ErosionDebugHud {
         String outLabel;
         if (timeout < 0) {
             outLabel = "out:-";
+        } else if (BlockThresholds.isPermanentStage(state)) {
+            outLabel = "out:perm";
         } else {
             boolean isolated = isIsolatedClient(world, pos);
             if (isolated) timeout /= 2;
