@@ -12,12 +12,18 @@ import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+/**
+ * Lets shovels flatten trmt:eroded_grass_block and trmt:eroded_dirt into a dirt path,
+ * under the same conditions as vanilla: the clicked face is not the bottom face and
+ * the block above is air. Otherwise the use passes.
+ */
 @Mixin(ShovelItem.class)
 public class ShovelItemMixin {
 
@@ -28,6 +34,18 @@ public class ShovelItemMixin {
         BlockState state = world.getBlockState(pos);
 
         if (!state.isOf(TRMTBlocks.ERODED_GRASS_BLOCK) && !state.isOf(TRMTBlocks.ERODED_DIRT)) {
+            return;
+        }
+
+        // Shovels can only flatten if the block above is air — same rule as vanilla.
+        if (!world.getBlockState(pos.up()).isAir()) {
+            cir.setReturnValue(ActionResult.PASS);
+            return;
+        }
+
+        // Don't flatten the bottom face (matches vanilla shovel behaviour).
+        if (context.getSide() == Direction.DOWN) {
+            cir.setReturnValue(ActionResult.PASS);
             return;
         }
 
